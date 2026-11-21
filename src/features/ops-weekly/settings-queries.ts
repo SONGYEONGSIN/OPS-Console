@@ -27,6 +27,8 @@ export type SettingsBundle = {
   anchorWeekStart: string | null;
   excludedWriterEmails: string[];
   writerCandidates: WriterCandidate[];
+  /** 받는 사람 후보 — 운영1·2팀 활성 전원(부장·팀장 포함). 작성 명단과 달리 직급으로 빼지 않는다 */
+  recipientCandidates: WriterCandidate[];
   projects: {
     id: string;
     name: string;
@@ -112,17 +114,17 @@ async function readSettings() {
 }
 
 /** 제외를 반영하기 **전** 명단 — 제외 체크박스용. */
-async function listWriterCandidates(): Promise<WriterCandidate[]> {
+async function listTeamOperators(): Promise<WriterCandidate[]> {
   const res = await createAdminClient()
     .from("operators")
     .select("email, name, team, role, status")
     .in("team", [...WRITER_TEAMS])
     .eq("status", "active");
-  const rows = rowsOf<WriterCandidate>("operators", res).map((r) => ({
+  return rowsOf<WriterCandidate>("operators", res).map((r) => ({
     ...r,
     email: normEmail(r.email),
+    name: r.name.trim(),
   }));
-  return writerRoster(rows, []);
 }
 
 async function listRotation(): Promise<string[]> {
@@ -178,7 +180,7 @@ export async function loadSettingsBundle(): Promise<SettingsBundle> {
       listOperatorLookups(),
       listRotation(),
       readSettings(),
-      listWriterCandidates(),
+      listTeamOperators(),
       listProjects(),
     ]);
   return {
@@ -189,7 +191,8 @@ export async function loadSettingsBundle(): Promise<SettingsBundle> {
     rotation,
     anchorWeekStart: settings.anchor,
     excludedWriterEmails: settings.excluded,
-    writerCandidates: candidates,
+    writerCandidates: writerRoster(candidates, []),
+    recipientCandidates: candidates,
     projects,
   };
 }

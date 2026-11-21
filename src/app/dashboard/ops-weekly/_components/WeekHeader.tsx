@@ -17,7 +17,7 @@ type Props = {
   submittedCount: number;
   writerCount: number;
   dutyName: string | null;
-  /** 내 보고서 화면에서만 상태 배지·확인 수를 보인다(제출 현황·관리에는 없다). */
+  /** 내 보고서 화면에서만 상태 배지·확인 수·제출 수·당번을 보인다(제출 현황·관리에는 없다). */
   showReportState: boolean;
   checkedCount: number;
   /** 작성자 선택 상자 — null 이면 상자가 없다. viewedEmail 이 null 이면 아무도 안 골라진 상태. */
@@ -133,6 +133,7 @@ export function WeekHeader(props: Props) {
           ) : null}
         </div>
         <div className="ml-auto flex flex-wrap items-center justify-end gap-x-4 gap-y-2 text-ink-soft">
+          {/* 제출 현황·관리에서는 아래 표가 제출·당번을 보여 줘서 머리띠에 다시 적지 않는다. */}
           {props.showReportState ? (
             <>
               <StatusBadge
@@ -140,15 +141,15 @@ export function WeekHeader(props: Props) {
                 submittedAt={props.submittedAt}
               />
               <span className="tabular-nums">{`확인 ${props.checkedCount}/${AREAS.length}`}</span>
+              <span className="flex items-center gap-2">
+                <span className="tabular-nums">{`제출 ${props.submittedCount}/${props.writerCount}`}</span>
+                <span aria-hidden className="text-muted">
+                  ·
+                </span>
+                <span>{`당번 ${props.dutyName ?? "미지정"}`}</span>
+              </span>
             </>
           ) : null}
-          <span className="flex items-center gap-2">
-            <span className="tabular-nums">{`제출 ${props.submittedCount}/${props.writerCount}`}</span>
-            <span aria-hidden className="text-muted">
-              ·
-            </span>
-            <span>{`당번 ${props.dutyName ?? "미지정"}`}</span>
-          </span>
         </div>
       </div>
       {hasMessages ? (

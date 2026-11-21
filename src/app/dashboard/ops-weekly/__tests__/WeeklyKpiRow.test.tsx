@@ -139,7 +139,8 @@ describe("WeeklyKpiRow", () => {
       expect(card).toHaveTextContent("차주 마감 예정");
       // 2 + 7 = 9 를 적지 않는다 — 겹칠 수 있어 합이 뜻을 잃는다
       expect(card).not.toHaveTextContent("9");
-      expect(tok(card)).toContain("col-span-2");
+      // 폰·태블릿 3열에서는 두 칸, lg 5열에서는 다른 카드와 같은 한 칸
+      expect(tok(card)).toEqual(expect.arrayContaining(["col-span-2", "lg:col-span-1"]));
       expect(tok(card)).toContain("border-line-soft");
       expect(tok(card)).toContain("bg-situation-bg");
     });
@@ -475,7 +476,7 @@ describe("WeeklyKpiRow", () => {
   });
 
   describe("그리드·카드 크기", () => {
-    it("3열(폰·태블릿) → lg 6열, 카드는 min-w-0 이고 라벨은 줄바꿈 허용", () => {
+    it("3열(폰·태블릿) → lg 5열(카드 너비 균등), 카드는 min-w-0 이고 라벨은 줄바꿈 허용", () => {
       render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
       const grid = screen
         .getAllByTestId("weekly-kpi-label")[0]
@@ -483,7 +484,7 @@ describe("WeeklyKpiRow", () => {
       expect(grid.className.split(/\s+/)).toEqual(
         expect.arrayContaining([
           "grid-cols-3",
-          "lg:grid-cols-6",
+          "lg:grid-cols-5",
           "gap-2",
           "md:gap-3",
         ]),
@@ -499,13 +500,16 @@ describe("WeeklyKpiRow", () => {
       expect(screen.getByText("1").className).toContain("text-xl");
     });
 
-    it("칸 합이 6(1+1+1 + 2+1) — 3열·6열 모두 빈 칸이 없다", () => {
+    it("3열에서는 칸 합이 6(1+1+1 + 2+1), lg 5열에서는 카드 다섯이 한 칸씩 — 빈 칸이 없다", () => {
       render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
       const grid = document.querySelector(".grid") as Element;
-      const span = (el: Element) =>
-        el.className.includes("col-span-2") ? 2 : 1;
-      const total = [...grid.children].reduce((n, c) => n + span(c), 0);
-      expect(total).toBe(6);
+      const cls = (el: Element) => el.className.split(/\s+/);
+      const narrow = (el: Element) => (cls(el).includes("col-span-2") ? 2 : 1);
+      const wide = (el: Element) =>
+        cls(el).includes("col-span-2") && !cls(el).includes("lg:col-span-1") ? 2 : 1;
+      const kids = [...grid.children];
+      expect(kids.reduce((n, c) => n + narrow(c), 0)).toBe(6);
+      expect(kids.reduce((n, c) => n + wide(c), 0)).toBe(5);
     });
   });
 });

@@ -32,7 +32,7 @@ import type { AutoSnapshot } from "./merge";
 import { referenceInstant, shiftWeek, weekWindows } from "./week";
 
 const CLOSING_COLUMNS =
-  "service_id, university_name, service_name, operator_name, write_start_at, write_end_at, pay_end_at";
+  "service_id, university_name, service_name, operator_name, write_start_at, write_end_at, pay_end_at, university_type, category";
 const PIMS_COLUMNS =
   "service_id, university_name, service_name, operator_name, last_announce_at";
 const BACKUP_COLUMNS =

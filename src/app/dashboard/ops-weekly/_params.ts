@@ -174,8 +174,8 @@ export const MANAGE_SECTIONS = [
   "duty",
   "recipients",
   "rotation",
-  "exclusions",
   "projects",
+  "exclusions",
   "unmatched",
 ] as const;
 export type ManageSection = (typeof MANAGE_SECTIONS)[number];
@@ -184,10 +184,10 @@ export const MANAGE_SECTION_LABEL: Record<ManageSection, string> = {
   overview: "전체 현황",
   duty: "당번 지정",
   recipients: "받는 사람",
-  rotation: "당번 순번표",
+  rotation: "당번 순번",
   exclusions: "작성 제외",
-  projects: "프로젝트·TF 목록",
-  unmatched: "안 붙은 서비스",
+  projects: "프로젝트·TF",
+  unmatched: "지정 안된 서비스",
 };
 
 export function parseSection(raw: string | null): ManageSection {

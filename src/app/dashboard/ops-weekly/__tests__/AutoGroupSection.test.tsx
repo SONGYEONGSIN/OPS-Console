@@ -5,6 +5,7 @@ import {
   cleanup,
   fireEvent,
   waitFor,
+  within,
 } from "@testing-library/react";
 
 const saveItemOverride = vi.fn();
@@ -220,5 +221,86 @@ describe("AutoGroupSection", () => {
     expect(li.contains(screen.getByRole("button", { name: "빼기" }))).toBe(
       true,
     );
+  });
+});
+
+describe("AutoGroupSection — 표 모양(원서접수)", () => {
+  const T = { atLabel: "오픈" };
+  const manualRow = {
+    id: "m1",
+    area: "application" as const,
+    group_key: "running",
+    title: "수동 서비스",
+    note: "",
+    period_start: null,
+    period_end: null,
+    leave_kind: null,
+  };
+
+  it("머리 칸 — 대학명·대학구분·카테고리·서비스명·일시(묶음별 이름)·메모", () => {
+    render(
+      <AutoGroupSection
+        {...group([view("closing:1", { universityType: "2년제", category: "편입" })])}
+        editable
+        table={T}
+      />,
+    );
+    const table = screen.getByRole("table", { name: "운영 중" });
+    expect(
+      [...table.querySelectorAll("th")].map((h) => h.textContent),
+    ).toEqual(["대학명", "대학구분", "카테고리", "서비스명", "오픈", "메모"]);
+    const row = screen.getAllByRole("row")[1];
+    const cells = [...row.querySelectorAll("td")].map((c) => c.textContent);
+    expect(cells.slice(0, 4)).toEqual(["가대학교", "2년제", "편입", "수시모집"]);
+  });
+
+  it("값이 없으면 — (예전에 굳힌 스냅샷)", () => {
+    render(<AutoGroupSection {...group([view("closing:1")])} editable table={T} />);
+    const row = screen.getAllByRole("row")[1];
+    const cells = [...row.querySelectorAll("td")].map((c) => c.textContent);
+    expect(cells[1]).toBe("—");
+    expect(cells[2]).toBe("—");
+  });
+
+  it("[빼기] 가 행 안에 있고 뺀 행은 취소선", async () => {
+    const { rerender } = render(
+      <AutoGroupSection {...group([view("closing:1")])} editable table={T} />,
+    );
+    const row = screen.getAllByRole("row")[1];
+    fireEvent.click(within(row).getByRole("button", { name: "빼기" }));
+    await waitFor(() =>
+      expect(saveItemOverride).toHaveBeenCalledWith({
+        reportId: "r",
+        itemKey: "closing:1",
+        area: "application",
+        excluded: true,
+      }),
+    );
+    rerender(
+      <AutoGroupSection
+        {...group([view("closing:1", { excluded: true })])}
+        editable
+        table={T}
+      />,
+    );
+    expect(tokens(screen.getAllByRole("row")[1])).toContain("line-through");
+  });
+
+  it("직접 추가 건도 표의 한 행 — 배지와 [삭제]", async () => {
+    render(
+      <AutoGroupSection {...group([])} manual={[manualRow]} editable table={T} />,
+    );
+    const row = screen.getByText("수동 서비스").closest("tr") as HTMLElement;
+    expect(row).toHaveTextContent("직접 추가");
+    fireEvent.click(within(row).getByRole("button", { name: "삭제" }));
+    await waitFor(() =>
+      expect(removeManualItem).toHaveBeenCalledWith({ reportId: "r", itemId: "m1" }),
+    );
+  });
+
+  it("비면 표 없이 emptyText", () => {
+    render(<AutoGroupSection {...group([])} editable table={T} />);
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.getByText("없음")).toBeInTheDocument();
   });
 });

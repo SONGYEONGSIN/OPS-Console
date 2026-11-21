@@ -172,6 +172,20 @@ describe("autoSnapshotSchema", () => {
     ).toBe(false);
   });
 
+  it("대학구분·카테고리는 굳힌 값에 남고, 없던 예전 스냅샷도 통과한다", () => {
+    const base = snapshot({ dev: ["closing:1"] });
+    const withCols = {
+      ...base,
+      application: {
+        ...base.application,
+        dev: [{ ...base.application.dev[0], universityType: "4년제", category: "수시" }],
+      },
+    };
+    const parsed = autoSnapshotSchema.parse(withCols);
+    expect(parsed.application.dev[0]).toMatchObject({ universityType: "4년제", category: "수시" });
+    expect(autoSnapshotSchema.safeParse(base).success).toBe(true);
+  });
+
   it("휴가 항목의 기간 칸까지 검사한다", () => {
     const ok = { ...snapshot(), leave: [leaveItem("leave:br:b1")] };
     expect(autoSnapshotSchema.safeParse(ok).success).toBe(true);

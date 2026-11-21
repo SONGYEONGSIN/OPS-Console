@@ -69,6 +69,7 @@ function bundle(over: Partial<SettingsBundle> = {}): SettingsBundle {
     anchorWeekStart: null,
     excludedWriterEmails: [],
     writerCandidates: [wa, wb, wt],
+    recipientCandidates: [wa, wb],
     projects: [],
     ...over,
   };
@@ -126,11 +127,54 @@ describe("ManageTab", () => {
     fireEvent.change(within(region).getByLabelText("받는 사람 이메일"), {
       target: { value: "r@x" },
     });
-    fireEvent.click(within(region).getByRole("button", { name: "추가" }));
+    fireEvent.click(within(region).getByRole("button", { name: "이메일 추가" }));
     await waitFor(() =>
       expect(addRecipient).toHaveBeenCalledWith({ email: "r@x" }),
     );
     expect(await within(region).findByText(/비활성 계정/)).toBeInTheDocument();
+  });
+
+  it("받는 사람 — 운영자 표에서 행 버튼으로 추가·빼기", async () => {
+    setUrl("?week=2026-11-16&tab=settings&section=recipients");
+    addRecipient.mockResolvedValue({ ok: true });
+    removeRecipient.mockResolvedValue({ ok: true });
+    render(
+      <ManageTab
+        bundle={bundle({
+          recipients: [{ email: "b@x", name: "운영자B", warning: null }],
+        })}
+      />,
+    );
+    const region = screen.getByRole("region", { name: "받는 사람" });
+    const rowA = within(region).getByText("운영자A").closest("tr") as HTMLElement;
+    fireEvent.click(within(rowA).getByRole("button", { name: "추가" }));
+    await waitFor(() =>
+      expect(addRecipient).toHaveBeenCalledWith({ email: "a@x" }),
+    );
+    const rowB = within(region).getByText("운영자B").closest("tr") as HTMLElement;
+    expect(within(rowB).queryByRole("button", { name: "추가" })).toBeNull();
+    // 앞선 저장이 끝나기 전에는 행 버튼이 잠긴다
+    await waitFor(() =>
+      expect(within(rowB).getByRole("button", { name: "빼기" })).toBeEnabled(),
+    );
+    fireEvent.click(within(rowB).getByRole("button", { name: "빼기" }));
+    await waitFor(() =>
+      expect(removeRecipient).toHaveBeenCalledWith({ email: "b@x" }),
+    );
+  });
+
+  it("받는 사람 — 운영자 명단 밖 주소도 표에 행으로 남는다", () => {
+    setUrl("?week=2026-11-16&tab=settings&section=recipients");
+    render(
+      <ManageTab
+        bundle={bundle({
+          recipients: [{ email: "out@y", name: null, warning: "not-operator" }],
+        })}
+      />,
+    );
+    const region = screen.getByRole("region", { name: "받는 사람" });
+    const row = within(region).getAllByText("out@y")[0].closest("tr") as HTMLElement;
+    expect(within(row).getByRole("button", { name: "빼기" })).toBeInTheDocument();
   });
 
   it("순번 순서 바꾸기 → 저장이 바뀐 순서를 보낸다", async () => {
@@ -146,12 +190,31 @@ describe("ManageTab", () => {
     const region = screen.getByRole("region", { name: "당번 순번" });
     const row = within(region)
       .getByText("운영자B")
-      .closest("li") as HTMLElement;
+      .closest("tr") as HTMLElement;
     fireEvent.click(within(row).getByRole("button", { name: "위로" }));
     fireEvent.click(screen.getByRole("button", { name: "순번 저장" }));
     await waitFor(() =>
       expect(saveRotation).toHaveBeenCalledWith({
         emails: ["b@x", "a@x"],
+        anchorWeekStart: "2026-11-16",
+      }),
+    );
+  });
+
+  it("순번 — 표에서 넣기를 누르면 맨 뒤에 붙는다", async () => {
+    setUrl("?week=2026-11-16&tab=settings&section=rotation");
+    render(
+      <ManageTab
+        bundle={bundle({ rotation: ["a@x"], anchorWeekStart: "2026-11-16" })}
+      />,
+    );
+    const region = screen.getByRole("region", { name: "당번 순번" });
+    const row = within(region).getByText("테스트1").closest("tr") as HTMLElement;
+    fireEvent.click(within(row).getByRole("button", { name: "넣기" }));
+    fireEvent.click(screen.getByRole("button", { name: "순번 저장" }));
+    await waitFor(() =>
+      expect(saveRotation).toHaveBeenCalledWith({
+        emails: ["a@x", "t@x"],
         anchorWeekStart: "2026-11-16",
       }),
     );
@@ -183,7 +246,7 @@ describe("ManageTab", () => {
         })}
       />,
     );
-    const region = screen.getByRole("region", { name: "프로젝트·TF 목록" });
+    const region = screen.getByRole("region", { name: "프로젝트·TF" });
     expect(within(region).getAllByRole("row")).toHaveLength(
       SEED_PROJECT_NAMES.length + 1,
     );
@@ -233,7 +296,7 @@ describe("ManageTab", () => {
   it("새 항목 저장이 성공하면 초안 행이 사라진다", async () => {
     setUrl("?week=2026-11-16&tab=settings&section=projects");
     render(<ManageTab bundle={bundle()} />);
-    const region = screen.getByRole("region", { name: "프로젝트·TF 목록" });
+    const region = screen.getByRole("region", { name: "프로젝트·TF" });
     fireEvent.click(
       within(region).getByRole("button", { name: "+ 항목 추가" }),
     );
@@ -248,21 +311,29 @@ describe("ManageTab", () => {
     );
   });
 
-  it("작성 제외 체크 → 저장", async () => {
+  it("작성 제외 — 행 버튼을 누르면 바로 저장한다", async () => {
     setUrl("?week=2026-11-16&tab=settings&section=exclusions");
+    saveExcludedWriters.mockResolvedValue({ ok: true });
     render(
       <ManageTab
         bundle={bundle({
           writerCandidates: [wa, wt],
-          excludedWriterEmails: [],
+          excludedWriterEmails: [wa.email],
         })}
       />,
     );
-    fireEvent.click(screen.getByLabelText("테스트1 제외"));
-    fireEvent.click(screen.getByRole("button", { name: "제외 저장" }));
+    const region = screen.getByRole("region", { name: "작성 제외" });
+    const rowT = within(region).getByText("테스트1").closest("tr") as HTMLElement;
+    fireEvent.click(within(rowT).getByRole("button", { name: "제외" }));
     await waitFor(() =>
-      expect(saveExcludedWriters).toHaveBeenCalledWith({ emails: [wt.email] }),
+      expect(saveExcludedWriters).toHaveBeenCalledWith({
+        emails: [wa.email, wt.email],
+      }),
     );
+    const rowA = within(region).getByText("운영자A").closest("tr") as HTMLElement;
+    expect(within(rowA).getByText("제외됨")).toBeInTheDocument();
+    expect(within(rowA).getByRole("button", { name: "포함" })).toBeInTheDocument();
+    expect(within(region).queryByRole("button", { name: "제외 저장" })).toBeNull();
   });
 
   it("패널 제목은 모두 h2 text-xl font-bold — 숨긴 칸에도 마운트돼 있다", () => {
@@ -273,7 +344,7 @@ describe("ManageTab", () => {
       "받는 사람",
       "당번 순번",
       "작성 제외",
-      "프로젝트·TF 목록",
+      "프로젝트·TF",
     ]) {
       const h = screen.getByRole("heading", { name, hidden: true });
       expect(h.tagName).toBe("H2");
@@ -315,7 +386,7 @@ describe("ManageTab", () => {
     const regions = screen.getAllByRole("region", { hidden: true });
     const last = regions[regions.length - 1];
     expect(last).toHaveAttribute("id", "unmatched");
-    expect(last).toHaveAccessibleName("안 붙은 서비스");
+    expect(last).toHaveAccessibleName("지정 안된 서비스");
     expect(
       within(last).getByRole("heading", { name: "원서접수 1건" }),
     ).toBeInTheDocument();
@@ -324,7 +395,7 @@ describe("ManageTab", () => {
   it("안 붙은 서비스를 못 읽었으면(null) 0건이 아니라 불러오지 않았다고 적는다", () => {
     setUrl("?week=2026-11-16&tab=settings&section=unmatched");
     render(<ManageTab bundle={bundle()} unmatched={null} />);
-    const region = screen.getByRole("region", { name: "안 붙은 서비스" });
+    const region = screen.getByRole("region", { name: "지정 안된 서비스" });
     expect(
       within(region).getByText("목록을 불러오지 않았습니다"),
     ).toBeInTheDocument();
@@ -334,11 +405,11 @@ describe("ManageTab", () => {
   it("+ 항목 추가는 제목 오른쪽 표준 헤더 액션이고 표보다 앞이다", () => {
     setUrl("?week=2026-11-16&tab=settings&section=projects");
     render(<ManageTab bundle={bundle()} />);
-    const region = screen.getByRole("region", { name: "프로젝트·TF 목록" });
+    const region = screen.getByRole("region", { name: "프로젝트·TF" });
     const add = within(region).getByRole("button", { name: "+ 항목 추가" });
     expect(add.className).toContain(HEADER_ACTION_CLASS);
     const h = within(region).getByRole("heading", {
-      name: "프로젝트·TF 목록",
+      name: "프로젝트·TF",
     });
     const table = within(region).getByRole("table");
     expect(
@@ -361,10 +432,10 @@ describe("ManageTab", () => {
       "전체 현황",
       "당번 지정",
       "받는 사람",
-      "당번 순번표",
+      "당번 순번",
+      "프로젝트·TF",
       "작성 제외",
-      "프로젝트·TF 목록",
-      "안 붙은 서비스",
+      "지정 안된 서비스",
     ]);
     expect(within(nav).getByRole("button", { name: /전체 현황/ })).toHaveAttribute(
       "aria-pressed",
@@ -399,25 +470,27 @@ describe("ManageTab", () => {
       unmatched: { application: [row(1)], pims: [row(2)] } as never,
     });
     const nav = screen.getByRole("navigation", { name: "관리 메뉴" });
-    expect(within(nav).getByRole("button", { name: /안 붙은 서비스/ }).textContent).toMatch(/2$/);
+    expect(within(nav).getByRole("button", { name: /지정 안된 서비스/ }).textContent).toMatch(/2$/);
     unmount();
     renderManage({ unmatched: null });
     const nav2 = screen.getByRole("navigation", { name: "관리 메뉴" });
     expect(
-      within(nav2).getByRole("button", { name: /안 붙은 서비스/ }).textContent,
+      within(nav2).getByRole("button", { name: /지정 안된 서비스/ }).textContent,
     ).not.toMatch(/\d$/);
   });
 
-  it("당번 지정 칸은 제외를 뺀 명단에서 고른다", () => {
+  it("당번 지정 표는 제외를 뺀 명단이다", () => {
     setUrl("?week=2026-11-16&tab=settings&section=duty");
     render(
       <ManageTab
         bundle={bundle({ excludedWriterEmails: ["t@x"] })}
       />,
     );
-    const options = within(screen.getByLabelText("당번"))
-      .getAllByRole("option")
-      .map((o) => o.textContent);
-    expect(options).toEqual(["당번 미지정", "운영자A", "운영자B"]);
+    const region = screen.getByRole("region", { name: "당번 지정" });
+    const names = within(region)
+      .getAllByRole("row")
+      .slice(1)
+      .map((r) => r.querySelector("td")?.textContent);
+    expect(names).toEqual(["운영자A", "운영자B"]);
   });
 });

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { ModalShell } from "@/components/common/ModalShell";
-import { normEmail } from "@/features/ops-weekly/email";
 import type { ProjectGroup } from "@/features/ops-weekly/merge";
 import {
   canEditDutySummary,
@@ -47,14 +46,11 @@ type Dialog =
 
 const LOCKED_TEXT = "이미 보고된 주입니다";
 
+/** 미제출은 적지 않는다 — 누가 안 냈는지는 바로 아래 표의 상태 칸이 보여 준다. */
 function whyDisabled(
   check: Exclude<FinalizeCheck, { ok: true }>,
-  names: ReadonlyMap<string, string>,
 ): string | null {
-  if (check.reason === "pending") {
-    const who = check.pending.map((e) => names.get(normEmail(e)) ?? e);
-    return `미제출: ${who.join(", ")}`;
-  }
+  if (check.reason === "pending") return null;
   if (check.reason === "empty-roster")
     return "작성 대상 명단을 읽지 못했습니다";
   if (check.reason === "locked") return LOCKED_TEXT;
@@ -134,12 +130,11 @@ function FinalizeDialog(props: { onClose: () => void; onOk: () => void }) {
 
 function FinalizeBar(props: {
   finalize: FinalizeCheck;
-  names: ReadonlyMap<string, string>;
   pending: boolean;
   onClick: () => void;
 }) {
-  const { finalize, names } = props;
-  const why = finalize.ok ? null : whyDisabled(finalize, names);
+  const { finalize } = props;
+  const why = finalize.ok ? null : whyDisabled(finalize);
   return (
     <div className="flex flex-col items-end gap-1">
       <HeaderActionButton
@@ -160,17 +155,19 @@ export function StatusTab(props: Props) {
   const wf = useWorkflow();
   const [dialog, setDialog] = useState<Dialog>(null);
   const state = normalizedWeekStateOf(week);
-  const names = new Map(writers.map((w) => [normEmail(w.email), w.name]));
   const open = week.status === "open";
   return (
     <section data-tab="status" className="flex flex-col gap-7 p-5 lg:p-7">
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
           <div className="flex min-w-0 flex-col gap-2">
-            <div className="flex flex-wrap items-baseline gap-x-3">
+            <div className="flex items-baseline gap-2">
               <h2 className="text-xl font-bold text-ink">제출 현황</h2>
-              <span className="text-xl font-bold tabular-nums text-muted">
-                {`${props.submittedCount}/${writers.length}명`}
+              <span className="text-muted" aria-hidden>
+                ·
+              </span>
+              <span className="text-sm tabular-nums text-vermilion">
+                {`제출 ${props.submittedCount} / ${writers.length}명`}
               </span>
             </div>
           </div>
@@ -178,7 +175,6 @@ export function StatusTab(props: Props) {
             <div className="ml-auto">
               <FinalizeBar
                 finalize={finalize}
-                names={names}
                 pending={wf.pending}
                 onClick={() => {
                   setDialog({ kind: "finalize" });

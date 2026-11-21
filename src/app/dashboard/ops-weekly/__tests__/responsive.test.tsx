@@ -77,8 +77,8 @@ describe("주간업무보고 반응형 — 모양 단언", () => {
     const grid = screen.getAllByTestId("weekly-kpi-label")[0].closest(".grid");
     const t = tokens(grid as Element);
     expect(t).toContain("grid-cols-3");
-    expect(t).toContain("lg:grid-cols-6");
-    expect(t).not.toContain("xl:grid-cols-6");
+    expect(t).toContain("lg:grid-cols-5");
+    expect(t).not.toContain("lg:grid-cols-6");
     expect(t).not.toContain("grid-cols-2");
     expect(t).toContain("px-5");
     expect(t).toContain("lg:px-7");
@@ -105,29 +105,27 @@ describe("주간업무보고 반응형 — 모양 단언", () => {
     expect(tokens(box)).toContain("bg-situation-bg");
   });
 
-  it("당번 순번 행은 줄바꿈된다", () => {
-    render(
+  it("당번 순번·받는 사람 표는 좁은 화면에서 가로 스크롤한다", () => {
+    const { unmount } = render(
       <RotationPanel
         rotation={["a@x"]}
         anchorWeekStart={null}
         writers={[writer]}
       />,
     );
-    const row = screen.getByText("운영자A").closest("li") as Element;
-    expect(tokens(row)).toContain("flex-wrap");
-    expect(tokens(screen.getByText("운영자A"))).toContain("break-words");
-  });
-
-  it("받는 사람 행은 줄바꿈된다", () => {
+    expect(tokens(screen.getByRole("table").parentElement as Element)).toContain(
+      "overflow-x-auto",
+    );
+    unmount();
     render(
       <RecipientsPanel
         recipients={[{ email: "a@x", name: "운영자A", warning: null }] as never}
         candidates={[writer]}
       />,
     );
-    const row = screen.getByText("운영자A").closest("li") as Element;
-    expect(tokens(row)).toContain("flex-wrap");
-    expect(tokens(screen.getByText("a@x"))).toContain("break-words");
+    expect(tokens(screen.getByRole("table").parentElement as Element)).toContain(
+      "overflow-x-auto",
+    );
   });
   it("프로젝트 모아보기의 담당자 줄은 줄바꿈되고 긴 이름이 넘치지 않는다", () => {
     render(
@@ -155,11 +153,8 @@ describe("주간업무보고 반응형 — 모양 단언", () => {
     expect(tokens(name.parentElement as Element)).toContain("flex-wrap");
   });
 
-  it("받는 사람 선택·이메일 입력은 컨테이너 폭을 넘지 않는다", () => {
+  it("받는 사람 이메일 입력은 컨테이너 폭을 넘지 않는다", () => {
     render(<RecipientsPanel recipients={[]} candidates={[writer]} />);
-    expect(tokens(screen.getByLabelText("받는 사람 운영자 선택"))).toContain(
-      "max-w-full",
-    );
     expect(tokens(screen.getByLabelText("받는 사람 이메일"))).toContain(
       "max-w-full",
     );

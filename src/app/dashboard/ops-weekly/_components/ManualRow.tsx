@@ -24,12 +24,21 @@ export function ManualRow(props: {
   item: ManualItem;
   reportId: string | null;
   editable: boolean;
+  /** 표 칸 안에 넣을 때는 div — li 는 목록 안에서만 쓴다 */
+  as?: "li" | "div";
 }) {
   const { item, reportId, editable } = props;
+  const Root = props.as ?? "li";
   const { pending, error, run } = useSave();
   const period = periodOf(item);
   return (
-    <li className="group -mx-2 flex flex-col gap-1 px-2 py-2 hover:bg-line-soft">
+    <Root
+      className={
+        Root === "li"
+          ? "group -mx-2 flex flex-col gap-1 px-2 py-2 hover:bg-line-soft"
+          : "flex flex-col gap-1"
+      }
+    >
       <div className="flex flex-wrap items-center gap-2 text-sm text-ink">
         <span className={BADGE_CLASS}>직접 추가</span>
         {item.leave_kind ? (
@@ -56,6 +65,6 @@ export function ManualRow(props: {
         <p className="break-words text-xs text-muted">{item.note}</p>
       ) : null}
       {error ? <p className={ERROR_CLASS}>{error}</p> : null}
-    </li>
+    </Root>
   );
 }

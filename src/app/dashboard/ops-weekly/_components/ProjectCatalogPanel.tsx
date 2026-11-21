@@ -191,9 +191,9 @@ export function ProjectCatalogPanel(props: {
   const [drafts, setDrafts] = useState<number[]>([]);
   const nextOrder = projects.reduce((m, p) => Math.max(m, p.sortOrder), 0) + 1;
   return (
-    <section aria-label="프로젝트·TF 목록" className="flex flex-col gap-3">
+    <section aria-label="프로젝트·TF" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-bold text-ink">프로젝트·TF 목록</h2>
+        <h2 className="text-xl font-bold text-ink">프로젝트·TF</h2>
         <HeaderActionButton
           onClick={() => {
             setDrafts([...drafts, drafts.length]);

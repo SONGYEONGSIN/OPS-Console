@@ -50,6 +50,8 @@ const autoItemSchema = z.object({
   title: z.string(),
   subtitle: z.string(),
   at: z.string().nullable(),
+  universityType: z.string().nullable().optional(),
+  category: z.string().nullable().optional(),
 });
 
 const leaveItemSchema = autoItemSchema.extend({
