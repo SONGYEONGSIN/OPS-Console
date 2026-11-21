@@ -93,8 +93,12 @@ export async function proxy(request: NextRequest) {
   return supabaseResponse;
 }
 
+/** 회사 PC 폴러가 2~3초·1분마다 부르는 창구는 미들웨어를 안 태운다 — Vercel 은
+ *  미들웨어도 함수 호출로 세서 요청 1건이 호출 2회가 된다(실측: CDN 요청 2.38M ↔
+ *  호출 4.76M/월). 어차피 PUBLIC_PATHS 라 여기서 할 일이 없고, 인증은 라우트가
+ *  CRON_SECRET 으로 한다. PUBLIC_PATHS 에서는 빼지 않는다(matcher 가 바뀌어도 안전). */
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/assistant/claude/claim$|api/postal/extract$|api/pollers/heartbeat$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
