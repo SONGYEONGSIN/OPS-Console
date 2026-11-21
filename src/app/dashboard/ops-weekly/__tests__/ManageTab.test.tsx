@@ -119,22 +119,17 @@ describe("ManageTab", () => {
     ).toBeInTheDocument();
   });
 
-  it("받는 사람 추가가 돌려준 경고를 그 자리에 보여 준다", async () => {
+  it("받는 사람 — 이메일 직접 입력 칸은 없다", () => {
     setUrl("?week=2026-11-16&tab=settings&section=recipients");
-    addRecipient.mockResolvedValue({ ok: true, warning: "inactive" });
     render(<ManageTab bundle={bundle()} />);
     const region = screen.getByRole("region", { name: "받는 사람" });
-    fireEvent.change(within(region).getByLabelText("받는 사람 이메일"), {
-      target: { value: "r@x" },
-    });
-    fireEvent.click(within(region).getByRole("button", { name: "이메일 추가" }));
-    await waitFor(() =>
-      expect(addRecipient).toHaveBeenCalledWith({ email: "r@x" }),
-    );
-    expect(await within(region).findByText(/비활성 계정/)).toBeInTheDocument();
+    expect(within(region).queryByLabelText("받는 사람 이메일")).toBeNull();
+    expect(
+      within(region).queryByRole("button", { name: "이메일 추가" }),
+    ).toBeNull();
   });
 
-  it("받는 사람 — 운영자 표에서 행 버튼으로 추가·빼기", async () => {
+  it("받는 사람 — 행의 ON | OFF 로 켜고 끈다", async () => {
     setUrl("?week=2026-11-16&tab=settings&section=recipients");
     addRecipient.mockResolvedValue({ ok: true });
     removeRecipient.mockResolvedValue({ ok: true });
@@ -147,17 +142,23 @@ describe("ManageTab", () => {
     );
     const region = screen.getByRole("region", { name: "받는 사람" });
     const rowA = within(region).getByText("운영자A").closest("tr") as HTMLElement;
-    fireEvent.click(within(rowA).getByRole("button", { name: "추가" }));
+    expect(
+      within(rowA).getByRole("group", { name: "운영자A 받는 사람" }),
+    ).toBeInTheDocument();
+    fireEvent.click(within(rowA).getByRole("button", { name: "ON" }));
     await waitFor(() =>
       expect(addRecipient).toHaveBeenCalledWith({ email: "a@x" }),
     );
     const rowB = within(region).getByText("운영자B").closest("tr") as HTMLElement;
-    expect(within(rowB).queryByRole("button", { name: "추가" })).toBeNull();
-    // 앞선 저장이 끝나기 전에는 행 버튼이 잠긴다
-    await waitFor(() =>
-      expect(within(rowB).getByRole("button", { name: "빼기" })).toBeEnabled(),
+    expect(within(rowB).getByRole("button", { name: "ON" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
     );
-    fireEvent.click(within(rowB).getByRole("button", { name: "빼기" }));
+    // 앞선 저장이 끝나기 전에는 행 토글이 잠긴다
+    await waitFor(() =>
+      expect(within(rowB).getByRole("button", { name: "OFF" })).toBeEnabled(),
+    );
+    fireEvent.click(within(rowB).getByRole("button", { name: "OFF" }));
     await waitFor(() =>
       expect(removeRecipient).toHaveBeenCalledWith({ email: "b@x" }),
     );
@@ -174,7 +175,7 @@ describe("ManageTab", () => {
     );
     const region = screen.getByRole("region", { name: "받는 사람" });
     const row = within(region).getAllByText("out@y")[0].closest("tr") as HTMLElement;
-    expect(within(row).getByRole("button", { name: "빼기" })).toBeInTheDocument();
+    expect(within(row).getByRole("button", { name: "OFF" })).toBeEnabled();
   });
 
   it("순번 순서 바꾸기 → 저장이 바뀐 순서를 보낸다", async () => {
@@ -201,7 +202,7 @@ describe("ManageTab", () => {
     );
   });
 
-  it("순번 — 표에서 넣기를 누르면 맨 뒤에 붙는다", async () => {
+  it("순번 — 행을 ON 하면 맨 뒤에 붙고, OFF 하면 빠진다", async () => {
     setUrl("?week=2026-11-16&tab=settings&section=rotation");
     render(
       <ManageTab
@@ -210,11 +211,13 @@ describe("ManageTab", () => {
     );
     const region = screen.getByRole("region", { name: "당번 순번" });
     const row = within(region).getByText("테스트1").closest("tr") as HTMLElement;
-    fireEvent.click(within(row).getByRole("button", { name: "넣기" }));
+    fireEvent.click(within(row).getByRole("button", { name: "ON" }));
+    const rowA = within(region).getByText("운영자A").closest("tr") as HTMLElement;
+    fireEvent.click(within(rowA).getByRole("button", { name: "OFF" }));
     fireEvent.click(screen.getByRole("button", { name: "순번 저장" }));
     await waitFor(() =>
       expect(saveRotation).toHaveBeenCalledWith({
-        emails: ["a@x", "t@x"],
+        emails: ["t@x"],
         anchorWeekStart: "2026-11-16",
       }),
     );
@@ -311,7 +314,7 @@ describe("ManageTab", () => {
     );
   });
 
-  it("작성 제외 — 행 버튼을 누르면 바로 저장한다", async () => {
+  it("작성 제외 — 행의 ON(제외) | OFF 를 누르면 바로 저장한다", async () => {
     setUrl("?week=2026-11-16&tab=settings&section=exclusions");
     saveExcludedWriters.mockResolvedValue({ ok: true });
     render(
@@ -324,15 +327,20 @@ describe("ManageTab", () => {
     );
     const region = screen.getByRole("region", { name: "작성 제외" });
     const rowT = within(region).getByText("테스트1").closest("tr") as HTMLElement;
-    fireEvent.click(within(rowT).getByRole("button", { name: "제외" }));
+    fireEvent.click(within(rowT).getByRole("button", { name: "ON" }));
     await waitFor(() =>
       expect(saveExcludedWriters).toHaveBeenCalledWith({
         emails: [wa.email, wt.email],
       }),
     );
     const rowA = within(region).getByText("운영자A").closest("tr") as HTMLElement;
-    expect(within(rowA).getByText("제외됨")).toBeInTheDocument();
-    expect(within(rowA).getByRole("button", { name: "포함" })).toBeInTheDocument();
+    expect(
+      within(rowA).getByRole("group", { name: "운영자A 작성 제외" }),
+    ).toBeInTheDocument();
+    expect(within(rowA).getByRole("button", { name: "ON" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(within(region).queryByRole("button", { name: "제외 저장" })).toBeNull();
   });
 

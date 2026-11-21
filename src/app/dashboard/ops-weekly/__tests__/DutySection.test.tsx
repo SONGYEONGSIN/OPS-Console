@@ -60,17 +60,17 @@ describe("DutySection", () => {
     );
     expect(screen.getByText("11월 3주 · 11.16 ~ 11.22")).toBeInTheDocument();
     expect(screen.getByRole("table")).toBeInTheDocument();
-    expect(within(rowOf("운영자A")).getByText("당번")).toBeInTheDocument();
+    const onA = within(rowOf("운영자A")).getByRole("button", { name: "ON" });
+    expect(onA).toHaveAttribute("aria-pressed", "true");
+    // 당번은 비울 수 없다 — 다른 사람을 켜면 넘어간다
     expect(
-      within(rowOf("운영자A")).queryByRole("button", { name: "당번으로" }),
-    ).toBeNull();
+      within(rowOf("운영자A")).getByRole("button", { name: "OFF" }),
+    ).toBeDisabled();
   });
 
-  it("열린 주: 행의 [당번으로] 를 누르면 setWeekDuty 를 부르고 새로 읽는다", async () => {
+  it("열린 주: 다른 행을 ON 하면 setWeekDuty 를 부르고 새로 읽는다", async () => {
     renderDuty();
-    fireEvent.click(
-      within(rowOf("운영자B")).getByRole("button", { name: "당번으로" }),
-    );
+    fireEvent.click(within(rowOf("운영자B")).getByRole("button", { name: "ON" }));
     await waitFor(() =>
       expect(setWeekDuty).toHaveBeenCalledWith({
         weekId: "w1",
@@ -81,21 +81,23 @@ describe("DutySection", () => {
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
   });
 
-  it("보고된 주: 버튼이 없고 이유를 적는다", () => {
+  it("보고된 주: 토글이 잠기고 이유를 적는다", () => {
     renderDuty({ week: { ...WEEK, status: "reported" } });
-    expect(screen.queryByRole("button", { name: "당번으로" })).toBeNull();
-    expect(within(rowOf("운영자A")).getByText("당번")).toBeInTheDocument();
+    for (const b of screen.getAllByRole("button")) expect(b).toBeDisabled();
+    expect(
+      within(rowOf("운영자A")).getByRole("button", { name: "ON" }),
+    ).toHaveAttribute("aria-pressed", "true");
     expect(
       screen.getByText("보고가 끝난 주는 당번을 바꿀 수 없습니다"),
     ).toBeInTheDocument();
   });
 
-  it("관리자가 아니면 열린 주여도 버튼이 없다", () => {
+  it("관리자가 아니면 열린 주여도 토글이 잠긴다", () => {
     renderDuty({
       actor: { email: "d@x", isAdmin: false },
       week: { ...WEEK, duty_email: null },
     });
-    expect(screen.queryByRole("button", { name: "당번으로" })).toBeNull();
+    for (const b of screen.getAllByRole("button")) expect(b).toBeDisabled();
   });
 
   it("당번이 없으면 미지정이라 적는다", () => {
