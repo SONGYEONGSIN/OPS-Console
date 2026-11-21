@@ -104,7 +104,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("StatusTab", () => {
-  it("최종 보고는 전원 제출 전에는 꺼져 있고 미제출자를 적는다", () => {
+  it("최종 보고는 전원 제출 전에는 꺼져 있고, 미제출 이름 줄은 따로 적지 않는다(표가 보여 준다)", () => {
     render(
       <StatusTab
         {...base}
@@ -112,7 +112,7 @@ describe("StatusTab", () => {
       />,
     );
     expect(screen.getByRole("button", { name: "최종 보고" })).toBeDisabled();
-    expect(screen.getByText("미제출: 운영자B")).toBeInTheDocument();
+    expect(screen.queryByText(/^미제출:/)).toBeNull();
   });
 
   it("빈 명단이면 꺼져 있다 — 0/0 을 전원 제출로 보지 않는다", () => {
@@ -360,7 +360,9 @@ describe("StatusTab", () => {
       const h = screen.getByRole("heading", { name: "제출 현황" });
       expect(tokens(h)).toContain("text-xl");
       expect(tokens(h)).toContain("font-bold");
-      expect(screen.getByText("1/2명")).toBeInTheDocument();
+      // 기본 목록 제목 — 제목 · 건수(vermilion)
+      const count = screen.getByText("제출 1 / 2명");
+      expect(tokens(count)).toEqual(expect.arrayContaining(["text-sm", "text-vermilion"]));
       const button = screen.getByRole("button", { name: "최종 보고" });
       const bar = button.parentElement as Element;
       expect(tokens(bar)).toContain("items-end");
@@ -372,15 +374,26 @@ describe("StatusTab", () => {
       expect(h.compareDocumentPosition(button) & FOLLOWING).toBeTruthy();
     });
 
-    it("비활성 사유는 버튼 바로 아래 오른쪽 정렬", () => {
-      render(
+    it("비활성 사유 — 미제출이면 줄이 없고, 그 밖의 사유는 버튼 바로 아래 오른쪽 정렬", () => {
+      const { unmount } = render(
         <StatusTab
           {...base}
           finalize={{ ok: false, reason: "pending", pending: ["b@x"] }}
         />,
       );
+      expect(
+        screen.getByRole("button", { name: "최종 보고" }).nextElementSibling,
+      ).toBeNull();
+      unmount();
+      render(
+        <StatusTab
+          {...base}
+          writers={[]}
+          finalize={{ ok: false, reason: "empty-roster", pending: [] }}
+        />,
+      );
       const button = screen.getByRole("button", { name: "최종 보고" });
-      const why = screen.getByText("미제출: 운영자B");
+      const why = screen.getByText("작성 대상 명단을 읽지 못했습니다");
       expect(button.nextElementSibling).toBe(why);
       expect(tokens(why)).toContain("text-right");
     });

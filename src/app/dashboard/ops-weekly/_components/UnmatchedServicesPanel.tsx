@@ -15,7 +15,7 @@ function Group(props: {
     <div className="flex flex-col gap-2">
       <h3 className="text-sm font-bold text-ink">{`${props.title} ${props.rows.length}건`}</h3>
       {props.rows.length === 0 ? (
-        <p className="text-sm text-muted">안 붙은 서비스가 없습니다</p>
+        <p className="text-sm text-muted">지정 안된 서비스가 없습니다</p>
       ) : (
         // 일회성: 4열이 좁은 화면에서 찌그러지지 않는 최소 폭(제출 표와 같다)
         <div className="overflow-x-auto">
@@ -72,11 +72,11 @@ export function UnmatchedServicesPanel({
   return (
     <section
       id="unmatched"
-      aria-label="안 붙은 서비스"
+      aria-label="지정 안된 서비스"
       // 일회성 임의 값: 고정 KPI 바(--ops-kpi-h) 아래에 서도록. 바가 없는 lg 미만은 scroll-mt-4.
       className="flex scroll-mt-4 flex-col gap-3 lg:scroll-mt-[calc(var(--ops-kpi-h,12rem)_+_0.5rem)]"
     >
-      <h2 className="text-xl font-bold text-ink">안 붙은 서비스</h2>
+      <h2 className="text-xl font-bold text-ink">지정 안된 서비스</h2>
       <p className="text-xs text-muted">
         이 주 서비스 중 담당자 이름이 작성 대상 누구와도 맞지 않아 어느
         보고서에도 안 들어간 것입니다 — 서비스마감 메뉴에서 담당자 이름을
@@ -89,7 +89,7 @@ export function UnmatchedServicesPanel({
         <>
       <Group
         title="원서접수"
-        tableLabel="원서접수 안 붙은 서비스"
+        tableLabel="원서접수 지정 안된 서비스"
         heads={["대학", "서비스명", "서비스마감 담당자", "접수기간"]}
         rows={unmatched.application.map((r) => ({
           key: r.service_id,
@@ -103,7 +103,7 @@ export function UnmatchedServicesPanel({
       />
       <Group
         title="합격자 발표"
-        tableLabel="합격자 발표 안 붙은 서비스"
+        tableLabel="합격자 발표 지정 안된 서비스"
         heads={["대학", "서비스명", "담당자", "발표일"]}
         rows={unmatched.pims.map((r) => ({
           key: r.service_id,

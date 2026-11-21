@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { ListSelect } from "@/components/common/ListSelect";
 import { normEmail } from "@/features/ops-weekly/email";
 import {
   RECIPIENT_WARNING_LABEL,
@@ -13,7 +12,14 @@ import {
   removeRecipient,
 } from "@/features/ops-weekly/settings-actions";
 import type { SettingsBundle } from "@/features/ops-weekly/settings-queries";
-import { BADGE_CLASS, BTN_CLASS, ERROR_CLASS, FIELD_CLASS } from "./styles";
+import { RosterTable, type RosterRow } from "./RosterTable";
+import {
+  BADGE_CLASS,
+  BTN_CLASS,
+  ERROR_CLASS,
+  FIELD_CLASS,
+  ROW_BTN_CLASS,
+} from "./styles";
 import { useSettingsSave } from "./use-settings-save";
 
 type Props = {
@@ -21,22 +27,44 @@ type Props = {
   candidates: readonly WriterCandidate[];
 };
 
-const labelOf = (c: WriterCandidate) => `${c.name} (${c.email})`;
+type Row = RosterRow & { warning: RecipientWarning | null; picked: boolean };
+
+/** 받는 사람 중 운영자 명단 밖 주소를 먼저, 그다음 운영자 명단 — 받는 사람을 지우지 않고 다 보인다. */
+function rowsOf(
+  recipients: Props["recipients"],
+  candidates: Props["candidates"],
+): Row[] {
+  const picked = new Map(recipients.map((r) => [r.email, r]));
+  const known = new Set(candidates.map((c) => c.email));
+  const outside: Row[] = recipients
+    .filter((r) => !known.has(r.email))
+    .map((r) => ({
+      email: r.email,
+      name: r.name,
+      team: null,
+      warning: r.warning,
+      picked: true,
+    }));
+  const listed: Row[] = candidates.map((c) => ({
+    email: c.email,
+    name: c.name,
+    team: c.team,
+    warning: picked.get(c.email)?.warning ?? null,
+    picked: picked.has(c.email),
+  }));
+  return [...outside, ...listed];
+}
 
 export function RecipientsPanel({ recipients, candidates }: Props) {
   const save = useSettingsSave();
   const [email, setEmail] = useState("");
   const [added, setAdded] = useState<RecipientWarning | null>(null);
 
-  function pick(label: string) {
-    const hit = candidates.find((c) => labelOf(c) === label);
-    if (hit) setEmail(hit.email);
-  }
-  function add() {
+  function add(target: string, clearInput: boolean) {
     save.run(async () => {
-      const res = await addRecipient({ email: normEmail(email) });
+      const res = await addRecipient({ email: normEmail(target) });
       setAdded(res.ok ? (res.warning ?? null) : null);
-      if (res.ok) setEmail("");
+      if (res.ok && clearInput) setEmail("");
       return res;
     });
   }
@@ -44,54 +72,59 @@ export function RecipientsPanel({ recipients, candidates }: Props) {
   return (
     <section aria-label="받는 사람" className="flex flex-col gap-3">
       <h2 className="text-xl font-bold text-ink">받는 사람</h2>
-      <ul className="flex flex-col gap-1">
-        {recipients.map((r) => (
-          <li
-            key={r.email}
-            className="flex flex-wrap items-center gap-2 text-sm"
-          >
-            <span className="min-w-0 break-words text-ink">
-              {r.name ?? r.email}
-            </span>
-            <span className="min-w-0 break-words text-xs text-muted">
-              {r.email}
-            </span>
-            {r.warning !== null ? (
-              <span className={BADGE_CLASS}>
-                {RECIPIENT_WARNING_LABEL[r.warning]}
-              </span>
-            ) : null}
-            <button
-              type="button"
-              className={BTN_CLASS}
-              disabled={save.pending}
-              aria-label={`${r.name ?? r.email} 삭제`}
-              onClick={() => {
-                save.run(() => removeRecipient({ email: r.email }));
-              }}
-            >
-              삭제
-            </button>
-          </li>
-        ))}
-      </ul>
+      <p className="text-xs text-muted">
+        최종 보고 링크를 메일로 받는 사람입니다(부장·팀장님).
+      </p>
+      <RosterTable
+        label="받는 사람 후보"
+        rows={rowsOf(recipients, candidates)}
+        action={{
+          header: "받는 사람",
+          cell: (r) =>
+            r.picked ? (
+              <>
+                {r.warning !== null ? (
+                  <span className={BADGE_CLASS}>
+                    {RECIPIENT_WARNING_LABEL[r.warning]}
+                  </span>
+                ) : (
+                  <span className={BADGE_CLASS}>받는 사람</span>
+                )}
+                <button
+                  type="button"
+                  className={ROW_BTN_CLASS}
+                  disabled={save.pending}
+                  aria-label="빼기"
+                  onClick={() => {
+                    save.run(() => removeRecipient({ email: r.email }));
+                  }}
+                >
+                  빼기
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className={ROW_BTN_CLASS}
+                disabled={save.pending}
+                onClick={() => {
+                  add(r.email, false);
+                }}
+              >
+                추가
+              </button>
+            ),
+        }}
+      />
       {recipients.some((r) => r.warning === "no-menu") ? (
         <p className="text-xs text-muted">권한은 운영자 관리에서 부여합니다</p>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
-        <ListSelect
-          value=""
-          onChange={pick}
-          options={candidates.map(labelOf)}
-          placeholder="운영자에서 고르기"
-          ariaLabel="받는 사람 운영자 선택"
-          className="max-w-full"
-        />
         <input
           aria-label="받는 사람 이메일"
           className={`${FIELD_CLASS} max-w-full`}
           value={email}
-          placeholder="이메일 직접 입력"
+          placeholder="명단 밖 이메일 직접 입력"
           onChange={(e) => {
             setEmail(e.target.value);
           }}
@@ -100,9 +133,11 @@ export function RecipientsPanel({ recipients, candidates }: Props) {
           type="button"
           className={BTN_CLASS}
           disabled={save.pending || email.trim() === ""}
-          onClick={add}
+          onClick={() => {
+            add(email, true);
+          }}
         >
-          추가
+          이메일 추가
         </button>
       </div>
       {added !== null ? (

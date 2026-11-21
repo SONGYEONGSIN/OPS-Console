@@ -242,3 +242,30 @@ describe("listUnmatchedApplication", () => {
     ).toEqual([row]);
   });
 });
+
+describe("원서접수 항목의 대학구분·카테고리", () => {
+  it("마감 행의 university_type·category 를 그대로 싣고, 없으면 null", () => {
+    const g = buildApplicationGroups({
+      rows: [
+        c(11, "운영자A", {
+          write_start_at: "2026-11-01T00:00:00Z",
+          pay_end_at: "2026-12-31T00:00:00Z",
+          university_type: "2년제",
+          category: "편입",
+        }),
+        c(12, "운영자A", {
+          write_start_at: "2026-11-01T00:00:00Z",
+          pay_end_at: "2026-12-31T00:00:00Z",
+        }),
+      ],
+      operatorName: "운영자A",
+      devStages: new Map(),
+      devStatusCollected: true,
+      weekStart: "2026-11-16",
+      now: NOW,
+    });
+    const byKey = new Map(g.running.map((i) => [i.key, i]));
+    expect(byKey.get("closing:11")).toMatchObject({ universityType: "2년제", category: "편입" });
+    expect(byKey.get("closing:12")).toMatchObject({ universityType: null, category: null });
+  });
+});

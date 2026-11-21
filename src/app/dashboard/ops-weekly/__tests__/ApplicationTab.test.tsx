@@ -155,8 +155,8 @@ describe("ApplicationTab — 하위 탭", () => {
     expect(tabCount("개발 중")).toBe(String(k.dev));
     const panel = screen.getByRole("tabpanel", { name: /운영 중/ });
     expect(within(panel).getByText(`${k.running}건`)).toBeInTheDocument();
-    // 뺀 행은 목록에 그대로 남는다
-    expect(within(panel).getAllByRole("listitem")).toHaveLength(4);
+    // 뺀 행은 표에 그대로 남는다(머리 행 1 + 자동 3 + 직접 1)
+    expect(within(panel).getAllByRole("row")).toHaveLength(5);
   });
 
   it("원서접수 외 서비스 숫자는 직접 추가 건만", () => {

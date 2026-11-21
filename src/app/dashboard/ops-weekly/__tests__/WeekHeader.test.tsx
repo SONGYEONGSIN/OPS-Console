@@ -182,6 +182,9 @@ describe("WeekHeader", () => {
     );
     expect(screen.queryByText("작성 중")).toBeNull();
     expect(screen.queryByText(/^확인 \d\/5$/)).toBeNull();
+    // 제출 수·당번은 아래 표가 이미 보여 준다
+    expect(screen.queryByText(/^제출 \d+\/\d+$/)).toBeNull();
+    expect(screen.queryByText(/^당번 /)).toBeNull();
   });
 
   it("작성자 선택 상자는 writerPicker 가 있을 때만 — 선택지는 명단 이름, 본인 보고서가 없으면 '작성자 선택'", () => {

@@ -16,6 +16,8 @@ export type ClosingLite = {
   write_start_at: string | null;
   write_end_at: string;
   pay_end_at: string | null;
+  university_type?: string | null;
+  category?: string | null;
 };
 
 export type AutoItem = {
@@ -23,6 +25,9 @@ export type AutoItem = {
   title: string;
   subtitle: string;
   at: string | null;
+  /** 원서접수만 — 표의 대학구분·카테고리 칸. 이 칸이 생기기 전에 굳힌 스냅샷에는 없다 */
+  universityType?: string | null;
+  category?: string | null;
 };
 
 export type ApplicationGroups = {
@@ -47,6 +52,8 @@ function toItem(row: ClosingLite, at: string | null): AutoItem {
     title: row.university_name,
     subtitle: row.service_name,
     at,
+    universityType: row.university_type ?? null,
+    category: row.category ?? null,
   };
 }
 

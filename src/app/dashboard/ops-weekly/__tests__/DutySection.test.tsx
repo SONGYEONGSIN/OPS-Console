@@ -5,6 +5,7 @@ import {
   cleanup,
   fireEvent,
   waitFor,
+  within,
 } from "@testing-library/react";
 
 const refresh = vi.fn();
@@ -46,8 +47,11 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+const rowOf = (name: string) =>
+  screen.getByText(name).closest("tr") as HTMLElement;
+
 describe("DutySection", () => {
-  it("머리와 주 라벨, 지금 당번이 고른 값으로 보인다", () => {
+  it("머리와 주 라벨, 작성자 표 — 지금 당번 행에 당번 표시", () => {
     renderDuty();
     const h = screen.getByRole("heading", { name: "당번 지정" });
     expect(h.tagName).toBe("H2");
@@ -55,14 +59,18 @@ describe("DutySection", () => {
       expect.arrayContaining(["text-xl", "font-bold"]),
     );
     expect(screen.getByText("11월 3주 · 11.16 ~ 11.22")).toBeInTheDocument();
-    expect(screen.getByLabelText("당번")).toHaveValue("운영자A");
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(within(rowOf("운영자A")).getByText("당번")).toBeInTheDocument();
+    expect(
+      within(rowOf("운영자A")).queryByRole("button", { name: "당번으로" }),
+    ).toBeNull();
   });
 
-  it("열린 주: 당번을 고르면 setWeekDuty 를 부르고 새로 읽는다", async () => {
+  it("열린 주: 행의 [당번으로] 를 누르면 setWeekDuty 를 부르고 새로 읽는다", async () => {
     renderDuty();
-    fireEvent.change(screen.getByLabelText("당번"), {
-      target: { value: "운영자B" },
-    });
+    fireEvent.click(
+      within(rowOf("운영자B")).getByRole("button", { name: "당번으로" }),
+    );
     await waitFor(() =>
       expect(setWeekDuty).toHaveBeenCalledWith({
         weekId: "w1",
@@ -73,45 +81,31 @@ describe("DutySection", () => {
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
   });
 
-  it("보고된 주: 고를 수 없고 이유를 적는다", () => {
+  it("보고된 주: 버튼이 없고 이유를 적는다", () => {
     renderDuty({ week: { ...WEEK, status: "reported" } });
-    expect(screen.queryByLabelText("당번")).toBeNull();
-    expect(screen.getByText("운영자A")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "당번으로" })).toBeNull();
+    expect(within(rowOf("운영자A")).getByText("당번")).toBeInTheDocument();
     expect(
       screen.getByText("보고가 끝난 주는 당번을 바꿀 수 없습니다"),
     ).toBeInTheDocument();
   });
 
-  it("관리자가 아니면 열린 주여도 고를 수 없다 — 당번이 없으면 미지정", () => {
+  it("관리자가 아니면 열린 주여도 버튼이 없다", () => {
     renderDuty({
       actor: { email: "d@x", isAdmin: false },
       week: { ...WEEK, duty_email: null },
     });
-    expect(screen.queryByLabelText("당번")).toBeNull();
-    expect(screen.getByText("미지정")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "당번으로" })).toBeNull();
   });
 
-  it("보고된 주: 명단 밖 당번은 미지정이 아니라 이메일로 보인다", () => {
-    renderDuty({ week: { ...WEEK, status: "reported", duty_email: "x@x" } });
-    expect(screen.getByText("x@x")).toBeInTheDocument();
-    expect(screen.queryByText("미지정")).toBeNull();
-  });
-
-  it("열린 주: 명단 밖 당번이면 고르는 상자 옆에 한 줄을 붙인다", () => {
-    renderDuty({ week: { ...WEEK, duty_email: "X@X" } });
-    const picker = screen.getByLabelText("당번");
-    const note = screen.getByText("지금 당번 x@x — 명단 밖");
-    expect(note.className.split(/\s+/)).toEqual(
-      expect.arrayContaining(["text-xs", "text-ink-soft"]),
-    );
-    expect(note.closest("div")).toBe(picker.closest("div.flex-wrap"));
-  });
-
-  it("열린 주: 명단 안 당번이거나 당번이 없으면 그 줄이 없다", () => {
-    const { unmount } = renderDuty();
-    expect(screen.queryByText(/명단 밖/)).toBeNull();
-    unmount();
+  it("당번이 없으면 미지정이라 적는다", () => {
     renderDuty({ week: { ...WEEK, duty_email: null } });
-    expect(screen.queryByText(/명단 밖/)).toBeNull();
+    expect(screen.getByText("지금 당번: 미지정")).toBeInTheDocument();
+  });
+
+  it("명단 밖 당번은 미지정이 아니라 이메일과 함께 적는다", () => {
+    renderDuty({ week: { ...WEEK, duty_email: "X@X" } });
+    expect(screen.getByText("지금 당번: x@x — 명단 밖")).toBeInTheDocument();
+    expect(screen.queryByText(/미지정/)).toBeNull();
   });
 });

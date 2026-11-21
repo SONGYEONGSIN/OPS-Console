@@ -138,6 +138,34 @@ describe("loadSettingsBundle", () => {
     ]);
   });
 
+  it("받는 사람 후보는 운영1·2팀 활성 전원 — 부장·팀장 포함, 다른 팀·비활성 제외", async () => {
+    const op = (email: string, role: string, team = "운영1팀", status = "active"): Row => ({
+      email,
+      name: email.split("@")[0],
+      team,
+      role,
+      status,
+      permission: "member",
+      allowed_menus: [],
+    });
+    tables({
+      operators: [
+        op("boss@x.com", "부장"),
+        op("lead@x.com", "팀장", "운영2팀"),
+        op("m@x.com", "매니저"),
+        op("plan@x.com", "매니저", "기획팀"),
+        op("gone@x.com", "매니저", "운영1팀", "inactive"),
+      ],
+    });
+    const b = await loadSettingsBundle();
+    expect(b.recipientCandidates.map((c) => c.email).sort()).toEqual([
+      "boss@x.com",
+      "lead@x.com",
+      "m@x.com",
+    ]);
+    expect(b.writerCandidates.map((c) => c.email)).toEqual(["m@x.com"]);
+  });
+
   it("쿼리 실패는 빈 목록이 아니라 던진다", async () => {
     tables({});
     state.db.failTable("ops_weekly_recipients", "boom");

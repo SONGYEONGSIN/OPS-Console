@@ -81,6 +81,8 @@ export function ApplicationTab({
       groupKey={key}
       editable={editable}
       emptyText="해당하는 서비스가 없습니다"
+      // 차주 마감 예정은 접수 마감 시각, 나머지는 접수 시작 시각을 싣는다(auto-lists/application).
+      table={{ atLabel: key === "closing" ? "마감" : "오픈" }}
     />
   );
   const stage = (key: StageKey, title: string) =>

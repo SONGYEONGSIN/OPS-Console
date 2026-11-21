@@ -169,12 +169,12 @@ export function WeeklyKpiRow({
       <p className="px-5 pt-4 text-xs text-muted lg:px-7">
         {`${ownerName}의 이번 주 · 항목 간 중복 집계될 수 있습니다`}
       </p>
-      <div className="grid grid-cols-3 gap-2 px-5 pt-2 md:gap-3 lg:grid-cols-6 lg:px-7">
+      <div className="grid grid-cols-3 gap-2 px-5 pt-2 md:gap-3 lg:grid-cols-5 lg:px-7">
         {STAGE_CARDS.map(single)}
         <div
           role="group"
           aria-label={PAIR_LABEL}
-          className="col-span-2 flex min-w-0 flex-col gap-1 border border-line-soft bg-situation-bg p-3 md:p-4"
+          className="col-span-2 flex min-w-0 flex-col gap-1 border lg:col-span-1 border-line-soft bg-situation-bg p-3 md:p-4"
         >
           <div className="text-xs font-medium text-muted">{PAIR_LABEL}</div>
           <div className="flex gap-3">

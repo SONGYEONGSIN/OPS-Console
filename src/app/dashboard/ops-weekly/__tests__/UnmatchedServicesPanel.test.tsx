@@ -30,7 +30,7 @@ describe("UnmatchedServicesPanel", () => {
     render(
       <UnmatchedServicesPanel unmatched={{ application: [], pims: [] }} />,
     );
-    const region = screen.getByRole("region", { name: "안 붙은 서비스" });
+    const region = screen.getByRole("region", { name: "지정 안된 서비스" });
     expect(region).toHaveAttribute("id", "unmatched");
     const t = region.className.split(/\s+/);
     expect(t).toEqual(
@@ -38,7 +38,7 @@ describe("UnmatchedServicesPanel", () => {
     );
     const h = within(region).getByRole("heading", {
       level: 2,
-      name: "안 붙은 서비스",
+      name: "지정 안된 서비스",
     });
     expect(h.className.split(/\s+/)).toEqual(
       expect.arrayContaining(["text-xl", "font-bold", "text-ink"]),
@@ -66,7 +66,7 @@ describe("UnmatchedServicesPanel", () => {
     ).toBeInTheDocument();
     expect(
       within(
-        screen.getByRole("table", { name: "원서접수 안 붙은 서비스" }),
+        screen.getByRole("table", { name: "원서접수 지정 안된 서비스" }),
       ).getAllByRole("row"),
     ).toHaveLength(4);
   });
@@ -86,7 +86,7 @@ describe("UnmatchedServicesPanel", () => {
       />,
     );
     const table = screen.getByRole("table", {
-      name: "원서접수 안 붙은 서비스",
+      name: "원서접수 지정 안된 서비스",
     });
     expect(
       within(table)
@@ -111,7 +111,7 @@ describe("UnmatchedServicesPanel", () => {
       />,
     );
     const table = screen.getByRole("table", {
-      name: "합격자 발표 안 붙은 서비스",
+      name: "합격자 발표 지정 안된 서비스",
     });
     expect(
       within(table)
@@ -129,8 +129,8 @@ describe("UnmatchedServicesPanel", () => {
       />,
     );
     for (const name of [
-      "원서접수 안 붙은 서비스",
-      "합격자 발표 안 붙은 서비스",
+      "원서접수 지정 안된 서비스",
+      "합격자 발표 지정 안된 서비스",
     ]) {
       const table = screen.getByRole("table", { name });
       expect(table.parentElement?.className).toContain("overflow-x-auto");
@@ -147,7 +147,7 @@ describe("UnmatchedServicesPanel", () => {
       <UnmatchedServicesPanel unmatched={{ application: [], pims: [] }} />,
     );
     expect(screen.queryByRole("table")).toBeNull();
-    const none = screen.getAllByText("안 붙은 서비스가 없습니다");
+    const none = screen.getAllByText("지정 안된 서비스가 없습니다");
     expect(none).toHaveLength(2);
     expect(none[0].className).toContain("text-muted");
     expect(
@@ -158,14 +158,14 @@ describe("UnmatchedServicesPanel", () => {
   it("목록을 읽지 않았으면(null) 0건이라 말하지 않고 안 불러왔다고 적는다", () => {
     render(<UnmatchedServicesPanel unmatched={null} />);
     expect(screen.getByText("목록을 불러오지 않았습니다")).toBeInTheDocument();
-    expect(screen.queryByText("안 붙은 서비스가 없습니다")).toBeNull();
+    expect(screen.queryByText("지정 안된 서비스가 없습니다")).toBeNull();
     expect(screen.queryByRole("heading", { level: 3 })).toBeNull();
   });
 
   it("스크롤 목적지: lg 미만은 scroll-mt-4, lg 이상은 고정 KPI 바 높이만큼", () => {
     render(<UnmatchedServicesPanel unmatched={{ application: [], pims: [] }} />);
     const t = screen
-      .getByRole("region", { name: "안 붙은 서비스" })
+      .getByRole("region", { name: "지정 안된 서비스" })
       .className.split(/\s+/);
     expect(t).toContain("scroll-mt-4");
     expect(t).toContain("lg:scroll-mt-[calc(var(--ops-kpi-h,12rem)_+_0.5rem)]");

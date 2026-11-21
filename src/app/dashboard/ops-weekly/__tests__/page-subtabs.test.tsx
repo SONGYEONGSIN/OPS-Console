@@ -226,6 +226,7 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
         anchorWeekStart: null,
         excludedWriterEmails: [],
         writerCandidates: [],
+        recipientCandidates: [],
         projects: [],
       },
       unmatched: {
@@ -244,7 +245,7 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
       },
     });
     await renderPage("settings");
-    const region = screen.getByRole("region", { name: "안 붙은 서비스" });
+    const region = screen.getByRole("region", { name: "지정 안된 서비스" });
     expect(
       within(region).getByRole("heading", { name: "원서접수 1건" }),
     ).toBeInTheDocument();
@@ -344,6 +345,7 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
         anchorWeekStart: null,
         excludedWriterEmails: [],
         writerCandidates: [],
+        recipientCandidates: [],
         projects: [],
       },
       unmatched: null,

@@ -95,7 +95,7 @@ export function ManageTab({
         <Section name="recipients" active={active}>
           <RecipientsPanel
             recipients={bundle.recipients}
-            candidates={bundle.writerCandidates}
+            candidates={bundle.recipientCandidates}
           />
         </Section>
         <Section name="rotation" active={active}>
@@ -105,17 +105,17 @@ export function ManageTab({
             writers={writers}
           />
         </Section>
-        <Section name="exclusions" active={active}>
-          <WriterExclusionPanel
-            candidates={bundle.writerCandidates}
-            excluded={bundle.excludedWriterEmails}
-          />
-        </Section>
         <Section name="projects" active={active}>
           <ProjectCatalogPanel
             projects={bundle.projects}
             writers={writers}
             candidates={bundle.writerCandidates}
+          />
+        </Section>
+        <Section name="exclusions" active={active}>
+          <WriterExclusionPanel
+            candidates={bundle.writerCandidates}
+            excluded={bundle.excludedWriterEmails}
           />
         </Section>
         <Section name="unmatched" active={active}>
