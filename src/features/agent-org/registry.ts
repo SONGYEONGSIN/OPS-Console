@@ -186,6 +186,16 @@ export const AGENT_TEAMS: readonly AgentTeam[] = [
         source: { kind: "job", jobId: "weekly-report-rollover" },
       },
       {
+        role: "주간보고 요청",
+        agent: "ops-weekly-requester",
+        source: { kind: "job", jobId: "ops-weekly-request" },
+      },
+      {
+        role: "주간보고 독촉",
+        agent: "ops-weekly-reminder",
+        source: { kind: "job", jobId: "ops-weekly-remind" },
+      },
+      {
         role: "백업 예약",
         agent: "backup-dispatcher",
         source: {
