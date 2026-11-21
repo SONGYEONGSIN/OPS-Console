@@ -4,6 +4,7 @@ import { useState } from "react";
 import { DateInput } from "@/components/common/DateInput";
 import type { WriterCandidate } from "@/features/ops-weekly/roster";
 import { saveRotation } from "@/features/ops-weekly/settings-actions";
+import { OnOffToggle } from "./OnOffToggle";
 import { RosterTable, type RosterRow } from "./RosterTable";
 import { BTN_CLASS, ERROR_CLASS, FIELD_CLASS, ROW_BTN_CLASS } from "./styles";
 import { useSettingsSave } from "./use-settings-save";
@@ -66,7 +67,7 @@ export function RotationPanel({ rotation, anchorWeekStart, writers }: Props) {
       <h2 className="text-xl font-bold text-ink">당번 순번</h2>
       <p className="text-xs text-muted">
         기준 주에 1번이 당번이고 매주 다음 순번으로 넘어갑니다. 이미 열린 주의
-        당번은 바뀌지 않습니다. 순서를 바꾼 뒤 [순번 저장]을 누르세요.
+        당번은 바뀌지 않습니다. ON 으로 넣고 순서를 바꾼 뒤 [순번 저장]을 누르세요.
       </p>
       <RosterTable
         label="당번 순번 명단"
@@ -82,50 +83,43 @@ export function RotationPanel({ rotation, anchorWeekStart, writers }: Props) {
           header: "순번",
           cell: (r) => {
             const i = emails.indexOf(r.email);
-            if (i < 0) {
-              return (
-                <button
-                  type="button"
-                  className={ROW_BTN_CLASS}
-                  onClick={() => {
-                    setEmails([...emails, r.email]);
-                  }}
-                >
-                  넣기
-                </button>
-              );
-            }
             return (
               <>
-                <button
-                  type="button"
-                  className={ROW_BTN_CLASS}
-                  disabled={i === 0}
-                  onClick={() => {
-                    setEmails(move(emails, i, -1));
+                {i < 0 ? null : (
+                  <>
+                    <button
+                      type="button"
+                      className={ROW_BTN_CLASS}
+                      disabled={i === 0}
+                      onClick={() => {
+                        setEmails(move(emails, i, -1));
+                      }}
+                    >
+                      위로
+                    </button>
+                    <button
+                      type="button"
+                      className={ROW_BTN_CLASS}
+                      disabled={i === emails.length - 1}
+                      onClick={() => {
+                        setEmails(move(emails, i, 1));
+                      }}
+                    >
+                      아래로
+                    </button>
+                  </>
+                )}
+                <OnOffToggle
+                  label={`${r.name ?? r.email} 순번`}
+                  on={i >= 0}
+                  onChange={(next) => {
+                    setEmails(
+                      next
+                        ? [...emails, r.email]
+                        : emails.filter((x) => x !== r.email),
+                    );
                   }}
-                >
-                  위로
-                </button>
-                <button
-                  type="button"
-                  className={ROW_BTN_CLASS}
-                  disabled={i === emails.length - 1}
-                  onClick={() => {
-                    setEmails(move(emails, i, 1));
-                  }}
-                >
-                  아래로
-                </button>
-                <button
-                  type="button"
-                  className={ROW_BTN_CLASS}
-                  onClick={() => {
-                    setEmails(emails.filter((x) => x !== r.email));
-                  }}
-                >
-                  빼기
-                </button>
+                />
               </>
             );
           },

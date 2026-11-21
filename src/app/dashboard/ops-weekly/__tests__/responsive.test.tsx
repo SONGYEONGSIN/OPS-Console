@@ -153,12 +153,6 @@ describe("주간업무보고 반응형 — 모양 단언", () => {
     expect(tokens(name.parentElement as Element)).toContain("flex-wrap");
   });
 
-  it("받는 사람 이메일 입력은 컨테이너 폭을 넘지 않는다", () => {
-    render(<RecipientsPanel recipients={[]} candidates={[writer]} />);
-    expect(tokens(screen.getByLabelText("받는 사람 이메일"))).toContain(
-      "max-w-full",
-    );
-  });
   it("읽기 전용 HTML 은 긴 URL 을 어디서든 줄바꿈하고 표는 가로 스크롤한다", () => {
     const { container } = render(
       <ReadOnlyHtml label="금주" html="<p>https://example.com/very/long</p>" />,

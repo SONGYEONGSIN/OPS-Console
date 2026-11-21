@@ -8,8 +8,8 @@ import {
 import type { WriterCandidate } from "@/features/ops-weekly/roster";
 import type { WeekRow } from "@/features/ops-weekly/schemas";
 import { setWeekDuty } from "@/features/ops-weekly/settings-actions";
+import { OnOffToggle } from "./OnOffToggle";
 import { RosterTable } from "./RosterTable";
-import { BADGE_CLASS, ROW_BTN_CLASS } from "./styles";
 import { useWorkflow } from "./use-workflow";
 
 type Props = {
@@ -45,23 +45,20 @@ export function DutySection({ week, weekLabel, writers, actor }: Props) {
         rows={writers}
         action={{
           header: "당번",
-          cell: (w) =>
-            w.email === current ? (
-              <span className={BADGE_CLASS}>당번</span>
-            ) : editable ? (
-              <button
-                type="button"
-                className={ROW_BTN_CLASS}
-                disabled={wf.pending}
-                onClick={() => {
-                  wf.run(() =>
-                    setWeekDuty({ weekId: week.id, dutyEmail: w.email }),
-                  );
-                }}
-              >
-                당번으로
-              </button>
-            ) : null,
+          cell: (w) => (
+            <OnOffToggle
+              label={`${w.name} 당번`}
+              on={w.email === current}
+              lockOff
+              disabled={!editable || wf.pending}
+              onChange={(next) => {
+                if (!next) return;
+                wf.run(() =>
+                  setWeekDuty({ weekId: week.id, dutyEmail: w.email }),
+                );
+              }}
+            />
+          ),
         }}
       />
       {wf.message !== null ? (
