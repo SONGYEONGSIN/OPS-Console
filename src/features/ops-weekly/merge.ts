@@ -23,6 +23,8 @@ export type ManualItem = {
   period_start: string | null;
   period_end: string | null;
   leave_kind: string | null;
+  /** 전체 보고에서만 — 이 건을 추가한 작성자 이름 */
+  owner?: string;
 };
 
 // `other` = 원서접수 외 서비스

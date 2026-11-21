@@ -207,3 +207,19 @@ describe("LeaveTab — 굳는 시점 안내", () => {
     expect(screen.queryByText("자동 항목은 최종 보고 때 굳습니다")).toBeNull();
   });
 });
+
+describe("LeaveTab — 전체 보고", () => {
+  it("누구의 휴가인지 이름이 앞에 오고, 남의 휴가에는 [백업요청 만들기] 가 없다", () => {
+    render(
+      <LeaveTab
+        snapshot={snap({ leave: [leaveItem({ needsBackup: true, owners: ["김슬기"] })] })}
+        detail={EMPTY}
+        reportId={null}
+        editable={false}
+        freezeNotice={false}
+      />,
+    );
+    expect(screen.getByText("김슬기")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "백업요청 만들기" })).toBeNull();
+  });
+});

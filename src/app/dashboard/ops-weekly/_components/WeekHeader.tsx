@@ -1,13 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ListSelect } from "@/components/common/ListSelect";
 import { AREAS, type ReportStatus } from "@/features/ops-weekly/constants";
 import type { WeekRef } from "@/features/ops-weekly/week";
 import { formatMdHm } from "../_format";
 import type { HeaderWeek } from "../_header-week";
-import { opsWeeklyHref } from "../_params";
+import { ALL_OP, opsWeeklyHref } from "../_params";
 import { BADGE_CLASS } from "./styles";
 import { useOpsArea } from "./use-ops-area";
 
@@ -20,11 +18,11 @@ type Props = {
   /** 내 보고서 화면에서만 상태 배지·확인 수·제출 수·당번을 보인다(제출 현황·관리에는 없다). */
   showReportState: boolean;
   checkedCount: number;
-  /** 작성자 선택 상자 — null 이면 상자가 없다. viewedEmail 이 null 이면 아무도 안 골라진 상태. */
-  writerPicker: {
-    writers: readonly { email: string; name: string }[];
-    viewedEmail: string | null;
-  } | null;
+  /**
+   * 내 보고 | 전체 보고 토글 — null 이면 없다. mine 은 작성자일 때만(본인 보고서가 있다).
+   * active 는 지금 보는 것(남의 보고서를 보는 중이면 null — 둘 다 꺼진다). 전체 보고 중에는 내 상태 배지·확인 수가 없다.
+   */
+  scope: { mine: boolean; active: "mine" | "all" | null } | null;
   reportStatus: ReportStatus | null;
   submittedAt?: string | null;
   /** 다시 작성 요청에 적힌 사유 */
@@ -70,13 +68,46 @@ function withTab(href: string, tab: string): string {
   return `${path}?${params.toString()}`;
 }
 
+const SEG_BASE =
+  "inline-flex min-h-9 items-center px-3 text-xs transition-colors lg:min-h-0 lg:py-1";
+const SEG_ON = "bg-ink text-cream";
+const SEG_OFF = "text-ink hover:bg-ink hover:text-cream";
+
+/** 오늘 할 일의 내 업무 | 전체 업무와 같은 모양 — 링크라 서버가 그 범위로 다시 읽는다. */
+function ScopeToggle(props: {
+  scope: NonNullable<Props["scope"]>;
+  weekStart: string;
+  area: string;
+}) {
+  const { scope, weekStart, area } = props;
+  const items = [
+    ...(scope.mine
+      ? [{ key: "mine" as const, label: "내 보고", op: null }]
+      : []),
+    { key: "all" as const, label: "전체 보고", op: ALL_OP },
+  ];
+  return (
+    <div className="inline-flex border border-line">
+      {items.map((it, i) => (
+        <Link
+          key={it.key}
+          href={opsWeeklyHref(weekStart, area, it.op)}
+          aria-current={scope.active === it.key ? "page" : undefined}
+          className={`${SEG_BASE} ${i > 0 ? "border-l border-line" : ""} ${
+            scope.active === it.key ? SEG_ON : SEG_OFF
+          }`}
+        >
+          {it.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 export function WeekHeader(props: Props) {
-  const router = useRouter();
   const { area } = useOpsArea();
-  const { weekRef, week, writerPicker, prevOpen, reportStatus } = props;
-  const writers = writerPicker?.writers ?? [];
-  const viewedEmail = writerPicker?.viewedEmail ?? null;
-  const viewedName = writers.find((w) => w.email === viewedEmail)?.name ?? "";
+  const { weekRef, week, prevOpen, reportStatus } = props;
+  const showOwnState = props.showReportState && props.scope?.active !== "all";
   const prevHref = props.showReportState
     ? withTab(props.prevHref, area)
     : props.prevHref;
@@ -89,11 +120,6 @@ export function WeekHeader(props: Props) {
       ? props.returnReason
       : null;
   const hasMessages = locked || returnReason !== null || prevOpen;
-
-  function pickWriter(name: string) {
-    const w = writers.find((x) => x.name === name);
-    if (w) router.push(opsWeeklyHref(week.week_start, area, w.email));
-  }
 
   return (
     <div className="flex flex-col gap-2 px-5 pt-4 lg:px-7 text-sm text-ink">
@@ -108,14 +134,11 @@ export function WeekHeader(props: Props) {
               ›
             </Link>
           </div>
-          {writerPicker !== null ? (
-            <ListSelect
-              ariaLabel="작성자"
-              className="w-full max-w-full sm:w-auto"
-              value={viewedName}
-              onChange={pickWriter}
-              options={writers.map((w) => w.name)}
-              placeholder={viewedEmail === null ? "작성자 선택" : undefined}
+          {props.scope !== null ? (
+            <ScopeToggle
+              scope={props.scope}
+              weekStart={week.week_start}
+              area={area}
             />
           ) : null}
           {props.viewingOther !== null ? (
@@ -136,11 +159,15 @@ export function WeekHeader(props: Props) {
           {/* 제출 현황·관리에서는 아래 표가 제출·당번을 보여 줘서 머리띠에 다시 적지 않는다. */}
           {props.showReportState ? (
             <>
-              <StatusBadge
-                status={reportStatus}
-                submittedAt={props.submittedAt}
-              />
-              <span className="tabular-nums">{`확인 ${props.checkedCount}/${AREAS.length}`}</span>
+              {showOwnState ? (
+                <>
+                  <StatusBadge
+                    status={reportStatus}
+                    submittedAt={props.submittedAt}
+                  />
+                  <span className="tabular-nums">{`확인 ${props.checkedCount}/${AREAS.length}`}</span>
+                </>
+              ) : null}
               <span className="flex items-center gap-2">
                 <span className="tabular-nums">{`제출 ${props.submittedCount}/${props.writerCount}`}</span>
                 <span aria-hidden className="text-muted">

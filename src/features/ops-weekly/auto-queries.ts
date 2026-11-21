@@ -140,30 +140,31 @@ async function loadWeekSources(
   };
 }
 
-export async function loadAutoSnapshot(args: {
-  weekStart: string;
-  operatorEmail: string;
-  operatorName: string;
-  writerNames: ReadonlySet<string>;
-  now: Date;
-}): Promise<AutoSnapshot> {
-  const { weekStart, now } = args;
-  const operatorName = args.operatorName.trim();
-  const operatorEmail = normEmail(args.operatorEmail);
-  const writerNames = trimmedNames(args.writerNames);
+type WeekInputs = {
+  closing: ClosingLite[];
+  pims: PimsLite[];
+  devStatusCollected: boolean;
+  backups: (BackupLeaveLite & { requester_email: string })[];
+  schedules: ScheduleLeaveLite[];
+};
+
+/** 사람과 무관한 그 주 원천 + 백업 요청(요청자 이메일 목록으로 좁힌다). */
+async function loadWeekInputs(
+  weekStart: string,
+  requesterEmails: readonly string[],
+): Promise<WeekInputs> {
   const win = weekWindows(weekStart);
   const startIso = win.startInstant.toISOString();
   const endIso = weekWindows(shiftWeek(weekStart, 1)).endInstant.toISOString();
   const db = createAdminClient();
-
   const [sources, devStatusCollected, backupRes, scheduleRes] =
     await Promise.all([
       loadWeekSources(db, weekStart),
       devStatusCollectedSince(db, startIso),
       db
         .from("backup_requests")
-        .select(BACKUP_COLUMNS)
-        .eq("requester_email", operatorEmail)
+        .select(`${BACKUP_COLUMNS}, requester_email`)
+        .in("requester_email", [...requesterEmails])
         .lte("leave_start_date", win.nextWeek.endYmd),
       db
         .from("schedule_events")
@@ -172,8 +173,6 @@ export async function loadAutoSnapshot(args: {
         .lte("start_at", endIso)
         .or(`end_at.is.null,end_at.gte.${startIso}`),
     ]);
-  const { closing, pims } = sources;
-  const backups = rowsOf<BackupLeaveLite>("backup_requests", backupRes);
   const schedules = rowsOf<ScheduleLeaveLite>(
     "schedule_events",
     scheduleRes,
@@ -181,37 +180,62 @@ export async function loadAutoSnapshot(args: {
     ...s,
     assignee_email: s.assignee_email ? normEmail(s.assignee_email) : null,
   }));
+  return {
+    ...sources,
+    devStatusCollected,
+    backups: rowsOf<BackupLeaveLite & { requester_email: string }>(
+      "backup_requests",
+      backupRes,
+    ),
+    schedules,
+  };
+}
 
-  const ref = referenceInstant(weekStart, now);
-  const upcomingIds = closing
+type Writer = { email: string; name: string };
+
+function upcomingIdsOf(
+  closing: readonly ClosingLite[],
+  operatorName: string,
+  ref: Date,
+): number[] {
+  return closing
     .filter(
       (r) =>
         sameName(r.operator_name, operatorName) &&
         phaseOf(r, ref) === "upcoming",
     )
     .map((r) => r.service_id);
-  const devStages = freshDevStages(
-    await listDevStatuses(upcomingIds),
-    weekStart,
-  );
+}
 
+function buildSnapshot(args: {
+  inputs: WeekInputs;
+  writer: Writer;
+  writerNames: ReadonlySet<string>;
+  devStages: ReturnType<typeof freshDevStages>;
+  weekStart: string;
+  now: Date;
+}): AutoSnapshot {
+  const { inputs, writer, writerNames, devStages, weekStart, now } = args;
+  const { closing, pims } = inputs;
   return {
     version: 1,
     computedAt: now.toISOString(),
     application: buildApplicationGroups({
       rows: closing,
-      operatorName,
+      operatorName: writer.name,
       devStages,
-      devStatusCollected,
+      devStatusCollected: inputs.devStatusCollected,
       weekStart,
       now,
     }),
-    pims: buildPimsGroups({ rows: pims, operatorName, weekStart }),
+    pims: buildPimsGroups({ rows: pims, operatorName: writer.name, weekStart }),
     leave: buildLeaveItems({
-      backups,
-      schedules,
-      operatorEmail,
-      operatorName,
+      backups: inputs.backups.filter(
+        (b) => normEmail(b.requester_email) === writer.email,
+      ),
+      schedules: inputs.schedules,
+      operatorEmail: writer.email,
+      operatorName: writer.name,
       weekStart,
     }),
     unmatched: {
@@ -224,6 +248,57 @@ export async function loadAutoSnapshot(args: {
       pims: countUnmatchedPims({ rows: pims, writerNames, weekStart }),
     },
   };
+}
+
+export async function loadAutoSnapshot(args: {
+  weekStart: string;
+  operatorEmail: string;
+  operatorName: string;
+  writerNames: ReadonlySet<string>;
+  now: Date;
+}): Promise<AutoSnapshot> {
+  const map = await loadAutoSnapshots({
+    weekStart: args.weekStart,
+    writers: [{ email: args.operatorEmail, name: args.operatorName }],
+    writerNames: args.writerNames,
+    now: args.now,
+  });
+  const snap = map.get(normEmail(args.operatorEmail));
+  if (snap === undefined) throw new Error("[ops-weekly] 스냅샷을 만들지 못했다");
+  return snap;
+}
+
+/**
+ * 여러 작성자의 스냅샷을 한 번에 — 원천(마감·발표·일정·백업·구분)은 한 번만 읽는다.
+ * 키는 정규화한 이메일. 전체 보고가 쓰고, 한 사람 스냅샷(`loadAutoSnapshot`)도 이 길을 탄다.
+ */
+export async function loadAutoSnapshots(args: {
+  weekStart: string;
+  writers: readonly Writer[];
+  writerNames: ReadonlySet<string>;
+  now: Date;
+}): Promise<Map<string, AutoSnapshot>> {
+  const { weekStart, now } = args;
+  const writers = args.writers.map((w) => ({
+    email: normEmail(w.email),
+    name: w.name.trim(),
+  }));
+  const writerNames = trimmedNames(args.writerNames);
+  const inputs = await loadWeekInputs(
+    weekStart,
+    writers.map((w) => w.email),
+  );
+  const ref = referenceInstant(weekStart, now);
+  const upcoming = [
+    ...new Set(writers.flatMap((w) => upcomingIdsOf(inputs.closing, w.name, ref))),
+  ];
+  const devStages = freshDevStages(await listDevStatuses(upcoming), weekStart);
+  return new Map(
+    writers.map((writer) => [
+      writer.email,
+      buildSnapshot({ inputs, writer, writerNames, devStages, weekStart, now }),
+    ]),
+  );
 }
 
 /**

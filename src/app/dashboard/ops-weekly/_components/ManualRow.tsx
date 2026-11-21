@@ -48,6 +48,9 @@ export function ManualRow(props: {
         {period ? (
           <span className="text-xs tabular-nums text-muted">{period}</span>
         ) : null}
+        {item.owner ? (
+          <span className="text-xs text-muted">{`담당 ${item.owner}`}</span>
+        ) : null}
         {editable && reportId !== null ? (
           <button
             type="button"

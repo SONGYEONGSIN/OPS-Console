@@ -8,7 +8,11 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => db.client,
 }));
 
-import { listProjectEntriesForWeek, loadReportDetail } from "../report-queries";
+import {
+  listProjectEntriesForWeek,
+  loadReportDetail,
+  loadReportDetails,
+} from "../report-queries";
 
 const op = (email: string, name: string) => ({
   email,
@@ -135,6 +139,29 @@ describe("loadReportDetail / listProjectEntriesForWeek", () => {
         nextWeek: "b",
       },
     ]);
+  });
+
+  it("loadReportDetails — 여러 보고서를 한 번에, 각자 것만 나눠 담는다(한 건씩 읽은 것과 같다)", async () => {
+    db = fakeAdmin(detailTables());
+    const map = await loadReportDetails([
+      { id: "r1", operator_email: W1.email },
+      { id: "r2", operator_email: W3.email },
+    ]);
+    const one = await loadReportDetail("r1");
+    const r1 = map.get("r1");
+    expect(r1?.notes).toEqual(one.notes);
+    expect(r1?.overrides).toEqual(one.overrides);
+    expect(r1?.projects).toEqual(one.projects);
+    expect(r1?.manual.map((m) => m.id)).toEqual(one.manual.map((m) => m.id));
+    const r2 = map.get("r2");
+    expect(r2?.notes.leave).toEqual({ thisWeek: "other", nextWeek: "" });
+    expect(r2?.manual.map((m) => m.id)).toEqual(["m2"]);
+    expect(r2?.projects.map((p) => p.operatorName)).toEqual(["운영자C"]);
+  });
+
+  it("loadReportDetails — 빈 목록이면 조회 없이 빈 결과", async () => {
+    db = fakeAdmin(detailTables());
+    expect((await loadReportDetails([])).size).toBe(0);
   });
 
   it("loadReportDetail — 보고서가 없으면 던진다", async () => {

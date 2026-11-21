@@ -22,13 +22,13 @@ vi.mock("../_components/WeekHeader", () => ({
   WeekHeader: (p: {
     week: unknown;
     viewingOther: unknown;
-    writerPicker: unknown;
+    scope: unknown;
     dutyName: string | null;
   }) => (
     <div
       data-testid="week-header"
       data-duty={p.dutyName ?? "(null)"}
-      data-picker={p.writerPicker === null ? "none" : "shown"}
+      data-scope={JSON.stringify(p.scope)}
       data-week={JSON.stringify(p.week)}
       data-other={JSON.stringify(p.viewingOther)}
     />
@@ -102,6 +102,7 @@ function viewFor(tab: string, isAdmin: boolean, over = {}) {
     actor: { email: "a@example.com", isAdmin },
     writers: [{ email: "a@example.com", name: "홍길동" }],
     viewed: { email: "a@example.com", name: "홍길동" },
+    all: null,
     report: { id: "r1", status: "draft", checked_tabs: [], snapshot: null },
     snapshot: snap({ unmatchedApplication: 3, unmatchedPims: 2 }),
     detail: EMPTY,
@@ -430,26 +431,30 @@ describe("주간업무보고 페이지 — 머리띠", () => {
     expect(screen.getByTestId("week-header").dataset.other).toBe("null");
   });
 
-  it("작성자 선택 상자는 남의 보고서를 열 수 있는 사람에게만 — 일반 운영자 none, 당번·관리자(manage)·받는 사람(read) shown", async () => {
-    for (const [statusAccess, want] of [
-      [null, "none"],
-      ["manage", "shown"],
-      ["read", "shown"],
-    ] as const) {
-      state.view = viewFor("application", false, { statusAccess });
-      const { unmount } = await renderPage("application");
-      expect(screen.getByTestId("week-header").dataset.picker).toBe(want);
-      unmount();
-    }
-  });
-
-  it("작성 대상 명단이 비었으면 권한이 있어도 선택 상자는 없다 — 빈 선택 상자를 안 그린다", async () => {
+  it("내 보고 | 전체 보고 — 작성자는 내 보고가 켜지고, 남의 보고서를 보는 중이면 둘 다 꺼진다", async () => {
+    state.view = viewFor("application", false, { roles: ["report"] });
+    const { unmount } = await renderPage("application");
+    expect(JSON.parse(screen.getByTestId("week-header").dataset.scope ?? "null")).toEqual({
+      mine: true,
+      active: "mine",
+    });
+    unmount();
     state.view = viewFor("application", true, {
+      roles: ["report", "status"],
       statusAccess: "manage",
-      writers: [],
+      viewed: { email: "b@example.com", name: "김철수" },
     });
     await renderPage("application");
-    expect(screen.getByTestId("week-header").dataset.picker).toBe("none");
+    expect(JSON.parse(screen.getByTestId("week-header").dataset.scope ?? "null")).toEqual({
+      mine: true,
+      active: null,
+    });
+  });
+
+  it("작성자도 아니고 남의 보고서도 못 보면 토글이 없다", async () => {
+    state.view = viewFor("application", false, { roles: [], statusAccess: null });
+    await renderPage("application");
+    expect(screen.getByTestId("week-header").dataset.scope).toBe("null");
   });
 
   it("일반 운영자 화면에 당번 총평 문구가 없다 — 머리띠에는 세 칸만 넘어간다", async () => {

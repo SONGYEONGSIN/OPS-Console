@@ -383,3 +383,80 @@ export async function loadReportDetail(
     ),
   };
 }
+
+/**
+ * 여러 보고서의 상세를 한 번에 — 전체 보고용. 표마다 한 번씩만 읽고 보고서별로 나눈다.
+ * 결과는 보고서마다 `loadReportDetail` 과 같다(그림 서명은 부르는 쪽이 한다).
+ */
+export async function loadReportDetails(
+  reports: readonly { id: string; operator_email: string }[],
+): Promise<Map<string, ReportDetail>> {
+  if (reports.length === 0) return new Map();
+  const ids = reports.map((r) => r.id);
+  const db = createAdminClient();
+  const [noteRows, overrideRows, manualRows, entries] = await Promise.all([
+    db
+      .from("ops_weekly_area_notes")
+      .select("report_id, area, this_week, next_week")
+      .in("report_id", ids),
+    db
+      .from("ops_weekly_item_overrides")
+      .select("report_id, item_key, note, excluded")
+      .in("report_id", ids),
+    db
+      .from("ops_weekly_manual_items")
+      .select(
+        "id, report_id, area, group_key, title, note, period_start, period_end, leave_kind",
+      )
+      .in("report_id", ids)
+      .order("created_at", { ascending: true }),
+    entriesOf(ids),
+  ]);
+  const notes = rowsOf<{
+    report_id: string;
+    area: Area;
+    this_week: string;
+    next_week: string;
+  }>("ops_weekly_area_notes", noteRows);
+  const overrides = rowsOf<ItemOverride & { report_id: string }>(
+    "ops_weekly_item_overrides",
+    overrideRows,
+  );
+  const manual = rowsOf<ManualItem & { report_id: string }>(
+    "ops_weekly_manual_items",
+    manualRows,
+  );
+  const projects = await viewsOf(
+    entries,
+    new Map(reports.map((r) => [r.id, r.operator_email])),
+  );
+  const emailById = new Map(reports.map((r) => [r.id, normEmail(r.operator_email)]));
+  return new Map(
+    reports.map((r): [string, ReportDetail] => {
+      const n = emptyNotes();
+      for (const row of notes.filter((x) => x.report_id === r.id)) {
+        n[row.area] = { thisWeek: row.this_week, nextWeek: row.next_week };
+      }
+      return [
+        r.id,
+        {
+          notes: n,
+          overrides: new Map(
+            overrides
+              .filter((o) => o.report_id === r.id)
+              .map((o) => [
+                o.item_key,
+                { item_key: o.item_key, note: o.note, excluded: o.excluded },
+              ]),
+          ),
+          manual: manual
+            .filter((m) => m.report_id === r.id)
+            .map(({ report_id: _rid, ...m }) => m),
+          projects: projects.filter(
+            (p) => normEmail(p.operatorEmail) === emailById.get(r.id),
+          ),
+        },
+      ];
+    }),
+  );
+}

@@ -1,11 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-  render,
-  screen,
-  cleanup,
-  fireEvent,
-  within,
-} from "@testing-library/react";
+import { render, screen, cleanup } from "@testing-library/react";
 import { weekRefFromStart } from "@/features/ops-weekly/week";
 import type { WeekRow } from "@/features/ops-weekly/schemas";
 
@@ -41,13 +35,10 @@ const base = {
   week: WEEK,
   showReportState: true,
   checkedCount: 0,
-  writerPicker: {
-    writers: [
-      { email: "a@example.com", name: "운영자A" },
-      { email: "b@example.com", name: "운영자B" },
-    ],
-    viewedEmail: "a@example.com" as string | null,
-  },
+  scope: { mine: true, active: "mine" } as {
+    mine: boolean;
+    active: "mine" | "all" | null;
+  } | null,
   submittedCount: 0,
   writerCount: 2,
   dutyName: null,
@@ -143,24 +134,43 @@ describe("WeekHeader", () => {
     );
   });
 
-  it("작성자를 바꾸면 op 를 달아 지금 영역으로, 제출 현황에서 고르면 원서접수로", () => {
+  it("내 보고 | 전체 보고 — 지금 영역으로 가는 링크, 전체는 op=all", () => {
     setUrl("?week=2026-11-16&tab=pims");
     render(<WeekHeader {...base} />);
-    fireEvent.change(screen.getByLabelText("작성자"), {
-      target: { value: "운영자B" },
-    });
-    expect(push).toHaveBeenLastCalledWith(
-      "/dashboard/ops-weekly?week=2026-11-16&tab=pims&op=b%40example.com",
-    );
-    cleanup();
+    const mine = screen.getByRole("link", { name: "내 보고" });
+    const all = screen.getByRole("link", { name: "전체 보고" });
+    expect(mine).toHaveAttribute("href", "/dashboard/ops-weekly?week=2026-11-16&tab=pims");
+    expect(all).toHaveAttribute("href", "/dashboard/ops-weekly?week=2026-11-16&tab=pims&op=all");
+    expect(mine).toHaveAttribute("aria-current", "page");
+    expect(all).not.toHaveAttribute("aria-current");
+    expect(screen.queryByLabelText("작성자")).toBeNull();
+  });
+
+  it("제출 현황에서 누르면 원서접수로 간다", () => {
     setUrl("?week=2026-11-16&tab=status");
-    render(<WeekHeader {...base} />);
-    fireEvent.change(screen.getByLabelText("작성자"), {
-      target: { value: "운영자B" },
-    });
-    expect(push).toHaveBeenLastCalledWith(
-      "/dashboard/ops-weekly?week=2026-11-16&tab=application&op=b%40example.com",
+    render(<WeekHeader {...base} showReportState={false} />);
+    expect(screen.getByRole("link", { name: "전체 보고" })).toHaveAttribute(
+      "href",
+      "/dashboard/ops-weekly?week=2026-11-16&tab=application&op=all",
     );
+  });
+
+  it("전체 보고 중이면 전체가 켜지고, 작성자가 아니면 내 보고가 없다", () => {
+    render(<WeekHeader {...base} scope={{ mine: false, active: "all" }} />);
+    expect(screen.queryByRole("link", { name: "내 보고" })).toBeNull();
+    expect(screen.getByRole("link", { name: "전체 보고" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("scope 가 없으면 토글이 없다", () => {
+    render(<WeekHeader {...base} scope={null} />);
+    expect(screen.queryByRole("link", { name: "전체 보고" })).toBeNull();
+  });
+
+  it("전체 보고 중에는 내 상태 배지·확인 수가 없고 제출·당번은 있다", () => {
+    render(<WeekHeader {...base} scope={{ mine: true, active: "all" }} />);
+    expect(screen.queryByText("작성 중")).toBeNull();
+    expect(screen.queryByText(/^확인 \d\/5$/)).toBeNull();
+    expect(screen.getByText("제출 0/2")).toBeInTheDocument();
   });
 
   it("내 보고서: 상태 배지와 확인 n/5(숫자 정렬)", () => {
@@ -185,25 +195,6 @@ describe("WeekHeader", () => {
     // 제출 수·당번은 아래 표가 이미 보여 준다
     expect(screen.queryByText(/^제출 \d+\/\d+$/)).toBeNull();
     expect(screen.queryByText(/^당번 /)).toBeNull();
-  });
-
-  it("작성자 선택 상자는 writerPicker 가 있을 때만 — 선택지는 명단 이름, 본인 보고서가 없으면 '작성자 선택'", () => {
-    const { rerender } = render(<WeekHeader {...base} writerPicker={null} />);
-    expect(screen.queryByLabelText("작성자")).toBeNull();
-    rerender(<WeekHeader {...base} />);
-    const names = () =>
-      within(screen.getByLabelText("작성자"))
-        .getAllByRole("option")
-        .map((o) => o.textContent);
-    expect(names()).toEqual(["운영자A", "운영자B"]);
-    rerender(
-      <WeekHeader
-        {...base}
-        writerPicker={{ ...base.writerPicker, viewedEmail: null }}
-      />,
-    );
-    expect(names()).toEqual(["작성자 선택", "운영자A", "운영자B"]);
-    expect(screen.getByLabelText("작성자")).toHaveValue("");
   });
 
   it("주 이동: 이전·다음 링크와 주 표시가 줄바꿈 없는 한 묶음(min-w-0)", () => {
@@ -263,7 +254,7 @@ describe("WeekHeader", () => {
       expect(tokens(right?.parentElement as Element)).toContain(
         "justify-between",
       );
-      expect(right?.contains(screen.getByLabelText("작성자"))).toBe(false);
+      expect(right?.contains(screen.getByRole("link", { name: "전체 보고" }))).toBe(false);
     });
 
     it("상태 배지 — 작성 중 / 제출함(숫자 정렬) / 다시 작성 요청(vermilion)", () => {

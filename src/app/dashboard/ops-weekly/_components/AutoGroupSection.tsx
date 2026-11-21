@@ -30,6 +30,7 @@ function AutoTableRow(props: {
   reportId: string | null;
   area: AutoArea;
   editable: boolean;
+  showOwners: boolean;
 }) {
   const { item, reportId, area, editable } = props;
   return (
@@ -45,6 +46,9 @@ function AutoTableRow(props: {
       <td className={`${TD} whitespace-nowrap tabular-nums text-muted`}>
         {item.at ? formatMdHm(item.at) : "—"}
       </td>
+      {props.showOwners ? (
+        <td className={`${TD} text-ink-soft`}>{item.owners?.join(", ") ?? "—"}</td>
+      ) : null}
       {/* 일회성: 메모 버튼 둘과 메모 글이 들어갈 최소 폭 */}
       <td className={`${TD} min-w-[12rem]`}>
         <OverrideControls
@@ -73,6 +77,11 @@ function AutoTable(props: {
   editable: boolean;
 }) {
   const { title, atLabel, items, manual, reportId, area, editable } = props;
+  // 전체 보고에서만 담당자가 실려 온다 — 한 사람 보고서에는 칸을 두지 않는다.
+  const showOwners =
+    items.some((i) => i.owners !== undefined) ||
+    manual.some((m) => m.owner !== undefined);
+  const cols = showOwners ? 7 : 6;
   return (
     // 일회성: 6열이 좁은 화면에서 찌그러지지 않는 최소 폭
     <div className="overflow-x-auto">
@@ -84,6 +93,7 @@ function AutoTable(props: {
             <th className={TH}>카테고리</th>
             <th className={TH}>서비스명</th>
             <th className={TH}>{atLabel}</th>
+            {showOwners ? <th className={TH}>담당자</th> : null}
             <th className={TH}>메모</th>
           </tr>
         </thead>
@@ -95,6 +105,7 @@ function AutoTable(props: {
               reportId={reportId}
               area={area}
               editable={editable}
+              showOwners={showOwners}
             />
           ))}
           {manual.map((m) => (
@@ -102,7 +113,7 @@ function AutoTable(props: {
               key={m.id}
               className="group border-b border-line-soft hover:bg-line-soft"
             >
-              <td colSpan={6} className={TD}>
+              <td colSpan={cols} className={TD}>
                 <ManualRow
                   as="div"
                   item={m}
@@ -144,6 +155,9 @@ function AutoRow(props: {
           <span className="text-xs tabular-nums text-muted">
             {formatMdHm(item.at)}
           </span>
+        ) : null}
+        {item.owners ? (
+          <span className="text-xs text-muted">{`담당 ${item.owners.join(", ")}`}</span>
         ) : null}
       </OverrideControls>
     </li>

@@ -2,8 +2,10 @@ import "server-only";
 
 import type { CurrentOperator } from "@/features/auth/queries";
 import type { UnmatchedServices } from "@/features/ops-weekly/auto-lists/unmatched";
+import { mergeAllReports, type AllReportsView } from "@/features/ops-weekly/all-view";
 import {
   loadAutoSnapshot,
+  loadAutoSnapshots,
   loadUnmatchedServices,
 } from "@/features/ops-weekly/auto-queries";
 import { normEmail } from "@/features/ops-weekly/email";
@@ -37,6 +39,7 @@ import {
   listReportStatusesForWeeks,
   listReports,
   loadReportDetail,
+  loadReportDetails,
   type ReportDetail,
 } from "@/features/ops-weekly/report-queries";
 import type { WriterCandidate } from "@/features/ops-weekly/roster";
@@ -64,6 +67,7 @@ import {
   listWriters,
 } from "@/features/ops-weekly/week-queries";
 import {
+  ALL_OP,
   parseWeekParam,
   resolveTab,
   roleTabOf,
@@ -90,8 +94,13 @@ export type OpsWeeklyView =
       roles: RoleTab[];
       /** 제출 현황·남의 보고서를 여는 권한(null 이면 본인 보고서만) */
       statusAccess: StatusAccess;
-      /** 본인도 ?op 도 명단 밖이면 null(제출 현황·관리에서만 그렇다) */
+      /** 본인도 ?op 도 명단 밖이면 null(제출 현황·관리에서만 그렇다). 전체 보고도 null */
       viewed: WriterCandidate | null;
+      /**
+       * 전체 보고(?op=all, 내 보고서 쪽 탭)일 때 전원을 합친 결과 — snapshot·detail·kpis 도 이것의 값이다.
+       * 그 밖에는 null.
+       */
+      all: AllReportsView | null;
       /**
        * viewed 가 null 이면 report·snapshot·detail·kpis 모두 null(스냅샷을 만들 사람이 없다).
        * snapshot·detail·kpis 는 내 보고서 쪽 탭에서만 읽는다 — 제출 현황·관리에서는 null.
@@ -141,6 +150,8 @@ function pickViewed(
 
 type Access = {
   viewed: WriterCandidate | null;
+  /** 전체 보고를 읽을 탭인가 */
+  all: boolean;
   tab: OpsTab;
   roles: RoleTab[];
   statusAccess: StatusAccess;
@@ -160,18 +171,23 @@ async function resolveAccess(
       ? await isRecipient(actor.email)
       : false;
   const access = statusAccess(actor, state, recipient);
-  const viewed = pickViewed(writers, actor, sp.op, access !== null);
+  // derive 의 writerEmails.has(actor.email) 와 같은 판정 — 둘 다 정규화된 값이다.
+  const isWriter = writers.some((w) => w.email === actor.email);
+  // 전체 보고는 작성자 전원과, 남의 보고서를 열 수 있는 사람(당번·관리자·보고 끝난 주의 받는 사람)이 본다.
+  const wantsAll = sp.op === ALL_OP && (isWriter || access !== null);
+  const viewed = wantsAll
+    ? null
+    : pickViewed(writers, actor, sp.op, access !== null);
   const tabAccess: TabAccess = {
-    canReport: viewed !== null,
+    canReport: viewed !== null || wantsAll,
     status: access,
     manage: canManageSettings(actor),
   };
   const tab = resolveTab(sp.tab, tabAccess);
   if (tab === null) return null;
-  // derive 의 writerEmails.has(actor.email) 와 같은 판정 — 둘 다 정규화된 값이다.
-  const isWriter = writers.some((w) => w.email === actor.email);
   return {
     viewed,
+    all: wantsAll && roleTabOf(tab) === "report",
     tab,
     statusAccess: access,
     roles: roleTabsOf({ ...tabAccess, canReport: isWriter }),
@@ -239,6 +255,70 @@ async function loadViewedData(args: {
     snapshot,
     detail,
     kpis: computeKpis(snapshot, detail.overrides, detail.manual),
+  };
+}
+
+/**
+ * 전체 보고 — 작성자마다 굳은 스냅샷이 있으면 그것을, 없으면 원천을 한 번 읽어 전원 것을 계산한다.
+ * 상세(메모·뺀 건·직접 추가·프로젝트)도 한 번에 읽는다. 보고서가 없는 사람은 빈 상세다.
+ */
+async function loadAllData(args: {
+  week: WeekRow;
+  writers: readonly WriterCandidate[];
+  reports: readonly ReportRow[];
+  now: Date;
+}): Promise<AllReportsView> {
+  const { week, writers, reports, now } = args;
+  const reportOf = new Map(
+    reports.map((r) => [normEmail(r.operator_email), r]),
+  );
+  const live = writers.filter((w) => !reportOf.get(w.email)?.snapshot);
+  const own = writers.flatMap((w) => {
+    const r = reportOf.get(w.email);
+    return r ? [r] : [];
+  });
+  const [snapshots, details] = await Promise.all([
+    live.length === 0
+      ? Promise.resolve(new Map<string, AutoSnapshot>())
+      : loadAutoSnapshots({
+          weekStart: week.week_start,
+          writers: live,
+          writerNames: new Set(writers.map((w) => w.name)),
+          now,
+        }),
+    loadReportDetails(own),
+  ]);
+  const merged = mergeAllReports(
+    writers.flatMap((w) => {
+      const r = reportOf.get(w.email);
+      const snapshot = r?.snapshot ?? snapshots.get(w.email);
+      if (snapshot === undefined) return [];
+      const detail = (r && details.get(r.id)) ?? emptyDetail();
+      return [{ writer: { email: w.email, name: w.name }, snapshot, detail }];
+    }),
+  );
+  // 그림 src 를 1시간 서명 URL 로 — 한 사람 보고서와 같은 처리.
+  return {
+    ...merged,
+    detail: {
+      ...merged.detail,
+      projects: await signProjectEntries(merged.detail.projects),
+    },
+  };
+}
+
+function emptyDetail(): ReportDetail {
+  return {
+    notes: {
+      application: { thisWeek: "", nextWeek: "" },
+      pims: { thisWeek: "", nextWeek: "" },
+      leave: { thisWeek: "", nextWeek: "" },
+      project: { thisWeek: "", nextWeek: "" },
+      tf: { thisWeek: "", nextWeek: "" },
+    },
+    overrides: new Map(),
+    manual: [],
+    projects: [],
   };
 }
 
@@ -380,10 +460,14 @@ export async function loadOpsWeeklyPage(
   const { viewed, tab } = access;
   const { report, reports } = await resolveReport(week, viewed);
   // 스냅샷·상세·KPI 는 내 보고서 쪽 탭에서만 읽는다(제출 현황·관리에는 KPI 가 없다).
+  const all = access.all
+    ? await loadAllData({ week, writers, reports, now })
+    : null;
   const data =
-    roleTabOf(tab) === "report" && viewed !== null && report !== null
+    all ??
+    (roleTabOf(tab) === "report" && viewed !== null && report !== null
       ? await loadViewedData({ week, viewed, report, writers, now })
-      : null;
+      : null);
   const flags = derive({ week, actor, writers, viewed, report, reports });
   const status =
     tab === "status"
@@ -399,6 +483,7 @@ export async function loadOpsWeeklyPage(
     week,
     weekRef,
     ...access,
+    all,
     actor,
     writers,
     report,

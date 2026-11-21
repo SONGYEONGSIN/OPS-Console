@@ -49,6 +49,9 @@ function LeaveRow(props: {
         excluded={item.excluded}
         editable={editable}
       >
+        {item.owners ? (
+          <span className="font-medium">{item.owners.join(", ")}</span>
+        ) : null}
         <span className="font-medium">{item.kindLabel}</span>
         <span className="text-xs tabular-nums">{periodOf(item)}</span>
         <span className="min-w-0 break-words text-xs">{item.subtitle}</span>
@@ -57,7 +60,8 @@ function LeaveRow(props: {
             {SOURCE_LABEL[s]}
           </span>
         ))}
-        {item.needsBackup && !item.excluded ? (
+        {/* 전체 보고(담당자가 실린 건)는 남의 휴가라 백업 요청을 여기서 만들지 않는다. */}
+        {item.needsBackup && !item.excluded && item.owners === undefined ? (
           <Link
             href="/dashboard/backup"
             className={`${ROW_BTN_CLASS} inline-flex items-center no-underline`}

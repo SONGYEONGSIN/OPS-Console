@@ -95,6 +95,9 @@ export function resolveAppSub(
   );
 }
 
+/** `?op=all` — 전체 보고(작성자 전원의 내용을 한 화면에). 이메일 자리를 빌려 쓰므로 주·하위 탭·KPI 링크가 그대로 들고 다닌다. */
+export const ALL_OP = "all";
+
 export function opsWeeklyHref(
   weekStart: string,
   tab: string,
