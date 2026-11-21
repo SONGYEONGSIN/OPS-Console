@@ -2,11 +2,13 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 
-// A1 은 메일·Teams·Graph 를 보내지 않는다 — 소스 원문 가드. app 폴더는 Task 11 부터 생긴다.
+// 메일·Teams·Graph 발송은 A2 의 `notify/deliver.ts` 한 곳에서만 — 소스 원문 가드.
+// 화면·action 이 직접 보내기 시작하면 중복 방지(이력·슬롯)와 시험 실행(DRY_RUN)을 건너뛴다.
 // (@types/node 에 globSync 타입이 없어 readdirSync 재귀로 훑는다.)
 const FEATURE_DIR = "src/features/ops-weekly";
 const APP_DIR = "src/app/dashboard/ops-weekly";
 const SELF = "__tests__/no-outbound.test.ts";
+const SENDER = `${FEATURE_DIR}/notify/deliver.ts`;
 const norm = (f: string) => f.replaceAll("\\", "/");
 
 /** 폴더 아래 .ts·.tsx 전부(없는 폴더는 빈 목록). */
@@ -26,10 +28,12 @@ describe("ops-weekly 외부 발송 금지", () => {
     expect(files).toContain(`${FEATURE_DIR}/workflow-actions.ts`);
   });
 
-  it("ops-weekly 는 @/lib/microsoft 를 import 하지 않는다", () => {
+  it("@/lib/microsoft 는 notify/deliver.ts 에서만 import 한다", () => {
     const files = [...sourcesUnder(FEATURE_DIR), ...sourcesUnder(APP_DIR)];
+    expect(files.map(norm)).toContain(SENDER);
     for (const f of files) {
-      if (norm(f).endsWith(SELF)) continue;
+      if (norm(f).endsWith(SELF) || norm(f) === SENDER) continue;
+      if (norm(f).includes("/__tests__/")) continue;
       expect(readFileSync(f, "utf8"), f).not.toMatch(/@\/lib\/microsoft/);
     }
   });

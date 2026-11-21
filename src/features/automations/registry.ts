@@ -21,6 +21,8 @@ import { runSmsSenderRequestNotify } from "./jobs/sms-sender-request-notify";
 import { runSmsStatusRefresh } from "./jobs/sms-status-refresh";
 import { runAssignmentYearRollover } from "./jobs/assignment-year-rollover";
 import { runAssignmentUnassignedSweep } from "./jobs/assignment-unassigned-sweep";
+import { runOpsWeeklyRequest } from "./jobs/ops-weekly-request";
+import { runOpsWeeklyRemind } from "./jobs/ops-weekly-remind";
 // 이 잡은 registry 전체를 훑어야 해서 queries → registry 순환이 생긴다. queries가
 // AUTOMATION_JOBS를 함수 안에서만 읽으므로 평가 순서와 무관하게 안전하다.
 import { runAutomationDigest } from "./jobs/automation-digest";
@@ -86,6 +88,26 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     cadence: "monthly",
     cooldownMinutes: 60,
     run: runManualReviewReminder,
+  },
+  {
+    id: "ops-weekly-request",
+    label: "주간업무보고 작성 요청",
+    description:
+      "이번 주 운영부 주간업무보고 작성 요청을 작성자 전원에게 메일(본인 메일함에서 본인에게)로, 운영부 그룹채팅에 Teams 로 보냅니다.\n같은 주에 두 번 불려도 한 번만 나갑니다. 그룹채팅은 OPS_WEEKLY_TEAMS_CHAT_ID 가 있을 때만입니다.",
+    scheduleInfo: "매주 수요일 10:00 (cron-job.org)",
+    cadence: "weekly",
+    cooldownMinutes: 60,
+    run: runOpsWeeklyRequest,
+  },
+  {
+    id: "ops-weekly-remind",
+    label: "주간업무보고 미제출 알림",
+    description:
+      "이번 주 주간업무보고를 아직 제출하지 않은 사람에게만 메일로 알립니다. 목요일 12:00·17:00 두 번이고 같은 반나절에는 한 번만 나갑니다.\n그 뒤로는 자동으로 보내지 않습니다 — 당번이 제출 현황의 [미제출자에게 알림]으로 직접 재촉합니다.",
+    scheduleInfo: "매주 목요일 12:00·17:00 (cron-job.org)",
+    cadence: "weekly",
+    cooldownMinutes: 60,
+    run: runOpsWeeklyRemind,
   },
   {
     id: "weekly-report-rollover",

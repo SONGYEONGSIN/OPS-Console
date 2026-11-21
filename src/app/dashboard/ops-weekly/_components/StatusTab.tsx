@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { ModalShell } from "@/components/common/ModalShell";
 import type { ProjectGroup } from "@/features/ops-weekly/merge";
@@ -19,6 +19,7 @@ import {
 } from "@/features/ops-weekly/schemas";
 import {
   finalizeWeek,
+  remindPending,
   returnReport,
 } from "@/features/ops-weekly/workflow-actions";
 import { manageHref } from "../_params";
@@ -37,6 +38,8 @@ type Props = {
   finalize: FinalizeCheck;
   /** 머리줄의 제출 수와 같은 값 — 같은 사실을 두 번 세지 않는다 */
   submittedCount: number;
+  /** 최종 보고 알림을 받을 사람 수 — 0 이면 보고해도 아무에게도 안 간다 */
+  recipientCount: number;
 };
 
 type Dialog =
@@ -102,7 +105,11 @@ function ReturnDialog(props: {
   );
 }
 
-function FinalizeDialog(props: { onClose: () => void; onOk: () => void }) {
+function FinalizeDialog(props: {
+  recipientCount: number;
+  onClose: () => void;
+  onOk: () => void;
+}) {
   return (
     <ModalShell
       title="최종 보고"
@@ -124,6 +131,12 @@ function FinalizeDialog(props: { onClose: () => void; onOk: () => void }) {
         최종 보고하면 이 주의 보고서가 잠기고 되돌릴 수 없습니다 (정정은
         관리자만 가능). 보고할까요?
       </p>
+      {props.recipientCount === 0 ? (
+        <p className="mt-3 text-sm font-medium text-vermilion">
+          받는 사람이 없어 보고 알림 메일이 나가지 않습니다 — 관리 › 받는
+          사람에서 먼저 지정하세요.
+        </p>
+      ) : null}
     </ModalShell>
   );
 }
@@ -150,12 +163,51 @@ function FinalizeBar(props: {
   );
 }
 
+/** 목요일 17:00 뒤로는 자동 독촉이 없다 — 당번이 직접 누른다. 성공 문구도 보여 줘야 해서 useWorkflow 를 안 쓴다. */
+function RemindButton({ weekId }: { weekId: string }) {
+  const [pending, start] = useTransition();
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(
+    null,
+  );
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <button
+        type="button"
+        className={BTN_CLASS}
+        disabled={pending}
+        onClick={() => {
+          start(async () => {
+            const res = await remindPending({ weekId });
+            setResult(
+              res.ok
+                ? { ok: true, text: res.message }
+                : { ok: false, text: res.error },
+            );
+          });
+        }}
+      >
+        미제출자에게 알림
+      </button>
+      {result === null ? null : (
+        <p
+          role={result.ok ? "status" : "alert"}
+          className={`text-xs ${result.ok ? "text-ink-soft" : "text-vermilion"}`}
+        >
+          {result.text}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function StatusTab(props: Props) {
   const { week, actor, writers, reports, projectGroups, finalize } = props;
   const wf = useWorkflow();
   const [dialog, setDialog] = useState<Dialog>(null);
   const state = normalizedWeekStateOf(week);
   const open = week.status === "open";
+  const canRemind =
+    canEditDutySummary(actor, state) && props.submittedCount < writers.length;
   return (
     <section data-tab="status" className="flex flex-col gap-7 p-5 lg:p-7">
       <div className="flex flex-col gap-3">
@@ -172,7 +224,8 @@ export function StatusTab(props: Props) {
             </div>
           </div>
           {open ? (
-            <div className="ml-auto">
+            <div className="ml-auto flex items-start gap-3">
+              {canRemind ? <RemindButton weekId={week.id} /> : null}
               <FinalizeBar
                 finalize={finalize}
                 pending={wf.pending}
@@ -225,6 +278,7 @@ export function StatusTab(props: Props) {
       ) : null}
       {dialog?.kind === "finalize" ? (
         <FinalizeDialog
+          recipientCount={props.recipientCount}
           onClose={() => {
             setDialog(null);
           }}

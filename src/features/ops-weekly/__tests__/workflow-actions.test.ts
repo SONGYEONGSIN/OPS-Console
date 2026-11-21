@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { emitSpy, snapshotSpy, ensureWeekSpy } = vi.hoisted(() => ({
+const { emitSpy, snapshotSpy, ensureWeekSpy, remindSpy } = vi.hoisted(() => ({
   emitSpy: vi.fn(),
   snapshotSpy: vi.fn(),
   ensureWeekSpy: vi.fn(),
+  remindSpy: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -18,6 +19,7 @@ vi.mock(
 );
 vi.mock("../events", () => ({ emitOpsWeeklyEvent: emitSpy }));
 vi.mock("../auto-queries", () => ({ loadAutoSnapshot: snapshotSpy }));
+vi.mock("../notify/run", () => ({ sendRemind: remindSpy }));
 vi.mock("../week-queries", async (orig) => ({
   ...(await orig<typeof import("../week-queries")>()),
   ensureWeek: ensureWeekSpy,
@@ -25,6 +27,7 @@ vi.mock("../week-queries", async (orig) => ({
 
 import {
   finalizeWeek,
+  remindPending,
   reopenWeek,
   returnReport,
   saveDutySummary,
@@ -602,5 +605,55 @@ describe("reopenWeek", () => {
     me("adm@x", true);
     setup({});
     expect((await reopenWeek({ weekId: W })).ok).toBe(false);
+  });
+});
+
+describe("remindPending — 당번의 [미제출자에게 알림]", () => {
+  const TALLY = { sent: 2, failed: 0, dryRun: 0, skipped: 0, errors: [] };
+  beforeEach(() => {
+    remindSpy.mockReset().mockResolvedValue({ kind: "sent", tally: TALLY });
+  });
+
+  it("당번이 누르면 그 주로 새 슬롯을 만들어 보내고 몇 명에게 갔는지 돌려준다", async () => {
+    me("d@x");
+    setup({ week: { duty_email: "d@x" }, writers: [op("a@x", "운영자A")] });
+    expect(await remindPending({ weekId: W })).toEqual({ ok: true, message: "2명에게 알렸습니다" });
+    const [, manual] = remindSpy.mock.calls[0];
+    expect(manual.week.id).toBe(W);
+    expect(manual.slot).toMatch(/^manual:/);
+  });
+
+  it("당번도 관리자도 아니면 거절", async () => {
+    me("a@x");
+    setup({ week: { duty_email: "d@x" }, writers: [op("a@x", "운영자A")] });
+    expect(await remindPending({ weekId: W })).toEqual({
+      ok: false,
+      error: "당번 또는 관리자만 할 수 있습니다.",
+    });
+    expect(remindSpy).not.toHaveBeenCalled();
+  });
+
+  it("보고된 주는 거절", async () => {
+    me("d@x");
+    setup({ week: { duty_email: "d@x", status: "reported" }, writers: [] });
+    expect(await remindPending({ weekId: W })).toEqual({
+      ok: false,
+      error: "보고가 끝난 주입니다. 관리자에게 정정을 요청하세요.",
+    });
+  });
+
+  it("모두 냈으면 그렇게 알린다, 발송 실패는 실패로", async () => {
+    me("d@x");
+    setup({ week: { duty_email: "d@x" }, writers: [] });
+    remindSpy.mockResolvedValue({ kind: "skipped", reason: "모두 제출했습니다" });
+    expect(await remindPending({ weekId: W })).toEqual({ ok: true, message: "모두 제출했습니다" });
+    remindSpy.mockResolvedValue({
+      kind: "sent",
+      tally: { ...TALLY, sent: 1, failed: 1, errors: ["b@x: 403"] },
+    });
+    expect(await remindPending({ weekId: W })).toEqual({
+      ok: false,
+      error: "1명에게 알렸지만 1명은 실패했습니다: b@x: 403",
+    });
   });
 });

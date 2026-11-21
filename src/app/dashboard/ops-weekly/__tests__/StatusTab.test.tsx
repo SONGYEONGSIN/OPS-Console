@@ -15,7 +15,9 @@ vi.mock("next/navigation", () => ({
 const returnReport = vi.fn();
 const saveDutySummary = vi.fn();
 const finalizeWeek = vi.fn();
+const remindPending = vi.fn();
 vi.mock("@/features/ops-weekly/workflow-actions", () => ({
+  remindPending: (...a: unknown[]) => remindPending(...a),
   returnReport: (...a: unknown[]) => returnReport(...a),
   saveDutySummary: (...a: unknown[]) => saveDutySummary(...a),
   finalizeWeek: (...a: unknown[]) => finalizeWeek(...a),
@@ -87,6 +89,7 @@ const base = {
   projectGroups: [] as ProjectGroup[],
   finalize: ok,
   submittedCount: 0,
+  recipientCount: 2,
 };
 const row = (name: string) => {
   const tr = screen.getByText(name).closest("tr");
@@ -100,6 +103,9 @@ beforeEach(() => {
   returnReport.mockReset().mockResolvedValue({ ok: true });
   saveDutySummary.mockReset().mockResolvedValue({ ok: true });
   finalizeWeek.mockReset().mockResolvedValue({ ok: true });
+  remindPending
+    .mockReset()
+    .mockResolvedValue({ ok: true, message: "2명에게 알렸습니다" });
 });
 afterEach(cleanup);
 
@@ -484,6 +490,63 @@ describe("StatusTab", () => {
       expect(
         screen.getByRole("link", { name: "설정 열기" }),
       ).toHaveAttribute("href", expect.stringContaining("section=exclusions"));
+    });
+  });
+
+  describe("A2 알림", () => {
+    it("[미제출자에게 알림] — 당번이 누르면 remindPending 을 부르고 결과를 적는다", async () => {
+      render(<StatusTab {...base} />);
+      fireEvent.click(
+        screen.getByRole("button", { name: "미제출자에게 알림" }),
+      );
+      await waitFor(() => {
+        expect(remindPending).toHaveBeenCalledWith({ weekId: "w1" });
+      });
+      expect(
+        await screen.findByText("2명에게 알렸습니다"),
+      ).toBeInTheDocument();
+    });
+
+    it("알림 실패는 실패 문구로", async () => {
+      remindPending.mockResolvedValue({ ok: false, error: "1명은 실패했습니다" });
+      render(<StatusTab {...base} />);
+      fireEvent.click(
+        screen.getByRole("button", { name: "미제출자에게 알림" }),
+      );
+      expect(
+        await screen.findByText("1명은 실패했습니다"),
+      ).toBeInTheDocument();
+    });
+
+    it("당번·관리자가 아니거나, 모두 냈거나, 보고된 주면 알림 버튼이 없다", () => {
+      const btn = () =>
+        screen.queryByRole("button", { name: "미제출자에게 알림" });
+      const { rerender } = render(
+        <StatusTab {...base} actor={{ email: "z@x", isAdmin: false }} />,
+      );
+      expect(btn()).toBeNull();
+      rerender(<StatusTab {...base} submittedCount={2} />);
+      expect(btn()).toBeNull();
+      rerender(
+        <StatusTab {...base} week={{ ...WEEK, status: "reported" }} />,
+      );
+      expect(btn()).toBeNull();
+    });
+
+    it("받는 사람이 0명이면 최종 보고 확인창이 알림이 안 나간다고 경고한다", () => {
+      render(<StatusTab {...base} recipientCount={0} />);
+      fireEvent.click(screen.getByRole("button", { name: "최종 보고" }));
+      expect(
+        within(screen.getByRole("dialog")).getByText(
+          /받는 사람이 없어 보고 알림 메일이 나가지 않습니다/,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("받는 사람이 있으면 경고가 없다", () => {
+      render(<StatusTab {...base} />);
+      fireEvent.click(screen.getByRole("button", { name: "최종 보고" }));
+      expect(screen.queryByText(/받는 사람이 없어/)).toBeNull();
     });
   });
 });

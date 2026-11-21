@@ -21,6 +21,7 @@ const m = vi.hoisted(() => ({
   listReportStatusesForWeeks: vi.fn(),
   loadSettingsBundle: vi.fn(),
   isRecipient: vi.fn(),
+  listRecipients: vi.fn(),
   loadAutoSnapshot: vi.fn(),
   loadUnmatchedServices: vi.fn(),
 }));
@@ -43,6 +44,7 @@ vi.mock("@/features/ops-weekly/report-queries", () => ({
 vi.mock("@/features/ops-weekly/settings-queries", () => ({
   loadSettingsBundle: m.loadSettingsBundle,
   isRecipient: m.isRecipient,
+  listRecipients: m.listRecipients,
 }));
 vi.mock("@/features/ops-weekly/auto-queries", () => ({
   loadAutoSnapshot: m.loadAutoSnapshot,
@@ -118,6 +120,7 @@ beforeEach(() => {
   m.listReportStatusesForWeeks.mockResolvedValue([]);
   m.loadSettingsBundle.mockResolvedValue({ marker: "bundle" });
   isRecipientMock(false);
+  m.listRecipients.mockResolvedValue(["boss@x"]);
   m.loadAutoSnapshot.mockResolvedValue(snap());
   m.loadUnmatchedServices.mockResolvedValue({ application: [], pims: [] });
   m.loadAutoSnapshots.mockImplementation(
@@ -356,6 +359,7 @@ describe("loadOpsWeeklyPage — 열람 판정", () => {
       kpis: null,
       snapshot: null,
       detail: null,
+      recipientCount: 1, // 명단이 아니라 수만 내린다
     });
     expect(m.loadAutoSnapshot).not.toHaveBeenCalled();
     expect(m.loadReportDetail).not.toHaveBeenCalled();

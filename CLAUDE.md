@@ -214,7 +214,7 @@ E2E 운영 메모:
 
 ## /dashboard/ops-weekly — 운영부 주간업무보고
 
-운영자가 매주 자기 보고서를 쓰고, 당번이 모아 [최종 보고] 한다. A1 은 **작성·제출·최종 보고·관리자 설정**, A4 는 **작업진행현황 개발/테스트 구분 수집**이다. 발송(A2)·엑셀/워드 저장(A3)은 뒤 PR 이다.
+운영자가 매주 자기 보고서를 쓰고, 당번이 모아 [최종 보고] 한다. A1 은 **작성·제출·최종 보고·관리자 설정**, A2 는 **알림 발송**, A4 는 **작업진행현황 개발/테스트 구분 수집**이다. 엑셀/워드 저장(A3)은 뒤 PR 이다.
 
 **slug 는 `ops-weekly`** 다 — 이미 자동화 잡 id `weekly-report`(본부 차주보고)가 있어 같은 이름을 쓰면 두 기능이 한 이름으로 섞인다.
 
@@ -225,6 +225,8 @@ E2E 운영 메모:
 **자동 항목은 당번의 [최종 보고] 때 전원 것을 한꺼번에 굳힌다**(`freeze.ts`). 제출 때 고정되는 것은 손으로 쓴 내용뿐이고, 제출했어도 최종 보고 전까지 자동 항목은 열 때마다 새로 계산한다. 제출 때 굳히면 수요일 수집 전에 낸 보고서가 `구분 미확인` 으로 굳고, 같은 주 보고서끼리 기준 시각이 갈린다. **굳히기가 하나라도 실패하면 보고하지 않는다** — 앞선 보고서는 이미 굳었을 수 있지만, 주는 open 으로 남고 `week-reported` 도 안 나간다. 다시 누르면 전원을 다시 굳힌다(일반 주. 정정 주는 비어 있는 것만 채운다). **정정 뒤 다시 보고해도 굳은 값은 그대로다** — 비어 있는 스냅샷만 채우고, 다시 작성 요청도 스냅샷을 지우지 않는다.
 
 **확장 자리 둘.** `emitOpsWeeklyEvent` 의 `OPS_WEEKLY_HOOKS` 는 A2·A3 이 훅을 등록할 자리다(`all-submitted`·`report-returned`·`week-reported`). `ops_weekly_dev_status` 는 A4 가 수요일 09:30 회사 PC 작업으로 채운다. 구분은 셋이다 — `dev`(테스트 오픈 `-`) · `test`(테스트 오픈 일시) · `deployed`(리얼배포 일시, 테스트 오픈과 무관). `deployed` 인 시작 전 서비스는 개발·테스트·미확인 어디에도 넣지 않고, 오픈 주가 오면 접수기간으로 차주 오픈 예정에 든다. 비어 있으면 개발/테스트 구분은 `구분 미확인` 이다.
+
+**A2 알림은 다섯 때에 나간다**(`features/ops-weekly/notify/`). 작성 요청(수 10:00, 작성 대상 전원) · 독촉(목 12:00·17:00, 미제출자) — 둘은 자동화 잡 `ops-weekly-request`·`ops-weekly-remind` 이고 **cron-job.org 등록이 필요하다**. 전원 제출(당번) · 다시 작성 요청(그 운영자, 당번→본인) · 최종 보고(받는 사람, 당번 메일함에서) 셋은 `OPS_WEEKLY_HOOKS` 의 훅이고 결과는 이벤트 잡 `ops-weekly-notify` 로 `automation_runs` 에 남는다. 작성 요청·독촉은 **본인 메일함→본인**이라 발신 권한 문제가 없다. **목 17:00 뒤로는 자동 독촉이 없다** — 제출 현황의 [미제출자에게 알림](`remindPending`, 당번·관리자)으로 사람이 보낸다. 이력은 `ops_weekly_notices`(`week_id, slot, recipient` 유니크) — 같은 슬롯에서 `sent`·`dry_run` 인 사람은 다시 안 보내고 `failed` 만 다시 보낸다(cron 재시도가 중복 메일이 되지 않게). 수동 알림은 누를 때마다 슬롯이 새로 생긴다. 받는 사람이 0명이면 최종 보고 확인창이 경고한다(보고는 막지 않는다). `OPS_WEEKLY_NOTIFY_DRY_RUN=true` 면 발송 없이 이력만, `OPS_WEEKLY_TEAMS_CHAT_ID` 가 있으면 작성 요청을 그룹채팅에도 올린다(없으면 메일만, 실행 메시지에 적힌다). `@/lib/microsoft` 는 `notify/deliver.ts` 한 곳만 부른다(`no-outbound.test.ts`). 설계: `docs/superpowers/specs/2026-11-21-ops-weekly-a2-notify-design.md`
 
 **그림은 비공개 버킷이다.** DB 엔 `<img data-ops-path>` 경로만 저장하고 화면에 낼 때 `signProjectEntries` 로 1시간 서명 URL 을 채운다. 두 방향 모두 `note-images.ts` 한 곳을 거친다.
 
@@ -276,6 +278,8 @@ E2E 운영 메모:
 | `sms-sender-request-notify` | 5분마다 (cron-job.org) | Teams 목록 'SMS 발신번호 사전등록 신청'의 새 행 → 담당 매니저, '완료' 전환 → 신청자에게 메일([내부관리자]) + 제출 서류 폴더 새 파일·교체 → 담당 매니저 묶음 메일(본인 업로드 제외). 처음 실행은 적재만 | `sms_sender_request_notices` · `sms_sender_doc_upload_notices` |
 | `sms-status-refresh` | 수동 — 내부관리자 '현황 최신화' 버튼 또는 자동화 페이지, 회사 PC 폴러(`scripts/sms-status-refresh/poll-local.ps1`) | Moa(원서접수)·PIMS 모니터링 발신번호 목록 수집 → Teams 저장 → 현황 파일 06·07 갱신(검사 통과 시 If-Match 업로드). +PR-3a: 세종 메일 발번 리스트 첨부를 세종 등록 리스트 폴더에 자동 저장(단계 mail → moa → pims → workbook, env SMS_STATUS_MAILBOX_UPN·SMS_STATUS_SEJONG_CONTACT_FOLDER) +PR-3b: 숨김 시트(_학교·_서류·_번호)·01~03 보기·00. 요약을 사람 칸 보존하며 갱신, 손댄 칸은 _수정 기록 | `sms_status_refresh_requests` + `automation_runs` |
 | `manual-review-reminder` | 매일 10:00 호출 (cron-job.org) — **3월·8월 영업일만 발송**, 다른 날은 스킵 | `2. 매뉴얼 대장` 중 연간 일정 '진행 중' 업무의 매뉴얼을 담당자 본인 메일함→본인에게 반기 1회(8월=4~9월, 3월=10~3월) + 관리자 요약 반기 1회(담당자 미확인·파일 연결 안 됨). 실패분만 그 달 영업일마다 재시도. env `SHAREPOINT_MANUAL_LEDGER_ITEM_ID`·`MANUAL_EDIT_ADMIN_EMAILS`. 시트는 번호를 뗀 이름으로 찾는다(번호가 밀려 404 — 2026-11-10 실측) | `manual_review_reminders` |
+| `ops-weekly-request` | 매주 수 10:00 (cron-job.org) | 주간업무보고 작성 요청 메일 — 작성 대상 전원, 본인 메일함→본인 (+`OPS_WEEKLY_TEAMS_CHAT_ID` 그룹채팅) | `ops_weekly_notices` + `automation_runs` |
+| `ops-weekly-remind` | 매주 목 12:00·17:00 (cron-job.org) | 주간업무보고 미제출자 독촉 메일. 17:00 뒤는 당번이 제출 현황에서 수동 | `ops_weekly_notices` + `automation_runs` |
 | `ops-weekly-dev-status` | 매주 수 09:30 — 회사 PC 작업 스케줄러(`scripts/moa-dev-status/run-local.ps1`) | Moa 작업진행현황의 테스트 오픈 칸 → 시작 전 서비스의 개발/테스트 구분(주간보고 원서접수 탭) | `ops_weekly_dev_status` + `automation_runs` |
 
 **localOnly 라 화면 토글이 없으니 `automation_settings` 행을 SQL 로 켜야 일일 보고가 미실행을 잡는다**(같은 구멍이 `ai-tips-collect` 에도 있다 — 언급만).

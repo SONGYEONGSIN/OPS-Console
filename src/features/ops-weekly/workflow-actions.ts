@@ -22,9 +22,11 @@ import {
   canReturnReport,
   canSubmitReport,
   checkFinalize,
+  isDuty,
   type Actor,
   type FinalizeCheck,
 } from "./permissions";
+import { sendRemind, type SendOutcome } from "./notify/run";
 import { listPendingWriters, listReports } from "./report-queries";
 import type { WriterCandidate } from "./roster";
 import {
@@ -370,4 +372,39 @@ export async function reopenWeek(input: {
   if (changedRows(res.data) === 0) return failOf("이미 다시 열린 주입니다.");
   revalidatePath(OPS_WEEKLY_PATH);
   return OK;
+}
+
+export type RemindResult = { ok: true; message: string } | Fail;
+
+function remindResultOf(out: SendOutcome): RemindResult {
+  if (out.kind === "skipped") return { ok: true, message: out.reason };
+  if (out.kind === "failed") return failOf(out.reason);
+  const { sent, dryRun, failed, errors } = out.tally;
+  const done = sent + dryRun;
+  if (failed > 0) {
+    return failOf(
+      `${done}명에게 알렸지만 ${failed}명은 실패했습니다: ${errors.join(", ")}`,
+    );
+  }
+  return { ok: true, message: `${done}명에게 알렸습니다` };
+}
+
+/**
+ * 당번의 [미제출자에게 알림] — 목요일 17:00 뒤로는 자동 독촉이 없어 사람이 누른다.
+ * 슬롯을 누를 때마다 새로 만든다 — 같은 슬롯이면 두 번째 누름이 '이미 보냄' 으로 묻힌다.
+ */
+export async function remindPending(input: {
+  weekId: string;
+}): Promise<RemindResult> {
+  const ctx = await loadWeekCtx(input);
+  if (isFail(ctx)) return ctx;
+  const { actor, week } = ctx;
+  if (stateOf(week).status !== "open") return failOf(LOCKED);
+  if (!isDuty(actor, stateOf(week)) && !actor.isAdmin) return failOf(FORBIDDEN);
+  const now = new Date();
+  const out = await sendRemind(now, {
+    week,
+    slot: `manual:${now.toISOString()}`,
+  });
+  return remindResultOf(out);
 }

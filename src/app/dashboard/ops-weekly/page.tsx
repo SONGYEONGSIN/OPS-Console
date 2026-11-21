@@ -68,7 +68,8 @@ function WeekBody({ view }: { view: Week }) {
     tab === "status" &&
     view.reports !== null &&
     view.projectGroups !== null &&
-    view.finalize !== null
+    view.finalize !== null &&
+    view.recipientCount !== null
   ) {
     // 입력 중이던 요약·사유가 다른 주·보고서로 넘어가지 않게 같은 키 규칙을 쓴다.
     const key = bodyKeyOf({
@@ -87,6 +88,7 @@ function WeekBody({ view }: { view: Week }) {
         projectGroups={view.projectGroups}
         finalize={view.finalize}
         submittedCount={view.submittedCount}
+        recipientCount={view.recipientCount}
       />
     );
   }
