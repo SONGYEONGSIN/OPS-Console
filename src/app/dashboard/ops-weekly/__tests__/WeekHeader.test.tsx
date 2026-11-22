@@ -344,10 +344,12 @@ describe("WeekHeader", () => {
       expect(t).toContain("min-w-9");
     });
 
-    it("주 이동은 오늘 할 일과 같은 치수 — 버튼 text-sm·border-line·px-2 py-1, 주 표시 text-base bold tracking", () => {
+    it("주 이동은 오늘 할 일과 같은 글씨 — 버튼 text-sm·border-line·정사각형, 주 표시 text-base bold tracking", () => {
       render(<WeekHeader {...base} />);
       const t = tokens(screen.getByRole("link", { name: "이전 주" }));
-      expect(t).toEqual(expect.arrayContaining(["text-sm", "border-line", "px-2", "py-1", "text-ink"]));
+      expect(t).toEqual(expect.arrayContaining(["text-sm", "border-line", "py-1", "text-ink"]));
+      // 가로 = 세로(정사각형)
+      expect(t).toContain("aspect-square");
       expect(t).not.toContain("text-xs");
       const label = tokens(screen.getByText(/주차 · /));
       expect(label).toEqual(expect.arrayContaining(["text-base", "font-bold", "tracking-[-0.02em]"]));

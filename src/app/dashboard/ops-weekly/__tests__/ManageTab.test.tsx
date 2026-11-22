@@ -265,10 +265,36 @@ describe("ManageTab", () => {
     );
   });
 
+  it("프로젝트 표 — 다른 관리 표 모양, 담당자는 버튼, 사용은 오른쪽 ON | OFF", async () => {
+    setUrl("?week=2026-11-16&tab=settings&section=projects");
+    render(<ManageTab bundle={bundle({ projects: [proj("PIMS", 0)] })} />);
+    const table = screen.getByRole("table", { name: "프로젝트·TF 목록" });
+    expect([...table.querySelectorAll("th")].map((h) => h.textContent)).toEqual([
+      "항목명",
+      "구분",
+      "순서",
+      "담당자",
+      "사용",
+      "",
+    ]);
+    expect(within(table).queryByRole("checkbox")).toBeNull();
+    const use = within(table).getByRole("group", { name: "PIMS 사용" });
+    fireEvent.click(within(use).getByRole("button", { name: "OFF" }));
+    fireEvent.click(screen.getByRole("button", { name: "PIMS 저장" }));
+    await waitFor(() =>
+      expect(upsertProject).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "p0", active: false }),
+      ),
+    );
+  });
+
   it("프로젝트 저장 → upsertProject 후 담당자 저장", async () => {
     setUrl("?week=2026-11-16&tab=settings&section=projects");
     render(<ManageTab bundle={bundle({ projects: [proj("PIMS", 0)] })} />);
-    fireEvent.click(screen.getByLabelText("PIMS 담당 운영자A"));
+    const owner = screen.getByRole("button", { name: "PIMS 담당 운영자A" });
+    expect(owner).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(owner);
+    expect(owner).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(screen.getByRole("button", { name: "PIMS 저장" }));
     await waitFor(() =>
       expect(setProjectOwners).toHaveBeenCalledWith({
@@ -285,7 +311,7 @@ describe("ManageTab", () => {
     });
   });
 
-  it("명단 밖 기존 담당자는 체크된 채 보이고, 풀면 빠진 채 저장된다", async () => {
+  it("명단 밖 기존 담당자는 눌린 채 보이고, 풀면 빠진 채 저장된다", async () => {
     setUrl("?week=2026-11-16&tab=settings&section=projects");
     render(
       <ManageTab
@@ -294,8 +320,10 @@ describe("ManageTab", () => {
         })}
       />,
     );
-    const box = screen.getByLabelText("PIMS 담당 x@x (작성 명단 밖)");
-    expect(box).toBeChecked();
+    const box = screen.getByRole("button", {
+      name: "PIMS 담당 x@x (작성 명단 밖)",
+    });
+    expect(box).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(box);
     fireEvent.click(screen.getByRole("button", { name: "PIMS 저장" }));
     await waitFor(() =>
