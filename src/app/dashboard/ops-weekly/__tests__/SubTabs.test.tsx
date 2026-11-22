@@ -48,14 +48,10 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("SubTabs", () => {
-  it("탭 줄은 tablist, 탭은 밑줄 표준 모양, 숫자는 tabular-nums", () => {
+  it("탭 줄은 tablist, 탭은 메일함 범위 칩 모양(글씨 sm·선택은 굵은 잉크+빨간 밑줄), 숫자는 괄호 안 tabular-nums", () => {
     mount();
     const list = screen.getByRole("tablist", { name: "원서접수 묶음" });
     expect(tokens(list)).toContain("overflow-x-auto");
-    expect(tokens(list)).toContain("-mb-px");
-    expect(tokens(list.parentElement as Element)).toEqual(
-      expect.arrayContaining(["border-b", "border-line-soft"]),
-    );
     const dev = screen.getByRole("tab", { name: /개발 중/ });
     expect(dev).toHaveAttribute("aria-selected", "true");
     expect(dev).toHaveAttribute("tabindex", "0");
@@ -63,28 +59,45 @@ describe("SubTabs", () => {
     expect(dev).toHaveAttribute("id", "sub-tab-dev");
     expect(tokens(dev)).toEqual(
       expect.arrayContaining([
-        "border-b-2",
-        "border-vermilion",
-        "font-semibold",
-        "text-vermilion",
+        "relative",
+        "text-sm",
+        "font-bold",
+        "text-ink",
         "shrink-0",
         "whitespace-nowrap",
-        "min-h-9",
-        "lg:min-h-0",
       ]),
     );
+    expect(dev.textContent).toBe("개발 중 (3)");
+    // 선택 밑줄은 빨간 막대
+    const bar = dev.querySelector("[aria-hidden]") as HTMLElement;
+    expect(tokens(bar)).toEqual(expect.arrayContaining(["h-0.5", "bg-vermilion"]));
     const test = screen.getByRole("tab", { name: /테스트 중/ });
     expect(test).toHaveAttribute("aria-selected", "false");
     expect(test).toHaveAttribute("tabindex", "-1");
-    expect(tokens(test)).toEqual(
-      expect.arrayContaining(["border-transparent", "text-ink-soft"]),
-    );
-    expect(tokens(test)).not.toContain("border-vermilion");
+    expect(tokens(test)).toEqual(expect.arrayContaining(["text-muted"]));
+    expect(test.querySelector("[aria-hidden]")).toBeNull();
     expect(tokens(within(dev).getByText("3"))).toContain("tabular-nums");
-    expect(tokens(within(test).getByText("—"))).toContain("text-muted");
+    expect(within(test).getByText("—")).toBeInTheDocument();
     expect(
       within(screen.getByRole("tab", { name: /운영 중/ })).getByText("0"),
     ).toBeInTheDocument();
+  });
+
+  it("heading 을 주면 탭 줄 왼쪽, 같은 줄에 놓인다", () => {
+    render(
+      <SubTabs
+        tab="application"
+        ariaLabel="원서접수 묶음"
+        tabs={TABS}
+        panels={PANELS}
+        heading={<h2>원서접수</h2>}
+      />,
+    );
+    const h = screen.getByRole("heading", { name: "원서접수" });
+    const list = screen.getByRole("tablist", { name: "원서접수 묶음" });
+    const row = h.parentElement as HTMLElement;
+    expect(row.contains(list)).toBe(true);
+    expect(tokens(row)).toContain("flex");
   });
 
   it("비활성 패널도 DOM 에 남고 hidden 이다(입력 중인 폼 보존)", () => {
@@ -174,9 +187,9 @@ describe("SubTabs", () => {
     }
   });
 
-  it("접근 이름에 라벨과 숫자 사이 구분이 있다(개발 중 3)", () => {
+  it("접근 이름에 라벨과 숫자 사이 구분이 있다(개발 중 (3))", () => {
     mount();
-    expect(screen.getByRole("tab", { name: "개발 중 3" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "개발 중 (3)" })).toBeInTheDocument();
   });
 
   it("패널은 탭 순서에 든다(tabIndex 0)", () => {

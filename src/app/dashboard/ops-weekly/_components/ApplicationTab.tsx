@@ -128,20 +128,19 @@ export function ApplicationTab({
   };
 
   return (
-    <div className="flex flex-col gap-7">
-      <TabHeading
-        title="원서접수"
-        summary={`자동 ${autoCount}건 · 직접 ${directCount}건`}
-      >
-        {freezeNotice ? <AutoFreezeNotice /> : null}
-      </TabHeading>
-      <SubTabs
-        tab="application"
-        ariaLabel="원서접수 묶음"
-        tabs={tabs}
-        panels={panels}
-        defaultKey={defaultAppSub(app.devStatusCollected)}
-      />
-    </div>
+    <SubTabs
+      tab="application"
+      ariaLabel="원서접수 묶음"
+      tabs={tabs}
+      panels={panels}
+      defaultKey={defaultAppSub(app.devStatusCollected)}
+      heading={
+        <TabHeading
+          title="원서접수"
+          summary={`자동 ${autoCount}건 · 직접 ${directCount}건`}
+        />
+      }
+      notice={freezeNotice ? <AutoFreezeNotice /> : null}
+    />
   );
 }

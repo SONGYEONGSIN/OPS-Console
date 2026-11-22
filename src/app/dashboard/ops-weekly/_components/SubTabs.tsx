@@ -19,12 +19,17 @@ type Props = {
   panels: Record<string, ReactNode>;
   /** URL 에 sub 가 없을 때의 탭 — 안 주면 그 탭의 첫 키 */
   defaultKey?: string;
+  /** 탭 줄 왼쪽, 같은 줄에 놓을 제목(메일함 머리처럼 `원서접수 · 건수  탭…`) */
+  heading?: ReactNode;
+  /** 제목·탭 줄 아래 보조 줄(굳는 시점 안내 등) */
+  notice?: ReactNode;
 };
 
+// 메일함 범위 칩(MailboxScopeChips)과 같은 모양 — 글씨 sm, 선택은 굵은 잉크 + 빨간 밑줄 막대, 숫자는 괄호 안.
 const TAB_BASE =
-  "shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-xs min-h-9 lg:min-h-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ink";
-const TAB_ACTIVE = "border-vermilion font-semibold text-vermilion";
-const TAB_IDLE = "border-transparent text-ink-soft hover:text-ink";
+  "relative shrink-0 cursor-pointer whitespace-nowrap px-3 py-1 text-sm transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ink";
+const TAB_ACTIVE = "font-bold text-ink";
+const TAB_IDLE = "text-muted hover:text-ink";
 
 /**
  * 하위 탭 줄 id — KPI 카드가 전환 뒤 그 영역의 줄로 스크롤한다.
@@ -32,7 +37,11 @@ const TAB_IDLE = "border-transparent text-ink-soft hover:text-ink";
  */
 export const subTabsIdOf = (tab: SubTabArea): string => `ops-subtabs-${tab}`;
 
-export function neighbour(key: string, index: number, last: number): number | null {
+export function neighbour(
+  key: string,
+  index: number,
+  last: number,
+): number | null {
   if (key === "ArrowRight") return index === last ? 0 : index + 1;
   if (key === "ArrowLeft") return index === 0 ? last : index - 1;
   if (key === "Home") return 0;
@@ -44,7 +53,15 @@ export function neighbour(key: string, index: number, last: number): number | nu
  * 탭 안 하위 탭 — PageTabs `size="sm"` 밑줄 줄과 같은 모양인데 링크가 아니라 버튼이다(주소만 `sub` 로 바꾼다).
  * 선택은 URL(`?sub=`)이고 고르면 바로 활성화된다. 패널은 `hidden` 속성만 토글해 늘 마운트해 둔다.
  */
-export function SubTabs({ tab, ariaLabel, tabs, panels, defaultKey }: Props) {
+export function SubTabs({
+  tab,
+  ariaLabel,
+  tabs,
+  panels,
+  defaultKey,
+  heading,
+  notice,
+}: Props) {
   const { raw, setSub } = useOpsSub();
   const refs = useRef(new Map<string, HTMLButtonElement>());
   const keys = tabs.map((t) => t.key);
@@ -79,50 +96,60 @@ export function SubTabs({ tab, ariaLabel, tabs, panels, defaultKey }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div
-        id={subTabsIdOf(tab)}
-        // 일회성 임의 값: 고정 KPI 바(StickyKpiBar 가 --ops-kpi-h 에 높이를 쓴다) 아래에 서도록. 미측정이면 12rem.
-        className="border-b border-line-soft lg:scroll-mt-[calc(var(--ops-kpi-h,12rem)_+_0.5rem)]"
-      >
+      <div className="flex flex-col gap-1">
         <div
-          ref={list}
-          role="tablist"
-          aria-label={ariaLabel}
-          className="-mb-px flex gap-1 overflow-x-auto"
+          id={subTabsIdOf(tab)}
+          // 일회성 임의 값: 고정 KPI 바(StickyKpiBar 가 --ops-kpi-h 에 높이를 쓴다) 아래에 서도록. 미측정이면 12rem.
+          className="flex flex-wrap items-center gap-x-4 gap-y-2 lg:scroll-mt-[calc(var(--ops-kpi-h,12rem)_+_0.5rem)]"
         >
-          {tabs.map((t, i) => {
-            const isActive = t.key === active;
-            return (
-              <button
-                key={t.key}
-                ref={(el) => {
-                  if (el) refs.current.set(t.key, el);
-                  else refs.current.delete(t.key);
-                }}
-                type="button"
-                role="tab"
-                id={`sub-tab-${t.key}`}
-                aria-controls={`sub-panel-${t.key}`}
-                aria-selected={isActive}
-                tabIndex={isActive ? 0 : -1}
-                className={`${TAB_BASE} ${isActive ? TAB_ACTIVE : TAB_IDLE}`}
-                onClick={() => {
-                  setSub(t.key);
-                }}
-                onKeyDown={(e) => {
-                  onKeyDown(e, i);
-                }}
-              >
-                {t.label}{" "}
-                <span
-                  className={`ml-1 tabular-nums ${isActive ? "" : "text-muted"}`}
+          {heading}
+          <div
+            ref={list}
+            role="tablist"
+            aria-label={ariaLabel}
+            className="flex min-w-0 max-w-full overflow-x-auto pb-px"
+          >
+            {tabs.map((t, i) => {
+              const isActive = t.key === active;
+              return (
+                <button
+                  key={t.key}
+                  ref={(el) => {
+                    if (el) refs.current.set(t.key, el);
+                    else refs.current.delete(t.key);
+                  }}
+                  type="button"
+                  role="tab"
+                  id={`sub-tab-${t.key}`}
+                  aria-controls={`sub-panel-${t.key}`}
+                  aria-selected={isActive}
+                  tabIndex={isActive ? 0 : -1}
+                  className={`${TAB_BASE} ${isActive ? TAB_ACTIVE : TAB_IDLE}`}
+                  onClick={() => {
+                    setSub(t.key);
+                  }}
+                  onKeyDown={(e) => {
+                    onKeyDown(e, i);
+                  }}
                 >
-                  {t.count === null ? "—" : t.count}
-                </span>
-              </button>
-            );
-          })}
+                  {t.label}
+                  {" ("}
+                  <span className="tabular-nums">
+                    {t.count === null ? "—" : t.count}
+                  </span>
+                  {")"}
+                  {isActive ? (
+                    <span
+                      aria-hidden
+                      className="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-vermilion"
+                    />
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
         </div>
+        {notice}
       </div>
       {tabs.map((t) => (
         <div

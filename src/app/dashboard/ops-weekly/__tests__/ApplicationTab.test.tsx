@@ -266,15 +266,16 @@ describe("ApplicationTab", () => {
     expect(h.contains(count)).toBe(false);
   });
 
-  it("탭 안 큰 절 사이 간격(gap-7), 하위 탭 줄과 패널 간격(gap-6)", () => {
-    const { container } = render(
-      <ApplicationTab {...PROPS} snapshot={snap()} />,
-    );
-    const root = container.firstElementChild as Element;
-    expect(root.className).toContain("gap-7");
+  it("제목 원서접수와 건수가 하위 탭 줄 왼쪽 같은 줄에 있고(메일함 머리), 탭 줄과 패널 간격은 gap-6", () => {
+    render(<ApplicationTab {...PROPS} snapshot={snap()} />);
+    const list = screen.getByRole("tablist", { name: "원서접수 묶음" });
+    const row = list.parentElement as Element;
     expect(
-      (screen.getByRole("tablist").parentElement?.parentElement as Element)
-        .className,
+      within(row as HTMLElement).getByRole("heading", { name: "원서접수" }),
+    ).toBeInTheDocument();
+    expect(row.textContent).toContain("자동 ");
+    expect(
+      (row.parentElement?.parentElement as Element).className,
     ).toContain("gap-6");
   });
 
