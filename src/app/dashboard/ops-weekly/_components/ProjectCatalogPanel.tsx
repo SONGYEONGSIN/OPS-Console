@@ -10,6 +10,7 @@ import {
   upsertProject,
 } from "@/features/ops-weekly/settings-actions";
 import type { SettingsBundle } from "@/features/ops-weekly/settings-queries";
+import { OnOffToggle } from "./OnOffToggle";
 import { BTN_CLASS, ERROR_CLASS, FIELD_CLASS } from "./styles";
 import { useSettingsSave } from "./use-settings-save";
 
@@ -20,6 +21,36 @@ const KIND_LABEL: Record<ProjectKind, string> = {
   project: "프로젝트",
   tf: "TF",
 };
+
+const CELL = "px-3 py-2";
+// 담당자 고르기 — 체크박스 대신 누르는 버튼. 눌린 것은 ON 토글과 같은 검정.
+const OWNER_BASE =
+  "border px-2 py-0.5 text-xs transition-colors min-h-9 lg:min-h-0";
+const OWNER_ON = "border-ink bg-ink text-cream";
+const OWNER_OFF =
+  "border-line-soft text-ink hover:border-ink hover:bg-ink hover:text-cream";
+
+function OwnerButton(props: {
+  label: string;
+  text: string;
+  on: boolean;
+  muted?: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={props.label}
+      aria-pressed={props.on}
+      onClick={props.onToggle}
+      className={`${OWNER_BASE} ${props.on ? OWNER_ON : OWNER_OFF} ${
+        props.muted && !props.on ? "text-muted" : ""
+      }`}
+    >
+      {props.text}
+    </button>
+  );
+}
 
 function blankOf(order: number): Draft {
   return {
@@ -41,7 +72,7 @@ function ProjectRow(props: {
   const save = useSettingsSave();
   const [d, setD] = useState<Draft>(initial);
   const label = d.name === "" ? "새 항목" : d.name;
-  // 제외·퇴사로 명단에서 빠진 기존 담당자 — 체크박스가 없으면 풀 수 없어 저장이 계속 거절된다.
+  // 제외·퇴사로 명단에서 빠진 기존 담당자 — 버튼이 없으면 풀 수 없어 저장이 계속 거절된다.
   const listed = new Set(writers.map((w) => normEmail(w.email)));
   const outside = d.owners.filter((o) => !listed.has(normEmail(o)));
   const toggleOwner = (email: string, on: boolean) => {
@@ -75,8 +106,8 @@ function ProjectRow(props: {
   }
 
   return (
-    <tr className="border-t border-line-soft align-top">
-      <td className="py-1 pr-2">
+    <tr className="border-b border-line-soft align-top hover:bg-line-soft">
+      <td className={CELL}>
         <input
           aria-label={`${label} 이름`}
           className={FIELD_CLASS}
@@ -86,7 +117,7 @@ function ProjectRow(props: {
           }}
         />
       </td>
-      <td className="py-1 pr-2">
+      <td className={CELL}>
         <select
           aria-label={`${label} 구분`}
           className={FIELD_CLASS}
@@ -99,7 +130,7 @@ function ProjectRow(props: {
           <option value="tf">{KIND_LABEL.tf}</option>
         </select>
       </td>
-      <td className="py-1 pr-2">
+      <td className={CELL}>
         <input
           type="number"
           aria-label={`${label} 순서`}
@@ -110,57 +141,50 @@ function ProjectRow(props: {
           }}
         />
       </td>
-      <td className="py-1 pr-2">
-        <input
-          type="checkbox"
-          aria-label={`${label} 사용`}
-          checked={d.active}
-          onChange={(e) => {
-            patch({ active: e.target.checked });
-          }}
-        />
-      </td>
-      <td className="py-1 pr-2">
+      <td className={CELL}>
         {d.id === undefined ? (
           <span className="text-xs text-muted">저장한 뒤 지정합니다</span>
         ) : (
-          <div className="flex flex-wrap gap-x-3 gap-y-1">
+          <div className="flex flex-wrap gap-1">
             {writers.map((w) => (
-              <label key={w.email} className="flex items-center gap-1 text-xs">
-                <input
-                  type="checkbox"
-                  aria-label={`${label} 담당 ${w.name}`}
-                  checked={d.owners.includes(w.email)}
-                  onChange={(e) => {
-                    toggleOwner(w.email, e.target.checked);
-                  }}
-                />
-                {w.name}
-              </label>
+              <OwnerButton
+                key={w.email}
+                label={`${label} 담당 ${w.name}`}
+                text={w.name}
+                on={d.owners.includes(w.email)}
+                onToggle={() => {
+                  toggleOwner(w.email, !d.owners.includes(w.email));
+                }}
+              />
             ))}
             {outside.map((o) => {
               const text = `${names.get(normEmail(o)) ?? o} (작성 명단 밖)`;
               return (
-                <label
+                <OwnerButton
                   key={o}
-                  className="flex items-center gap-1 text-xs text-muted"
-                >
-                  <input
-                    type="checkbox"
-                    aria-label={`${label} 담당 ${text}`}
-                    checked
-                    onChange={(e) => {
-                      toggleOwner(o, e.target.checked);
-                    }}
-                  />
-                  {text}
-                </label>
+                  label={`${label} 담당 ${text}`}
+                  text={text}
+                  on
+                  muted
+                  onToggle={() => {
+                    toggleOwner(o, false);
+                  }}
+                />
               );
             })}
           </div>
         )}
       </td>
-      <td className="py-1">
+      <td className={`${CELL} text-right`}>
+        <OnOffToggle
+          label={`${label} 사용`}
+          on={d.active}
+          onChange={(next) => {
+            patch({ active: next });
+          }}
+        />
+      </td>
+      <td className={`${CELL} text-right`}>
         <button
           type="button"
           className={BTN_CLASS}
@@ -202,17 +226,20 @@ export function ProjectCatalogPanel(props: {
           + 항목 추가
         </HeaderActionButton>
       </div>
-      {/* 일회성: 입력·선택 칸이 든 행이 찌그러지지 않는 최소 폭 */}
+      {/* 일회성: 입력·담당자 버튼이 든 행이 찌그러지지 않는 최소 폭 */}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[40rem] text-sm">
+        <table
+          aria-label="프로젝트·TF 목록"
+          className="w-full min-w-[56rem] text-sm"
+        >
           <thead>
-            <tr className="text-left text-xs text-muted">
-              <th className="pr-2 font-normal">항목명</th>
-              <th className="pr-2 font-normal">구분</th>
-              <th className="pr-2 font-normal">순서</th>
-              <th className="pr-2 font-normal">사용</th>
-              <th className="pr-2 font-normal">담당자</th>
-              <th className="font-normal" />
+            <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+              <th className={CELL}>항목명</th>
+              <th className={CELL}>구분</th>
+              <th className={CELL}>순서</th>
+              <th className={CELL}>담당자</th>
+              <th className={`${CELL} text-right`}>사용</th>
+              <th className={CELL} />
             </tr>
           </thead>
           <tbody>
