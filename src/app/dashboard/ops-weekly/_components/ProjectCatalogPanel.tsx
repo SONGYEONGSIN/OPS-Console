@@ -23,12 +23,12 @@ const KIND_LABEL: Record<ProjectKind, string> = {
 };
 
 const CELL = "px-3 py-2";
-// 담당자 고르기 — 체크박스 대신 누르는 버튼. 눌린 것은 ON 토글과 같은 검정.
+// 담당자 고르기 — 체크박스 대신 누르는 버튼. 크기·테두리는 ON | OFF 칸(OnOffToggle)과 같고, 눌린 것은 ON 과 같은 검정.
 const OWNER_BASE =
-  "border px-2 py-0.5 text-xs transition-colors min-h-9 lg:min-h-0";
+  "border px-3 py-1 text-xs transition-colors min-h-9 lg:min-h-0";
 const OWNER_ON = "border-ink bg-ink text-cream";
 const OWNER_OFF =
-  "border-line-soft text-ink hover:border-ink hover:bg-ink hover:text-cream";
+  "border-line text-ink hover:border-ink hover:bg-ink hover:text-cream";
 
 function OwnerButton(props: {
   label: string;
@@ -106,7 +106,7 @@ function ProjectRow(props: {
   }
 
   return (
-    <tr className="border-b border-line-soft align-top hover:bg-line-soft">
+    <tr className="border-b border-line-soft align-middle hover:bg-line-soft">
       <td className={CELL}>
         <input
           aria-label={`${label} 이름`}

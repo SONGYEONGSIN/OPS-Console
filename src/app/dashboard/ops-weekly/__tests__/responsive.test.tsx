@@ -65,6 +65,26 @@ describe("주간업무보고 반응형 — 모양 단언", () => {
     expect(tokens(table).some((c) => c.startsWith("min-w-"))).toBe(true);
   });
 
+  it("프로젝트·TF 담당자 버튼은 ON | OFF 칸과 같은 크기, 행은 세로 가운데(위아래 간격 같게)", () => {
+    render(
+      <ProjectCatalogPanel
+        projects={[
+          { id: "p1", name: "PIMS", kind: "project", sortOrder: 10, active: true, owners: [] },
+        ]}
+        writers={[writer]}
+        candidates={[writer]}
+      />,
+    );
+    const owner = screen.getByRole("button", { pressed: false, name: /운영자A/ });
+    expect(tokens(owner)).toEqual(
+      expect.arrayContaining(["px-3", "py-1", "text-xs", "border-line"]),
+    );
+    expect(tokens(owner)).not.toContain("py-0.5");
+    const tr = screen.getByDisplayValue("PIMS").closest("tr") as HTMLElement;
+    expect(tokens(tr)).toContain("align-middle");
+    expect(tokens(tr)).not.toContain("align-top");
+  });
+
   it("KPI 는 폰·태블릿 3열, lg 부터 한 줄 6열 — 고아 칸이 없다", () => {
     render(
       <WeeklyKpiRow
