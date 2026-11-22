@@ -59,10 +59,10 @@ function StatusBadge(props: {
       </span>
     );
   }
-  // 아직 안 낸 것은 할 일이라 빨갛게 — 다시 작성 요청과 같은 색이다. 제출하면 회색 `제출함 시각` 으로 바뀐다.
+  // 아직 안 낸 것은 할 일이라 빨간 바탕으로 채운다. 제출하면 회색 `제출함 시각` 으로 바뀐다.
   if (status === "draft") {
     return (
-      <span className="border border-vermilion px-1.5 py-0.5 text-xs text-vermilion">
+      <span className="border border-vermilion bg-vermilion px-1.5 py-0.5 text-xs text-cream">
         작성 중
       </span>
     );
