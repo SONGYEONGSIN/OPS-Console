@@ -57,9 +57,9 @@ function AutoTableRow(props: {
         item.excluded ? "text-muted line-through" : "text-ink"
       }`}
     >
-      <td className={`${TD} font-medium break-words`}>{item.title}</td>
       <td className={`${TD} text-ink-soft`}>{item.universityType ?? "—"}</td>
       <td className={`${TD} text-ink-soft`}>{item.category ?? "—"}</td>
+      <td className={`${TD} font-medium break-words`}>{item.title}</td>
       <td className={`${TD} break-words text-ink-soft`}>{item.subtitle}</td>
       <td className={`${TD} whitespace-nowrap tabular-nums text-muted`}>
         {item.at ? formatMdHm(item.at) : "—"}
@@ -115,9 +115,9 @@ function AutoTable(props: {
       <table aria-label={title} className="w-full min-w-[44rem] text-sm">
         <thead>
           <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-            <th className={TH}>대학명</th>
             <th className={TH}>대학구분</th>
             <th className={TH}>카테고리</th>
+            <th className={TH}>대학명</th>
             <th className={TH}>서비스명</th>
             <th className={TH}>{atLabel}</th>
             {showOwners ? <th className={TH}>담당자</th> : null}

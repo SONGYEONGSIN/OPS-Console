@@ -237,7 +237,7 @@ describe("AutoGroupSection — 표 모양(원서접수)", () => {
     leave_kind: null,
   };
 
-  it("머리 칸 — 대학명·대학구분·카테고리·서비스명·일시(묶음별 이름)·메모", () => {
+  it("머리 칸 — 대학구분·카테고리·대학명·서비스명·일시(묶음별 이름)·메모", () => {
     render(
       <AutoGroupSection
         {...group([view("closing:1", { universityType: "2년제", category: "편입" })])}
@@ -248,18 +248,18 @@ describe("AutoGroupSection — 표 모양(원서접수)", () => {
     const table = screen.getByRole("table", { name: "운영 중" });
     expect(
       [...table.querySelectorAll("th")].map((h) => h.textContent),
-    ).toEqual(["대학명", "대학구분", "카테고리", "서비스명", "오픈", "메모"]);
+    ).toEqual(["대학구분", "카테고리", "대학명", "서비스명", "오픈", "메모"]);
     const row = screen.getAllByRole("row")[1];
     const cells = [...row.querySelectorAll("td")].map((c) => c.textContent);
-    expect(cells.slice(0, 4)).toEqual(["가대학교", "2년제", "편입", "수시모집"]);
+    expect(cells.slice(0, 4)).toEqual(["2년제", "편입", "가대학교", "수시모집"]);
   });
 
   it("값이 없으면 — (예전에 굳힌 스냅샷)", () => {
     render(<AutoGroupSection {...group([view("closing:1")])} editable table={T} />);
     const row = screen.getAllByRole("row")[1];
     const cells = [...row.querySelectorAll("td")].map((c) => c.textContent);
+    expect(cells[0]).toBe("—");
     expect(cells[1]).toBe("—");
-    expect(cells[2]).toBe("—");
   });
 
   it("[빼기] 가 행 안에 있고 뺀 행은 취소선", async () => {
@@ -315,7 +315,7 @@ describe("AutoGroupSection — 전체 보고의 담당자", () => {
       />,
     );
     const heads = [...document.querySelectorAll("th")].map((h) => h.textContent);
-    expect(heads).toEqual(["대학명", "대학구분", "카테고리", "서비스명", "오픈", "담당자", "메모"]);
+    expect(heads).toEqual(["대학구분", "카테고리", "대학명", "서비스명", "오픈", "담당자", "메모"]);
     expect(screen.getByText("가, 나")).toBeInTheDocument();
   });
 
