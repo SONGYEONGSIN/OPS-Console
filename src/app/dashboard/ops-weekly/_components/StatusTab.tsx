@@ -171,9 +171,7 @@ function RemindButton({ weekId }: { weekId: string }) {
   );
   return (
     <div className="flex flex-col items-end gap-1">
-      <button
-        type="button"
-        className={BTN_CLASS}
+      <HeaderActionButton
         disabled={pending}
         onClick={() => {
           start(async () => {
@@ -187,7 +185,7 @@ function RemindButton({ weekId }: { weekId: string }) {
         }}
       >
         미제출자에게 알림
-      </button>
+      </HeaderActionButton>
       {result === null ? null : (
         <p
           role={result.ok ? "status" : "alert"}
@@ -210,52 +208,55 @@ export function StatusTab(props: Props) {
     canEditDutySummary(actor, state) && props.submittedCount < writers.length;
   return (
     <section data-tab="status" className="flex flex-col gap-7 p-5 lg:p-7">
+      {/* 제목과 표는 관리 칸들처럼 기본 간격(gap-3)으로 붙이고, 아래 칸들과는 gap-7 로 띄운다 */}
       <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-          <div className="flex min-w-0 flex-col gap-2">
-            <div className="flex items-baseline gap-2">
-              <h2 className="text-xl font-bold text-ink">제출 현황</h2>
-              <span className="text-muted" aria-hidden>
-                ·
-              </span>
-              <span className="text-sm tabular-nums text-vermilion">
-                {`제출 ${props.submittedCount} / ${writers.length}명`}
-              </span>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+            <div className="flex min-w-0 flex-col gap-2">
+              <div className="flex items-baseline gap-2">
+                <h2 className="text-xl font-bold text-ink">제출 현황</h2>
+                <span className="text-muted" aria-hidden>
+                  ·
+                </span>
+                <span className="text-sm tabular-nums text-vermilion">
+                  {`제출 ${props.submittedCount} / ${writers.length}명`}
+                </span>
+              </div>
             </div>
+            {open ? (
+              <div className="ml-auto flex items-start gap-3">
+                {canRemind ? <RemindButton weekId={week.id} /> : null}
+                <FinalizeBar
+                  finalize={finalize}
+                  pending={wf.pending}
+                  onClick={() => {
+                    setDialog({ kind: "finalize" });
+                  }}
+                />
+              </div>
+            ) : null}
           </div>
-          {open ? (
-            <div className="ml-auto flex items-start gap-3">
-              {canRemind ? <RemindButton weekId={week.id} /> : null}
-              <FinalizeBar
-                finalize={finalize}
-                pending={wf.pending}
-                onClick={() => {
-                  setDialog({ kind: "finalize" });
-                }}
-              />
-            </div>
+          {wf.message !== null ? (
+            <p role="alert" className="text-xs text-vermilion">
+              {wf.message}
+            </p>
           ) : null}
         </div>
-        {wf.message !== null ? (
-          <p role="alert" className="text-xs text-vermilion">
-            {wf.message}
-          </p>
-        ) : null}
+        <SubmissionTable
+          week={week}
+          writers={writers}
+          reports={reports}
+          settingsHref={
+            canManageSettings(actor)
+              ? manageHref(week.week_start, "exclusions")
+              : undefined
+          }
+          canReturn={(r) => canReturnReport(actor, state, r.status)}
+          onReturn={(report, name) => {
+            setDialog({ kind: "return", report, name });
+          }}
+        />
       </div>
-      <SubmissionTable
-        week={week}
-        writers={writers}
-        reports={reports}
-        settingsHref={
-          canManageSettings(actor)
-            ? manageHref(week.week_start, "exclusions")
-            : undefined
-        }
-        canReturn={(r) => canReturnReport(actor, state, r.status)}
-        onReturn={(report, name) => {
-          setDialog({ kind: "return", report, name });
-        }}
-      />
       <DutySummary
         weekId={week.id}
         thisWeek={week.summary_this}
