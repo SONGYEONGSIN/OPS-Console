@@ -92,6 +92,39 @@ describe("buildLeaveItems", () => {
     expect(items[1]).toMatchObject({ family: "field", needsBackup: false });
   });
 
+  it("일정의 외부미팅은 일정 메뉴와 같은 이름 '외부미팅' 이고, 일정 제목을 detail 로 든다", () => {
+    const [it0] = buildLeaveItems({
+      ...args,
+      backups: [],
+      schedules: [
+        s(
+          "s9",
+          "external_meeting",
+          "헥토파이낸셜 미팅",
+          "2026-11-26T07:00:00Z",
+          "2026-11-26T08:30:00Z",
+          "a@x",
+        ),
+      ],
+    });
+    expect(it0).toMatchObject({
+      family: "field",
+      kindLabel: "외부미팅",
+      detail: "헥토파이낸셜 미팅",
+    });
+  });
+
+  it("일정의 휴가는 detail 이 없다 — 제목이 '운영자A 휴가' 같은 이름표라서", () => {
+    const [it0] = buildLeaveItems({
+      ...args,
+      backups: [],
+      schedules: [
+        s("s8", "leave", "운영자A 휴가", "2026-11-26T00:00:00Z", null, null),
+      ],
+    });
+    expect(it0.detail).toBeUndefined();
+  });
+
   it("일정에만 있는 휴가는 백업요청 만들기 대상", () => {
     const [it0] = buildLeaveItems({
       ...args,
