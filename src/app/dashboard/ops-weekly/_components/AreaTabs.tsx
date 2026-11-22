@@ -2,7 +2,7 @@
 
 import { useRef, type KeyboardEvent } from "react";
 import type { Area } from "@/features/ops-weekly/constants";
-import { AREA_TABS, AREA_TAB_LABEL, type AreaTab } from "../_params";
+import { AREA_TABS, AREA_TAB_TITLE, type AreaTab } from "../_params";
 import { neighbour } from "./SubTabs";
 import { useOpsArea } from "./use-ops-area";
 
@@ -16,6 +16,13 @@ const TAB_BASE =
 const TAB_ACTIVE =
   "border-vermilion bg-vermilion/10 font-semibold text-vermilion";
 const TAB_IDLE = "border-transparent text-ink hover:bg-line-soft";
+
+/** 프로젝트·TF 탭은 확인 영역 둘(project·tf)을 담아 둘 다 확인해야 ✓ 다. */
+function isChecked(key: AreaTab, checked: readonly Area[]): boolean {
+  return key === "project"
+    ? checked.includes("project") && checked.includes("tf")
+    : checked.includes(key);
+}
 
 /**
  * 왼쪽 볼 것 칸의 영역 탭 — 링크가 아니라 버튼이고 주소의 `tab` 만 바꾼다(서버 왕복 없음).
@@ -67,8 +74,8 @@ export function AreaTabs({ checked }: Props) {
               onKeyDown(e, i);
             }}
           >
-            {AREA_TAB_LABEL[key]}
-            {checked.includes(key) ? " ✓" : ""}
+            {AREA_TAB_TITLE[key]}
+            {isChecked(key, checked) ? " ✓" : ""}
           </button>
         );
       })}

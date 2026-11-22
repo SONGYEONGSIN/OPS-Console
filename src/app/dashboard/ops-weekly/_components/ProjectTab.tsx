@@ -29,8 +29,6 @@ type Props = {
   notes: { thisWeek: string; nextWeek: string };
   /** 관리자에게만 준다 — 빈 상태 안내에 설정 링크를 붙인다 */
   settingsHref?: string;
-  /** 서랍 머리가 그 영역의 제목이다 — true 면 자체 제목(+건수)을 그리지 않는다 */
-  hideHeading?: boolean;
 };
 
 type EntryDraft = {
@@ -218,7 +216,6 @@ export function ProjectTab(props: Props) {
     editable,
     notes,
     settingsHref,
-    hideHeading,
   } = props;
   const mine = entries
     .filter((e) => e.kind === kind)
@@ -227,12 +224,7 @@ export function ProjectTab(props: Props) {
     kind === "tf" ? "맡은 TF가 없습니다" : "맡은 프로젝트가 없습니다";
   return (
     <section data-tab={kind} className="flex flex-col gap-7">
-      {hideHeading ? null : (
-        <TabHeading
-          title={AREA_TAB_LABEL[kind]}
-          summary={`${mine.length}건`}
-        />
-      )}
+      <TabHeading title={AREA_TAB_LABEL[kind]} summary={`${mine.length}건`} />
       {mine.length === 0 ? (
         <div className="flex flex-col gap-1 border border-line-soft bg-situation-bg px-4 py-6 text-sm">
           <p className="text-ink">{emptyText}</p>

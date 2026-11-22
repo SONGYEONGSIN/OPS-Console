@@ -24,6 +24,7 @@ vi.mock("../_components/WeekHeader", () => ({
     scope: unknown;
     dutyName: string | null;
     nextHref: string;
+    submit?: React.ReactNode;
   }) => (
     <div
       data-testid="week-header"
@@ -31,7 +32,9 @@ vi.mock("../_components/WeekHeader", () => ({
       data-duty={p.dutyName ?? "(null)"}
       data-scope={JSON.stringify(p.scope)}
       data-week={JSON.stringify(p.week)}
-    />
+    >
+      {p.submit}
+    </div>
   ),
 }));
 vi.mock("@/components/common/PageTabs", () => ({
@@ -188,18 +191,23 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     ).toHaveLength(2);
   });
 
-  it("원서접수: 영역 탭·쓸 것 패널, 특이사항 셋이 모두 마운트된다", async () => {
+  it("원서접수: 영역 탭, 닫힌 쓸 것 칸 안에 특이사항 셋이 모두 마운트된다 — [특이사항] 으로 연다", async () => {
     state.view = viewFor("application", false);
-    await renderPage("application");
+    const { container } = await renderPage("application");
     expect(screen.getByRole("tablist", { name: "영역" })).toBeInTheDocument();
-    const panel = screen.getByRole("complementary", { name: "쓸 것" });
-    // 패널 안으로 좁힌다 — T17 의 서랍(ProjectTab 둘)도 AreaNotes 를 마운트해 화면 전체로는 다섯이 된다
+    const panel = container.querySelector('aside[aria-label="쓸 것"]') as HTMLElement;
+    expect(panel).toHaveAttribute("hidden");
     expect(
       within(panel).getAllByRole("heading", {
         name: "영역 특이사항",
         hidden: true,
       }),
     ).toHaveLength(3);
+    fireEvent.click(screen.getByRole("button", { name: "특이사항" }));
+    expect(panel).not.toHaveAttribute("hidden");
+    // 확인 버튼은 쓸 것 칸이 아니라 영역 탭 줄에
+    expect(within(panel).queryByRole("button", { name: "이 영역 확인" })).toBeNull();
+    expect(screen.getByRole("button", { name: "이 영역 확인" })).toBeInTheDocument();
   });
 
   it("설정 탭: 안 붙은 서비스 패널이 목록으로 그려진다", async () => {
@@ -241,62 +249,23 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     expect(within(region).getByText("대학1")).toBeInTheDocument();
   });
 
-  it("tab=project: 서랍이 열리고 왼쪽은 원서접수, 프로젝트 제목은 서랍 머리 하나", async () => {
-    setUrl("?week=2026-11-16&tab=project");
-    state.view = viewFor("project", false);
-    await renderPage("project");
-    // 서랍 안 ProjectTab 은 hideHeading, 요약 카드 이름은 제목 요소가 아니다
-    const titles = screen.getAllByRole("heading", { name: "프로젝트" });
-    expect(titles).toHaveLength(1);
-    expect(titles[0].closest("aside")).toHaveAttribute("aria-hidden", "false");
-    expect(screen.getByRole("tab", { name: "원서접수" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-  });
-
-  it("[쓰기]로 연 서랍은 합격자 발표 KPI 카드를 누르면(키보드) 닫힌다 — KPI 줄과 서랍이 같은 Provider 아래", async () => {
-    state.view = viewFor("application", false);
-    await renderPage("application");
-    const opener = screen.getByRole("button", { name: "프로젝트 쓰기" });
-    fireEvent.click(opener);
-    const aside = screen
-      .getByRole("heading", { name: "프로젝트" })
-      .closest("aside");
-    expect(aside).toHaveAttribute("aria-hidden", "false");
-
-    // click 만 — mousedown 은 InspectorPanel 의 바깥 클릭이 혼자 닫아서 배선을 못 가린다(키보드 경로).
-    fireEvent.click(kpiCard("합격자 발표") as HTMLElement);
-
-    expect(aside).toHaveAttribute("aria-hidden", "true");
-    expect(aside?.querySelector("[inert]")).not.toBeNull();
-  });
-
-  it("서랍을 연 채 제출 현황에 갔다 오면 닫혀 있다 — Provider 가 역할 key 로 다시 마운트된다", async () => {
-    state.view = viewFor("application", false);
-    const { rerender } = await renderPage("application");
-    fireEvent.click(screen.getByRole("button", { name: "프로젝트 쓰기" }));
-    expect(
-      screen.getByRole("heading", { name: "프로젝트" }).closest("aside"),
-    ).toHaveAttribute("aria-hidden", "false");
-
-    // 같은 보고서(r1)라 PendingSavesProvider 는 그대로 — 갈리는 것은 역할 key 뿐이다.
-    state.view = viewFor("status", false);
-    rerender(
-      await OpsWeeklyPage({ searchParams: Promise.resolve({ tab: "status" }) }),
-    );
-    state.view = viewFor("application", false);
-    rerender(
-      await OpsWeeklyPage({
-        searchParams: Promise.resolve({ tab: "application" }),
-      }),
-    );
-
-    const aside = screen
-      .getByRole("heading", { name: "프로젝트", hidden: true })
-      .closest("aside");
-    expect(aside).toHaveAttribute("aria-hidden", "true");
-    expect(aside?.querySelector("[inert]")).not.toBeNull();
+  it("tab=project·tf: 프로젝트·TF 영역 탭이 선택되고 프로젝트·TF 두 절이 본문에 있다(서랍 없음)", async () => {
+    for (const raw of ["project", "tf"]) {
+      setUrl(`?week=2026-11-16&tab=${raw}`);
+      state.view = viewFor(raw, false);
+      const { unmount } = await renderPage(raw);
+      expect(screen.getByRole("tab", { name: "프로젝트·TF" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      const panel = screen
+        .getByRole("heading", { name: "프로젝트" })
+        .closest('[role="tabpanel"]');
+      expect(panel).toHaveAttribute("id", "area-panel-project");
+      expect(screen.getByRole("heading", { name: "TF" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "특이사항" })).toBeNull();
+      unmount();
+    }
   });
 
   it("구분 수집 전 주: KPI 카드와 하위 탭이 같은 기본(운영 중)을 가리킨다", async () => {
@@ -348,34 +317,50 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
 describe("주간업무보고 페이지 — 직접 추가", () => {
   it("쓸 수 있는 보고서면 쓸 것 패널에 직접 추가 칸이 있다", async () => {
     state.view = viewFor("application", false);
-    await renderPage("application");
-    const panel = screen.getByRole("complementary", { name: "쓸 것" });
+    const { container } = await renderPage("application");
+    const panel = container.querySelector('aside[aria-label="쓸 것"]') as HTMLElement;
     expect(
-      within(panel).getByRole("region", { name: "직접 추가" }),
+      within(panel).getByRole("region", { name: "직접 추가", hidden: true }),
     ).toBeInTheDocument();
     expect(
       screen.getAllByLabelText("직접 추가 제목", { selector: "input" }).length,
     ).toBeGreaterThan(0);
   });
 
-  it("읽기 전용(canEdit=false)이면 직접 추가 칸이 없다", async () => {
+  it("읽기 전용(canEdit=false)이면 직접 추가 칸도 확인 버튼도 없다", async () => {
     state.view = viewFor("application", false, { canEdit: false });
-    await renderPage("application");
-    const panel = screen.getByRole("complementary", { name: "쓸 것" });
+    const { container } = await renderPage("application");
+    const panel = container.querySelector('aside[aria-label="쓸 것"]') as HTMLElement;
     expect(
-      within(panel).queryByRole("region", { name: "직접 추가" }),
+      within(panel).queryByRole("region", { name: "직접 추가", hidden: true }),
     ).toBeNull();
     expect(screen.queryByLabelText("직접 추가 제목")).toBeNull();
+    expect(screen.queryByRole("button", { name: "이 영역 확인" })).toBeNull();
   });
 });
 
 describe("주간업무보고 페이지 — 제출", () => {
-  it("제출완료 는 정확히 하나 — 쓸 것 패널 안", async () => {
+  it("제출완료 는 정확히 하나 — 머리띠 오른쪽, 다섯 영역을 다 확인해야 눌린다", async () => {
     state.view = viewFor("application", false);
-    await renderPage("application");
+    const { unmount } = await renderPage("application");
     const buttons = screen.getAllByRole("button", { name: "제출완료" });
     expect(buttons).toHaveLength(1);
-    expect(buttons[0].closest("aside")).toHaveAccessibleName("쓸 것");
+    expect(screen.getByTestId("week-header").contains(buttons[0])).toBe(true);
+    expect(buttons[0]).toBeDisabled();
+    expect(
+      screen.getByText("남은 확인: 원서접수, 합격자 발표, 프로젝트, TF, 휴가·외근"),
+    ).toBeInTheDocument();
+    unmount();
+    state.view = viewFor("application", false, {
+      report: {
+        id: "r1",
+        status: "draft",
+        checked_tabs: ["application", "pims", "project", "tf", "leave"],
+        snapshot: null,
+      },
+    });
+    await renderPage("application");
+    expect(screen.getByRole("button", { name: "제출완료" })).toBeEnabled();
   });
 
   it("남의 보고서(op)에서는 제출완료 가 없다", async () => {

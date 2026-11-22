@@ -122,4 +122,20 @@ describe("AreaNotes 자동 저장 표시", () => {
       screen.getByText("확인하면 탭 옆에 확인 표시가 남습니다"),
     ).toBeInTheDocument();
   });
+
+  it("showCheck={false} — 쓸 것 칸에서는 확인 버튼 없이 특이사항만(확인은 영역 탭 줄 버튼)", () => {
+    cleanup();
+    render(
+      <AreaNotes
+        reportId="r"
+        area="application"
+        thisWeek=""
+        nextWeek=""
+        editable
+        showCheck={false}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "이 영역 확인" })).toBeNull();
+    expect(screen.getByLabelText("금주")).toBeInTheDocument();
+  });
 });

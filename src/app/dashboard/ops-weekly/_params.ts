@@ -24,12 +24,26 @@ export const AREA_TAB_LABEL: Record<Area, string> = {
   pims: "합격자 발표",
 };
 
-/** 왼쪽 볼 것 칸의 영역 셋 — 프로젝트·TF 는 서랍이다. */
-export const AREA_TABS = ["application", "pims", "leave"] as const;
+/** 영역 탭 넷 — 프로젝트·TF 는 한 탭에 프로젝트·TF 두 절(확인 영역은 여전히 다섯). */
+export const AREA_TABS = ["application", "pims", "project", "leave"] as const;
 export type AreaTab = (typeof AREA_TABS)[number];
 
-/** 주소의 `tab` 을 영역 탭으로 — 서랍·역할 탭 값이나 없는 값은 원서접수. */
+/** 특이사항·직접 추가를 쓸 것 칸에 두는 영역 — 프로젝트·TF 는 본문 안에 특이사항이 있다. */
+export const PANEL_AREAS = ["application", "pims", "leave"] as const;
+export type PanelArea = (typeof PANEL_AREAS)[number];
+export const isPanelArea = (a: AreaTab): a is PanelArea => a !== "project";
+
+/** 영역 탭 라벨 — `project` 탭은 TF 까지 담는다. */
+export const AREA_TAB_TITLE: Record<AreaTab, string> = {
+  application: AREA_TAB_LABEL.application,
+  pims: AREA_TAB_LABEL.pims,
+  project: "프로젝트·TF",
+  leave: AREA_TAB_LABEL.leave,
+};
+
+/** 주소의 `tab` 을 영역 탭으로 — `tf` 는 프로젝트·TF 탭, 역할 탭 값이나 없는 값은 원서접수. */
 export function resolveArea(raw: string | null): AreaTab {
+  if (raw === "tf") return "project";
   return AREA_TABS.find((a) => a === raw) ?? "application";
 }
 

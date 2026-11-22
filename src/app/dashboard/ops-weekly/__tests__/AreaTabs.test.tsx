@@ -12,14 +12,20 @@ import { setUrl } from "./search-params-mock";
 afterEach(cleanup);
 
 describe("AreaTabs", () => {
-  it("라벨 — 원서접수 / 합격자 발표 / 휴가·외근, 확인한 영역은 ✓", () => {
+  it("라벨 — 원서접수 / 합격자 발표 / 프로젝트·TF / 휴가·외근, 확인한 영역은 ✓", () => {
     setUrl("?week=2026-11-16&tab=application");
-    render(<AreaTabs checked={["pims"]} />);
+    const { rerender } = render(<AreaTabs checked={["pims", "project"]} />);
+    // 프로젝트만 확인 — 프로젝트·TF 탭은 둘 다 확인해야 ✓
     expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
       "원서접수",
       "합격자 발표 ✓",
+      "프로젝트·TF",
       "휴가·외근",
     ]);
+    rerender(<AreaTabs checked={["project", "tf"]} />);
+    expect(
+      screen.getByRole("tab", { name: /프로젝트·TF/ }).textContent,
+    ).toBe("프로젝트·TF ✓");
   });
   it("영역을 고르면 tab 만 바꾸고 sub 는 지운다(서버 왕복 없음)", () => {
     setUrl("?week=2026-11-16&tab=application&sub=running");
@@ -39,10 +45,10 @@ describe("AreaTabs", () => {
       "?week=2026-11-16&tab=application&sub=running",
     );
   });
-  it("tab=project·tf 로 들어오면 원서접수가 선택돼 있다", () => {
+  it("tab=tf 로 들어오면 프로젝트·TF 탭이 선택돼 있다", () => {
     setUrl("?week=2026-11-16&tab=tf");
     render(<AreaTabs checked={[]} />);
-    expect(screen.getByRole("tab", { name: "원서접수" })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: "프로젝트·TF" })).toHaveAttribute(
       "aria-selected",
       "true",
     );
@@ -69,7 +75,7 @@ describe("AreaTabs", () => {
     render(<AreaTabs checked={[]} />);
     expect(
       screen.getAllByRole("tab").map((t) => t.getAttribute("tabindex")),
-    ).toEqual(["-1", "0", "-1"]);
+    ).toEqual(["-1", "0", "-1", "-1"]);
   });
   it("→ 키로 다음 영역, 포커스도 따라간다", () => {
     setUrl("?week=2026-11-16&tab=application");

@@ -10,6 +10,7 @@ import {
   checkFinalize,
   isDuty,
   statusAccess,
+  uncheckedAreas,
   type WeekState,
 } from "../permissions";
 
@@ -148,5 +149,20 @@ describe("statusAccess — 제출 현황·남의 보고서를 여는 사람", ()
   it("isDuty 를 내보낸다 — 당번 미지정이면 false", () => {
     expect(isDuty(who("d@x"), wk())).toBe(true);
     expect(isDuty(who("d@x"), wk({ dutyEmail: null }))).toBe(false);
+  });
+});
+
+describe("uncheckedAreas — 제출 조건(다섯 영역 모두 확인)", () => {
+  it("확인 안 한 영역을 AREAS 순서로 돌려준다", () => {
+    expect(uncheckedAreas(["leave", "application"])).toEqual([
+      "pims",
+      "project",
+      "tf",
+    ]);
+  });
+  it("다 확인했으면 빈 배열", () => {
+    expect(
+      uncheckedAreas(["application", "pims", "project", "tf", "leave"]),
+    ).toEqual([]);
   });
 });
