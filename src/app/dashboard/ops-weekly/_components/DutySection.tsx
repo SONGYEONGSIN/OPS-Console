@@ -33,8 +33,10 @@ export function DutySection({ week, weekLabel, writers, actor }: Props) {
   return (
     <section aria-label="당번 지정" className="flex flex-col gap-3">
       <h2 className="text-xl font-bold text-ink">당번 지정</h2>
-      <p className="text-sm tabular-nums text-ink-soft">{weekLabel}</p>
-      <p className="text-sm text-ink">{currentLine(current, writers)}</p>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <p className="text-sm tabular-nums text-ink-soft">{weekLabel}</p>
+        <p className="text-sm text-ink">{currentLine(current, writers)}</p>
+      </div>
       {week.status === "open" ? null : (
         <p className="text-xs text-ink-soft">
           보고가 끝난 주는 당번을 바꿀 수 없습니다
