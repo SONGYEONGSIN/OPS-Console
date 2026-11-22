@@ -15,6 +15,7 @@ import type { RecipientWarning } from "./roster";
 import {
   emailInputSchema,
   excludedWritersInputSchema,
+  includedWritersInputSchema,
   projectInputSchema,
   projectOwnersInputSchema,
   rotationInputSchema,
@@ -148,6 +149,27 @@ export async function saveExcludedWriters(input: {
     .eq("id", true)
     .select("id");
   if (res.error) return writeFailed("작성 제외", res.error.message);
+  if (!res.data || res.data.length === 0) return failOf("설정 행이 없습니다.");
+  return done();
+}
+
+/** 작성 포함 — 부장·팀장을 작성 대상에 넣는다. 목록을 통째로 받는다(작성 제외와 같은 모양). */
+export async function saveIncludedWriters(input: {
+  emails: string[];
+}): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  if (isFail(admin)) return admin;
+  const parsed = includedWritersInputSchema.safeParse(input);
+  if (!parsed.success) return failOf(parsed.error.issues[0].message);
+  const res = await createAdminClient()
+    .from("ops_weekly_settings")
+    .update({
+      included_writer_emails: [...new Set(parsed.data.emails)],
+      updated_by: admin.email,
+    })
+    .eq("id", true)
+    .select("id");
+  if (res.error) return writeFailed("작성 포함", res.error.message);
   if (!res.data || res.data.length === 0) return failOf("설정 행이 없습니다.");
   return done();
 }

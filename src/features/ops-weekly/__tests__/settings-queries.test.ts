@@ -166,6 +166,27 @@ describe("loadSettingsBundle", () => {
     expect(b.writerCandidates.map((c) => c.email)).toEqual(["m@x.com"]);
   });
 
+  it("작성 포함 목록의 팀장은 작성 후보에 든다", async () => {
+    const op = (email: string, role: string): Row => ({
+      email,
+      name: email.split("@")[0],
+      team: "운영2팀",
+      role,
+      status: "active",
+      permission: "member",
+      allowed_menus: [],
+    });
+    tables({
+      ops_weekly_settings: [
+        { id: true, excluded_writer_emails: [], included_writer_emails: ["Lead@x.com"], rotation_anchor_week: null },
+      ],
+      operators: [op("lead@x.com", "팀장"), op("m@x.com", "매니저")],
+    });
+    const b = await loadSettingsBundle();
+    expect(b.includedWriterEmails).toEqual(["lead@x.com"]);
+    expect(b.writerCandidates.map((c) => c.email).sort()).toEqual(["lead@x.com", "m@x.com"]);
+  });
+
   it("쿼리 실패는 빈 목록이 아니라 던진다", async () => {
     tables({});
     state.db.failTable("ops_weekly_recipients", "boom");

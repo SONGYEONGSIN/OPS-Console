@@ -180,8 +180,8 @@ export function buildRoleTabs(args: {
 
 export const MANAGE_SECTIONS = [
   "overview",
-  "duty",
   "recipients",
+  "duty",
   "rotation",
   "projects",
   "exclusions",

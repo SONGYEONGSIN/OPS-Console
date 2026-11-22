@@ -22,17 +22,24 @@ export type WriterCandidate = {
 const WRITER_TEAM_SET: ReadonlySet<string> = new Set(WRITER_TEAMS);
 const EXCLUDED_ROLE_SET: ReadonlySet<string> = new Set(EXCLUDED_WRITER_ROLES);
 
+/**
+ * 작성 대상 = 운영1·2팀 · 활성 · 부장/팀장 제외 · 제외 목록 제외.
+ * 부장·팀장도 작성 포함 목록(includedEmails)에 있으면 대상이다 — 직급을 바꾸지 않고 예외로 넣는다.
+ * 제외 목록이 포함보다 앞선다.
+ */
 export function writerRoster(
   rows: readonly WriterCandidate[],
   excludedEmails: readonly string[],
+  includedEmails: readonly string[] = [],
 ): WriterCandidate[] {
   const excluded = new Set(excludedEmails);
+  const included = new Set(includedEmails);
   return rows
     .filter(
       (r) =>
         WRITER_TEAM_SET.has(r.team) &&
         r.status === "active" &&
-        !EXCLUDED_ROLE_SET.has(r.role) &&
+        (!EXCLUDED_ROLE_SET.has(r.role) || included.has(r.email)) &&
         !excluded.has(r.email),
     )
     .map((r) => ({ ...r, name: r.name.trim() }));

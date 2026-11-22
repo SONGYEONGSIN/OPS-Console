@@ -181,6 +181,10 @@ export const excludedWritersInputSchema = z.object({
   emails: z.array(emailSchema).max(200, "제외 목록이 너무 깁니다."),
 });
 
+export const includedWritersInputSchema = z.object({
+  emails: z.array(emailSchema).max(50, "포함 목록이 너무 깁니다."),
+});
+
 export const projectInputSchema = z.object({
   id: z.uuid("프로젝트 id 가 올바르지 않습니다.").optional(),
   name: z

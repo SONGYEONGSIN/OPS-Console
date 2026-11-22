@@ -26,6 +26,9 @@ export type SettingsBundle = {
   rotation: string[];
   anchorWeekStart: string | null;
   excludedWriterEmails: string[];
+  /** 작성 포함 — 직급으로 빠지는 부장·팀장 중 작성 대상에 넣은 사람 */
+  includedWriterEmails: string[];
+  /** 작성 후보(제외 반영 전) — 작성 포함된 부장·팀장도 든다 */
   writerCandidates: WriterCandidate[];
   /** 받는 사람 후보 — 운영1·2팀 활성 전원(부장·팀장 포함). 작성 명단과 달리 직급으로 빼지 않는다 */
   recipientCandidates: WriterCandidate[];
@@ -95,12 +98,15 @@ export async function isRecipient(email: string): Promise<boolean> {
 type SettingsDbRow = {
   rotation_anchor_week: string | null;
   excluded_writer_emails: string[] | null;
+  included_writer_emails: string[] | null;
 };
 
 async function readSettings() {
   const res = await createAdminClient()
     .from("ops_weekly_settings")
-    .select("rotation_anchor_week, excluded_writer_emails")
+    .select(
+      "rotation_anchor_week, excluded_writer_emails, included_writer_emails",
+    )
     .eq("id", true)
     .maybeSingle();
   if (res.error) {
@@ -110,6 +116,7 @@ async function readSettings() {
   return {
     anchor: row?.rotation_anchor_week ?? null,
     excluded: (row?.excluded_writer_emails ?? []).map(normEmail),
+    included: (row?.included_writer_emails ?? []).map(normEmail),
   };
 }
 
@@ -191,7 +198,8 @@ export async function loadSettingsBundle(): Promise<SettingsBundle> {
     rotation,
     anchorWeekStart: settings.anchor,
     excludedWriterEmails: settings.excluded,
-    writerCandidates: writerRoster(candidates, []),
+    includedWriterEmails: settings.included,
+    writerCandidates: writerRoster(candidates, [], settings.included),
     recipientCandidates: candidates,
     projects,
   };

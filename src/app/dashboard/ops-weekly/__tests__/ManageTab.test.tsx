@@ -17,6 +17,7 @@ const addRecipient = vi.fn();
 const removeRecipient = vi.fn();
 const saveRotation = vi.fn();
 const saveExcludedWriters = vi.fn();
+const saveIncludedWriters = vi.fn();
 const upsertProject = vi.fn();
 const setProjectOwners = vi.fn();
 const setWeekDuty = vi.fn();
@@ -25,6 +26,7 @@ vi.mock("@/features/ops-weekly/settings-actions", () => ({
   removeRecipient: (...a: unknown[]) => removeRecipient(...a),
   saveRotation: (...a: unknown[]) => saveRotation(...a),
   saveExcludedWriters: (...a: unknown[]) => saveExcludedWriters(...a),
+  saveIncludedWriters: (...a: unknown[]) => saveIncludedWriters(...a),
   upsertProject: (...a: unknown[]) => upsertProject(...a),
   setProjectOwners: (...a: unknown[]) => setProjectOwners(...a),
   setWeekDuty: (...a: unknown[]) => setWeekDuty(...a),
@@ -68,6 +70,7 @@ function bundle(over: Partial<SettingsBundle> = {}): SettingsBundle {
     rotation: [],
     anchorWeekStart: null,
     excludedWriterEmails: [],
+    includedWriterEmails: [],
     writerCandidates: [wa, wb, wt],
     recipientCandidates: [wa, wb],
     projects: [],
@@ -359,6 +362,7 @@ describe("ManageTab", () => {
       <ManageTab
         bundle={bundle({
           writerCandidates: [wa, wt],
+          recipientCandidates: [wa, wt],
           excludedWriterEmails: [wa.email],
         })}
       />,
@@ -380,6 +384,53 @@ describe("ManageTab", () => {
       "true",
     );
     expect(within(region).queryByRole("button", { name: "제외 저장" })).toBeNull();
+  });
+
+  it("작성 제외 — 부장·팀장도 행으로 보이고 기본은 제외(ON), OFF 하면 작성 포함으로 저장한다", async () => {
+    setUrl("?week=2026-11-16&tab=settings&section=exclusions");
+    saveIncludedWriters.mockResolvedValue({ ok: true });
+    const lead = { ...cand("lead@x", "팀장A"), team: "운영2팀", role: "팀장" };
+    render(
+      <ManageTab
+        bundle={bundle({ writerCandidates: [wa], recipientCandidates: [wa, lead] })}
+      />,
+    );
+    const region = screen.getByRole("region", { name: "작성 제외" });
+    const row = within(region).getByText("팀장A").closest("tr") as HTMLElement;
+    expect(within(row).getByRole("button", { name: "ON" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    fireEvent.click(within(row).getByRole("button", { name: "OFF" }));
+    await waitFor(() =>
+      expect(saveIncludedWriters).toHaveBeenCalledWith({ emails: ["lead@x"] }),
+    );
+    expect(saveExcludedWriters).not.toHaveBeenCalled();
+  });
+
+  it("작성 포함된 팀장은 제외 OFF 로 보이고, ON 하면 포함에서 뺀다", async () => {
+    setUrl("?week=2026-11-16&tab=settings&section=exclusions");
+    saveIncludedWriters.mockResolvedValue({ ok: true });
+    const lead = { ...cand("lead@x", "팀장A"), team: "운영2팀", role: "팀장" };
+    render(
+      <ManageTab
+        bundle={bundle({
+          writerCandidates: [wa, lead],
+          recipientCandidates: [wa, lead],
+          includedWriterEmails: ["lead@x"],
+        })}
+      />,
+    );
+    const region = screen.getByRole("region", { name: "작성 제외" });
+    const row = within(region).getByText("팀장A").closest("tr") as HTMLElement;
+    expect(within(row).getByRole("button", { name: "OFF" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    fireEvent.click(within(row).getByRole("button", { name: "ON" }));
+    await waitFor(() =>
+      expect(saveIncludedWriters).toHaveBeenCalledWith({ emails: [] }),
+    );
   });
 
   it("패널 제목은 모두 h2 text-xl font-bold — 숨긴 칸에도 마운트돼 있다", () => {
@@ -476,8 +527,8 @@ describe("ManageTab", () => {
         .map((b) => b.textContent?.replace(/^[◉·]/, "").replace(/\d+$/, "")),
     ).toEqual([
       "전체 현황",
-      "당번 지정",
       "받는 사람",
+      "당번 지정",
       "당번 순번",
       "프로젝트·TF",
       "작성 제외",
