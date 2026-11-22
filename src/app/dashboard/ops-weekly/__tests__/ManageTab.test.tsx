@@ -178,6 +178,16 @@ describe("ManageTab", () => {
     expect(within(row).getByRole("button", { name: "OFF" })).toBeEnabled();
   });
 
+  it("기준 주·[순번 저장] 은 표 위 오른쪽 — 명단이 길어도 보인다", () => {
+    setUrl("?week=2026-11-16&tab=settings&section=rotation");
+    render(<ManageTab bundle={bundle({ rotation: ["a@x"], anchorWeekStart: null })} />);
+    const region = screen.getByRole("region", { name: "당번 순번" });
+    const save = within(region).getByRole("button", { name: "순번 저장" });
+    const table = within(region).getByRole("table", { name: "당번 순번 명단" });
+    expect(save.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(save.parentElement?.className).toContain("justify-end");
+  });
+
   it("순번 순서 바꾸기 → 저장이 바뀐 순서를 보낸다", async () => {
     setUrl("?week=2026-11-16&tab=settings&section=rotation");
     render(
