@@ -47,7 +47,9 @@ function AutoTableRow(props: {
         {item.at ? formatMdHm(item.at) : "—"}
       </td>
       {props.showOwners ? (
-        <td className={`${TD} text-ink-soft`}>{item.owners?.join(", ") ?? "—"}</td>
+        <td className={`${TD} text-ink-soft`}>
+          {item.owners?.join(", ") ?? "—"}
+        </td>
       ) : null}
       {/* 일회성: 메모 버튼 둘과 메모 글이 들어갈 최소 폭 */}
       <td className={`${TD} min-w-[12rem]`}>
@@ -221,6 +223,7 @@ export function AutoGroupSection(props: Props) {
     <GroupShell
       title={title}
       count={items.filter((i) => !i.excluded).length + manual.length}
+      underline={!(props.table && items.length + manual.length > 0)}
     >
       {body}
     </GroupShell>

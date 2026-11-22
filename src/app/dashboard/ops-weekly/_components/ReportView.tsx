@@ -32,8 +32,8 @@ type Props = {
   view: OpsWeeklyWeekView;
   snapshot: AutoSnapshot;
   detail: ReportDetail;
-  /** 남의 보고서를 보는 중이면 그 사람 이메일, 본인 보고서면 null. 제출은 본인 것에만 있다. */
-  op: string | null;
+  /** 남의 보고서를 보는 중이면 그 사람 이름과 제출 현황 주소 — 제목을 달고 제출은 없다. 본인 보고서면 null */
+  viewingOther: { name: string; backHref: string } | null;
 };
 
 type Slots = Record<AreaTab, ReactNode>;
@@ -72,7 +72,10 @@ function notesOf({ view, detail }: Props, editable: boolean): Slots {
 }
 
 /** 직접 추가 셋 — 영역마다 하나, 셋 다 마운트한다. 쓸 수 없는 보고서(보고서 없음·읽기 전용)면 null. */
-function directAddOf({ view, snapshot }: Props, editable: boolean): Slots | null {
+function directAddOf(
+  { view, snapshot }: Props,
+  editable: boolean,
+): Slots | null {
   const reportId = view.report?.id;
   if (!editable || !reportId) return null;
   const appSubState = appSubStateOf(snapshot.application);
@@ -138,7 +141,7 @@ function AllReportsBody(props: Props & { all: AllReportsView }) {
 
 /** 내 보고서 — 왼쪽 영역 본문 셋, 오른쪽 쓸 것 패널, 프로젝트·TF 서랍. snapshot·detail 이 있을 때만 page 가 부른다. */
 export function ReportView(props: Props) {
-  const { view, detail, op } = props;
+  const { view, detail } = props;
   if (view.all !== null) return <AllReportsBody {...props} all={view.all} />;
   const editable = view.canEdit && view.report !== null;
   const checked = view.report?.checked_tabs ?? [];
@@ -146,13 +149,14 @@ export function ReportView(props: Props) {
     <>
       <ReportLayout
         checked={checked}
+        heading={props.viewingOther}
         areas={areasOf(props, editable)}
         panel={
           <WritePanel
             notes={notesOf(props, editable)}
             directAdd={directAddOf(props, editable)}
             submit={
-              op === null ? (
+              props.viewingOther === null ? (
                 <SubmitBar
                   reportId={view.report?.id ?? null}
                   canSubmit={view.canSubmit}

@@ -170,7 +170,12 @@ describe("loadOpsWeeklyPage — 안 붙은 서비스 목록", () => {
   it("다른 탭이나 비관리자에게는 읽지도 내보내지도 않는다", async () => {
     m.report = reportOf({ status: "draft", snapshot: snap() });
     m.loadUnmatchedServices.mockResolvedValue(LIST);
-    const a = await loadOpsWeeklyPage(ADMIN, { tab: "application" }, NOW);
+    // 관리자는 op 없이 열면 전체 보고라 본인 보고서(op=me)로 연다
+    const a = await loadOpsWeeklyPage(
+      ADMIN,
+      { tab: "application", op: "me" },
+      NOW,
+    );
     const b = await loadOpsWeeklyPage(ME, { tab: "settings" }, NOW);
     expect(m.loadUnmatchedServices).not.toHaveBeenCalled();
     expect(kindOf(a).unmatched).toBeNull();

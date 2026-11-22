@@ -19,10 +19,15 @@ type Props = {
   showReportState: boolean;
   checkedCount: number;
   /**
-   * 내 보고 | 전체 보고 토글 — null 이면 없다. mine 은 작성자일 때만(본인 보고서가 있다).
+   * 내 보고서 | 전체 보고서 토글 — null 이면 없다. mine 은 작성자일 때만 누를 수 있다(아니면 비활성 칸).
+   * mineOp 는 내 보고서 링크의 op — 관리자·당번은 기본이 전체 보고라 `me` 를 단다.
    * active 는 지금 보는 것(남의 보고서를 보는 중이면 null — 둘 다 꺼진다). 전체 보고 중에는 내 상태 배지·확인 수가 없다.
    */
-  scope: { mine: boolean; active: "mine" | "all" | null } | null;
+  scope: {
+    mine: boolean;
+    mineOp: string | null;
+    active: "mine" | "all" | null;
+  } | null;
   reportStatus: ReportStatus | null;
   submittedAt?: string | null;
   /** 다시 작성 요청에 적힌 사유 */
@@ -30,8 +35,6 @@ type Props = {
   prevOpen: boolean;
   prevHref: string;
   nextHref: string;
-  /** 남의 보고서를 보는 중이면 그 사람 이름과 제출 현황으로 돌아가는 주소. */
-  viewingOther: { name: string; backHref: string } | null;
 };
 
 const NAV_LINK =
@@ -68,12 +71,12 @@ function withTab(href: string, tab: string): string {
   return `${path}?${params.toString()}`;
 }
 
-const SEG_BASE =
-  "inline-flex min-h-9 items-center px-3 text-xs transition-colors lg:min-h-0 lg:py-1";
+// 오늘 할 일의 내 업무 | 전체 업무(MineScopeToggle)와 같은 모양
+const SEG_BASE = "min-h-9 px-3 py-1 text-xs lg:min-h-0";
 const SEG_ON = "bg-ink text-cream";
-const SEG_OFF = "text-ink hover:bg-ink hover:text-cream";
+const SEG_OFF = "bg-transparent text-ink hover:text-vermilion";
 
-/** 오늘 할 일의 내 업무 | 전체 업무와 같은 모양 — 링크라 서버가 그 범위로 다시 읽는다. */
+/** 링크라 서버가 그 범위로 다시 읽는다. */
 function ScopeToggle(props: {
   scope: NonNullable<Props["scope"]>;
   weekStart: string;
@@ -81,25 +84,42 @@ function ScopeToggle(props: {
 }) {
   const { scope, weekStart, area } = props;
   const items = [
-    ...(scope.mine
-      ? [{ key: "mine" as const, label: "내 보고", op: null }]
-      : []),
-    { key: "all" as const, label: "전체 보고", op: ALL_OP },
+    {
+      key: "mine" as const,
+      label: "내 보고서",
+      op: scope.mineOp,
+      enabled: scope.mine,
+    },
+    { key: "all" as const, label: "전체 보고서", op: ALL_OP, enabled: true },
   ];
   return (
-    <div className="inline-flex border border-line">
-      {items.map((it, i) => (
-        <Link
-          key={it.key}
-          href={opsWeeklyHref(weekStart, area, it.op)}
-          aria-current={scope.active === it.key ? "page" : undefined}
-          className={`${SEG_BASE} ${i > 0 ? "border-l border-line" : ""} ${
-            scope.active === it.key ? SEG_ON : SEG_OFF
-          }`}
-        >
-          {it.label}
-        </Link>
-      ))}
+    <div className="flex items-center border border-line">
+      {items.map((it, i) => {
+        const cls = `${SEG_BASE} ${i > 0 ? "border-l border-line" : ""}`;
+        if (!it.enabled) {
+          return (
+            <span
+              key={it.key}
+              aria-disabled="true"
+              title="작성 대상 명단에 없어 본인 보고서가 없습니다"
+              className={`${cls} inline-flex items-center text-muted opacity-50`}
+            >
+              {it.label}
+            </span>
+          );
+        }
+        const on = scope.active === it.key;
+        return (
+          <Link
+            key={it.key}
+            href={opsWeeklyHref(weekStart, area, it.op)}
+            aria-current={on ? "page" : undefined}
+            className={`${cls} inline-flex cursor-pointer items-center ${on ? SEG_ON : SEG_OFF}`}
+          >
+            {it.label}
+          </Link>
+        );
+      })}
     </div>
   );
 }
@@ -140,19 +160,6 @@ export function WeekHeader(props: Props) {
               weekStart={week.week_start}
               area={area}
             />
-          ) : null}
-          {props.viewingOther !== null ? (
-            <span className="flex items-center gap-2 text-xs">
-              <span className="border border-line-soft px-1.5 py-0.5 text-xs font-bold text-ink">
-                {`${props.viewingOther.name}의 보고서`}
-              </span>
-              <Link
-                href={props.viewingOther.backHref}
-                className="text-ink-soft underline"
-              >
-                ‹ 제출 현황
-              </Link>
-            </span>
           ) : null}
         </div>
         <div className="ml-auto flex flex-wrap items-center justify-end gap-x-4 gap-y-2 text-ink-soft">
