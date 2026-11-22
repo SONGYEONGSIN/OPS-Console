@@ -88,7 +88,7 @@ describe("LeaveTab", () => {
     ).toBeInTheDocument();
     // 뺀 행에는 백업요청 링크가 없다
     expect(screen.queryByRole("link", { name: "백업요청 만들기" })).toBeNull();
-    expect(screen.getByText("외부 교육").closest("li")).toHaveTextContent(
+    expect(screen.getByText("외부 교육").closest("tr")).toHaveTextContent(
       "직접 추가",
     );
   });
@@ -139,8 +139,8 @@ describe("LeaveTab", () => {
         freezeNotice={false}
       />,
     );
-    const li = screen.getByText("백업 운영자B").closest("li");
-    expect(li?.textContent?.match(/연차/g)).toHaveLength(1);
+    const tr = screen.getByText("백업 운영자B").closest("tr");
+    expect(tr?.textContent?.match(/연차/g)).toHaveLength(1);
   });
 
   it("action 이 던져도 화면은 죽지 않고 행 아래에 문구를 보여 준다", async () => {
@@ -205,6 +205,43 @@ describe("LeaveTab — 굳는 시점 안내", () => {
       />,
     );
     expect(screen.queryByText("자동 항목은 최종 보고 때 굳습니다")).toBeNull();
+  });
+});
+
+describe("LeaveTab — 표", () => {
+  it("다른 묶음처럼 표 — 구분·기간·백업·출처·메모, 제목 밑줄 없이 머리줄 하나", () => {
+    render(
+      <LeaveTab
+        snapshot={snap({ leave: [leaveItem({ key: "a", kindLabel: "연차", subtitle: "백업 김승현" })] })}
+        detail={EMPTY}
+        reportId="r"
+        editable
+        freezeNotice={false}
+      />,
+    );
+    const table = screen.getByRole("table", { name: "휴가·외근 일정" });
+    expect([...table.querySelectorAll("th")].map((h) => h.textContent)).toEqual([
+      "구분",
+      "기간",
+      "백업",
+      "출처",
+      "메모",
+    ]);
+    expect(screen.queryByRole("listitem")).toBeNull();
+  });
+
+  it("전체 보고면 담당자 칸이 맨 앞", () => {
+    render(
+      <LeaveTab
+        snapshot={snap({ leave: [leaveItem({ owners: ["김슬기"] })] })}
+        detail={EMPTY}
+        reportId={null}
+        editable={false}
+        freezeNotice={false}
+      />,
+    );
+    const table = screen.getByRole("table", { name: "휴가·외근 일정" });
+    expect(table.querySelector("th")?.textContent).toBe("담당자");
   });
 });
 
