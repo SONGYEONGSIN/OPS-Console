@@ -36,9 +36,9 @@ type Props = {
   nextHref: string;
 };
 
-// 오늘 할 일의 주 이동과 같은 치수(text-sm·border-line·px-2 py-1). 터치(lg 미만)에서만 36px 를 보장한다. 호버는 버튼 표준(검정).
+// 오늘 할 일의 주 이동과 같은 글씨·테두리(text-sm·border-line), 가로=세로 정사각형. 터치(lg 미만)에서만 36px 를 보장한다. 호버는 버튼 표준(검정).
 const NAV_LINK =
-  "inline-flex min-h-9 min-w-9 items-center justify-center border border-line px-2 py-1 text-sm text-ink hover:border-ink hover:bg-ink hover:text-cream lg:min-h-0 lg:min-w-0";
+  "inline-flex aspect-square min-h-9 min-w-9 items-center justify-center border border-line py-1 text-sm text-ink hover:border-ink hover:bg-ink hover:text-cream lg:min-h-0 lg:min-w-0";
 
 function StatusBadge(props: {
   status: ReportStatus | null;
