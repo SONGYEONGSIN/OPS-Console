@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { PaginationNav } from "@/components/common/ListPagination";
 import type { AutoArea } from "@/features/ops-weekly/constants";
 import type { ManualItem, ViewItem } from "@/features/ops-weekly/merge";
 import { formatMdHm } from "../_format";
@@ -23,6 +25,22 @@ type Props = {
 };
 
 const TH = "px-3 py-2";
+
+const PAGE_SIZE = 30;
+
+/** 자동 건 뒤에 직접 추가 건을 이어 붙인 목록의 한 쪽 — 두 배열을 그대로 둔 채 잘라 낸다. */
+function pageOf<A, B>(
+  a: readonly A[],
+  b: readonly B[],
+  page: number,
+): [A[], B[]] {
+  const start = (page - 1) * PAGE_SIZE;
+  const end = start + PAGE_SIZE;
+  return [
+    a.slice(start, end),
+    b.slice(Math.max(0, start - a.length), Math.max(0, end - a.length)),
+  ];
+}
 const TD = "px-3 py-2";
 
 function AutoTableRow(props: {
@@ -77,12 +95,19 @@ function AutoTable(props: {
   reportId: string | null;
   area: AutoArea;
   editable: boolean;
+  /** 전체 보고에서만 담당자 칸 — 쪽마다 칸이 바뀌지 않게 묶음 전체로 정해 넘긴다 */
+  showOwners: boolean;
 }) {
-  const { title, atLabel, items, manual, reportId, area, editable } = props;
-  // 전체 보고에서만 담당자가 실려 온다 — 한 사람 보고서에는 칸을 두지 않는다.
-  const showOwners =
-    items.some((i) => i.owners !== undefined) ||
-    manual.some((m) => m.owner !== undefined);
+  const {
+    title,
+    atLabel,
+    items,
+    manual,
+    reportId,
+    area,
+    editable,
+    showOwners,
+  } = props;
   const cols = showOwners ? 7 : 6;
   return (
     // 일회성: 6열이 좁은 화면에서 찌그러지지 않는 최소 폭
@@ -169,25 +194,35 @@ function AutoRow(props: {
 /** 자동 목록 한 묶음 — 건별 메모·빼기, 직접 추가 건. */
 export function AutoGroupSection(props: Props) {
   const { title, items, reportId, area, groupKey, editable, emptyText } = props;
-  const manual = props.manual.filter(
+  const allManual = props.manual.filter(
     (m) => m.area === area && m.group_key === groupKey,
   );
-  const body =
-    items.length + manual.length === 0 ? (
+  // 30건 넘으면 쪽으로 나눈다 — 한 화면에 묶음이 여럿이라 주소(?page)가 아니라 묶음마다 상태로 든다.
+  const [page, setPage] = useState(1);
+  const total = items.length + allManual.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const current = Math.min(page, totalPages);
+  const [pageItems, manual] = pageOf(items, allManual, current);
+  const showOwners =
+    items.some((i) => i.owners !== undefined) ||
+    allManual.some((m) => m.owner !== undefined);
+  const list =
+    total === 0 ? (
       <p className="py-2 text-sm text-muted">{emptyText}</p>
     ) : props.table ? (
       <AutoTable
         title={title}
         atLabel={props.table.atLabel}
-        items={items}
+        items={pageItems}
         manual={manual}
         reportId={reportId}
         area={area}
         editable={editable}
+        showOwners={showOwners}
       />
     ) : (
       <ul className="flex flex-col divide-y divide-line-soft">
-        {items.map((item) => (
+        {pageItems.map((item) => (
           <AutoRow
             key={item.key}
             item={item}
@@ -206,6 +241,18 @@ export function AutoGroupSection(props: Props) {
         ))}
       </ul>
     );
+  const body = (
+    <>
+      {list}
+      {totalPages > 1 ? (
+        <PaginationNav
+          page={current}
+          totalPages={totalPages}
+          onChange={setPage}
+        />
+      ) : null}
+    </>
+  );
   if (props.collapsed) {
     return (
       <details>
@@ -222,8 +269,8 @@ export function AutoGroupSection(props: Props) {
   return (
     <GroupShell
       title={title}
-      count={items.filter((i) => !i.excluded).length + manual.length}
-      underline={!(props.table && items.length + manual.length > 0)}
+      count={items.filter((i) => !i.excluded).length + allManual.length}
+      underline={!(props.table && total > 0)}
     >
       {body}
     </GroupShell>

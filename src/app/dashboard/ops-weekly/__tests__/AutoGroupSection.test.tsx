@@ -359,3 +359,34 @@ describe("AutoGroupSection — 전체 보고의 담당자", () => {
     expect(screen.getByText("담당 다")).toBeInTheDocument();
   });
 });
+
+describe("AutoGroupSection — 30건 넘으면 페이지 넘기기", () => {
+  const many = (n: number) =>
+    Array.from({ length: n }, (_, i) => view(`running:${i}`, { title: `대학${i}` }));
+
+  it("표: 31건이면 30행 + 기본 페이지 넘기기, 다음을 누르면 나머지 1행(서버 왕복 없이)", () => {
+    render(
+      <AutoGroupSection {...group(many(31))} editable={false} table={{ atLabel: "오픈" }} />,
+    );
+    const table = screen.getByRole("table", { name: "운영 중" });
+    expect(within(table).getAllByRole("row")).toHaveLength(31); // 머리줄 + 30
+    const nav = screen.getByRole("navigation", { name: "페이지 이동" });
+    expect(within(nav).getByText("1 / 2")).toBeInTheDocument();
+    fireEvent.click(within(nav).getByRole("button", { name: "다음 →" }));
+    expect(within(table).getAllByRole("row")).toHaveLength(2);
+    expect(within(table).getByText("대학30")).toBeInTheDocument();
+  });
+
+  it("30건 이하면 페이지 넘기기가 없다", () => {
+    render(
+      <AutoGroupSection {...group(many(30))} editable={false} table={{ atLabel: "오픈" }} />,
+    );
+    expect(screen.queryByRole("navigation", { name: "페이지 이동" })).toBeNull();
+  });
+
+  it("목록(표 아님)도 같다", () => {
+    render(<AutoGroupSection {...group(many(31))} editable={false} />);
+    expect(screen.getAllByRole("listitem")).toHaveLength(30);
+    expect(screen.getByRole("navigation", { name: "페이지 이동" })).toBeInTheDocument();
+  });
+});

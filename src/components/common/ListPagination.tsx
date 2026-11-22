@@ -36,6 +36,22 @@ export function ListPagination({ total, pageSize = 30 }: Props) {
     router.push(`${pathname}?${next.toString()}`);
   }
 
+  return <PaginationNav page={page} totalPages={totalPages} onChange={go} />;
+}
+
+const PAGE_BTN =
+  "border border-line px-3 py-1.5 text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:opacity-40";
+
+/**
+ * 페이지 넘기기 모양만 — 주소를 안 건드린다. 한 화면에 목록이 여럿이라 `?page` 하나로 못 가르는 곳
+ * (주간업무보고 묶음 표)은 이걸 상태로 몰아 쓴다. 모양은 ListPagination 과 하나다.
+ */
+export function PaginationNav(props: {
+  page: number;
+  totalPages: number;
+  onChange: (page: number) => void;
+}) {
+  const { page, totalPages, onChange } = props;
   return (
     <nav
       aria-label="페이지 이동"
@@ -43,9 +59,9 @@ export function ListPagination({ total, pageSize = 30 }: Props) {
     >
       <button
         type="button"
-        onClick={() => go(page - 1)}
+        onClick={() => onChange(page - 1)}
         disabled={page === 1}
-        className="border border-line px-3 py-1.5 text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:opacity-40"
+        className={PAGE_BTN}
       >
         ← 이전
       </button>
@@ -54,9 +70,9 @@ export function ListPagination({ total, pageSize = 30 }: Props) {
       </span>
       <button
         type="button"
-        onClick={() => go(page + 1)}
+        onClick={() => onChange(page + 1)}
         disabled={page === totalPages}
-        className="border border-line px-3 py-1.5 text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:opacity-40"
+        className={PAGE_BTN}
       >
         다음 →
       </button>
