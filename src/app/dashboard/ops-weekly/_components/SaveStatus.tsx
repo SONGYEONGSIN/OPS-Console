@@ -1,7 +1,7 @@
 import { formatHm } from "../_format";
 
 /**
- * 자동 저장 상태 — 제목 줄 오른쪽에 둔다. 칸을 떠나면 저장된다는 것을 처음 보는 사람도 알게 하고,
+ * 자동 저장 상태 — 제목 줄 오른쪽 배지(상태 배지들과 같은 치수). 칸을 떠나면 저장된다는 것을 처음 보는 사람도 알게 하고,
  * 실패는 색으로도 말한다(상세 문구는 필드 아래 alert).
  */
 export function SaveStatus(props: {
@@ -21,7 +21,11 @@ export function SaveStatus(props: {
   return (
     <span
       aria-live="polite"
-      className={`text-xs tabular-nums ${failed ? "text-vermilion" : "text-muted"}`}
+      className={`border px-1.5 py-0.5 text-xs tabular-nums ${
+        failed
+          ? "border-vermilion text-vermilion"
+          : "border-line-soft text-muted"
+      }`}
     >
       {text}
     </span>
