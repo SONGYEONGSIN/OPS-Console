@@ -24,6 +24,23 @@ const op = (over: Partial<RecipientOperator> = {}): RecipientOperator => ({
 });
 
 describe("writerRoster", () => {
+  it("작성 포함 목록에 든 부장·팀장은 작성 대상이 된다(운영1·2팀·활성일 때만)", () => {
+    const rows = [
+      w("lead@x", "운영2팀", "팀장", "active"),
+      w("boss@x", "운영1팀", "부장", "active"),
+      w("gone@x", "운영1팀", "팀장", "inactive"),
+      w("a@x", "운영1팀", "매니저", "active"),
+    ];
+    expect(
+      writerRoster(rows, [], ["lead@x", "gone@x"]).map((r) => r.email),
+    ).toEqual(["lead@x", "a@x"]);
+  });
+
+  it("제외 목록이 포함보다 앞선다", () => {
+    const rows = [w("lead@x", "운영2팀", "팀장", "active")];
+    expect(writerRoster(rows, ["lead@x"], ["lead@x"])).toEqual([]);
+  });
+
   it("작성 대상 = 운영1·2팀 · 활성 · 부장/팀장 제외 · 제외 목록 제외", () => {
     const rows = [
       w("a@x", "운영1팀", "매니저", "active"),

@@ -15,6 +15,7 @@ import {
   addRecipient,
   removeRecipient,
   saveExcludedWriters,
+  saveIncludedWriters,
   saveRotation,
   setProjectOwners,
   setWeekDuty,
@@ -78,6 +79,7 @@ describe("권한", () => {
       await removeRecipient({ email: "r@example.com" }),
       await saveRotation({ emails: [], anchorWeekStart: null }),
       await saveExcludedWriters({ emails: [] }),
+      await saveIncludedWriters({ emails: [] }),
       await upsertProject({
         name: "A",
         kind: "project",
@@ -266,6 +268,18 @@ describe("작성 제외", () => {
     expect(
       state.db.rows("ops_weekly_settings")[0].excluded_writer_emails,
     ).toEqual(["a@example.com", "b@example.com"]);
+  });
+});
+
+describe("작성 포함", () => {
+  it("정규화·중복 제거해서 저장한다", async () => {
+    me("z@example.com", true);
+    expect(
+      await saveIncludedWriters({ emails: ["Lead@example.com", "lead@example.com"] }),
+    ).toEqual({ ok: true });
+    expect(
+      state.db.rows("ops_weekly_settings")[0].included_writer_emails,
+    ).toEqual(["lead@example.com"]);
   });
 });
 

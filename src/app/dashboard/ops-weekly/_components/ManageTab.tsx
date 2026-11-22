@@ -114,8 +114,9 @@ export function ManageTab({
         </Section>
         <Section name="exclusions" active={active}>
           <WriterExclusionPanel
-            candidates={bundle.writerCandidates}
+            candidates={bundle.recipientCandidates}
             excluded={bundle.excludedWriterEmails}
+            included={bundle.includedWriterEmails}
           />
         </Section>
         <Section name="unmatched" active={active}>

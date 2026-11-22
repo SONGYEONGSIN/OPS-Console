@@ -45,18 +45,22 @@ export function assertWritten(label: string, res: { error: DbError }): void {
 type Settings = {
   rotation_anchor_week: string | null;
   excluded_writer_emails: string[];
+  included_writer_emails: string[];
 };
 
 async function loadSettings(): Promise<Settings> {
   const res = await createAdminClient()
     .from("ops_weekly_settings")
-    .select("rotation_anchor_week, excluded_writer_emails")
+    .select(
+      "rotation_anchor_week, excluded_writer_emails, included_writer_emails",
+    )
     .eq("id", true)
     .maybeSingle();
   const row = rowOf<Partial<Settings>>("ops_weekly_settings", res);
   return {
     rotation_anchor_week: row?.rotation_anchor_week ?? null,
     excluded_writer_emails: row?.excluded_writer_emails ?? [],
+    included_writer_emails: row?.included_writer_emails ?? [],
   };
 }
 
@@ -105,7 +109,11 @@ export async function listWriters(): Promise<WriterCandidate[]> {
     email: normEmail(r.email),
   }));
   const settings = await loadSettings();
-  return writerRoster(rows, settings.excluded_writer_emails.map(normEmail));
+  return writerRoster(
+    rows,
+    settings.excluded_writer_emails.map(normEmail),
+    settings.included_writer_emails.map(normEmail),
+  );
 }
 
 async function dutyFor(weekStart: string): Promise<string | null> {
