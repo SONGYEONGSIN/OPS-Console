@@ -100,14 +100,14 @@ export function SubTabs({
         <div
           id={subTabsIdOf(tab)}
           // 일회성 임의 값: 고정 KPI 바(StickyKpiBar 가 --ops-kpi-h 에 높이를 쓴다) 아래에 서도록. 미측정이면 12rem.
-          className="flex flex-wrap items-center gap-x-4 gap-y-2 lg:scroll-mt-[calc(var(--ops-kpi-h,12rem)_+_0.5rem)]"
+          className="flex flex-wrap items-baseline gap-x-3 gap-y-2 lg:scroll-mt-[calc(var(--ops-kpi-h,12rem)_+_0.5rem)]"
         >
           {heading}
           <div
             ref={list}
             role="tablist"
             aria-label={ariaLabel}
-            className="flex min-w-0 max-w-full overflow-x-auto pb-px"
+            className="flex min-w-0 max-w-full max-lg:overflow-x-auto pb-px"
           >
             {tabs.map((t, i) => {
               const isActive = t.key === active;

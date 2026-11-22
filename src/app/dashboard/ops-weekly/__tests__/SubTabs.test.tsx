@@ -51,7 +51,9 @@ describe("SubTabs", () => {
   it("탭 줄은 tablist, 탭은 메일함 범위 칩 모양(글씨 sm·선택은 굵은 잉크+빨간 밑줄), 숫자는 괄호 안 tabular-nums", () => {
     mount();
     const list = screen.getByRole("tablist", { name: "원서접수 묶음" });
-    expect(tokens(list)).toContain("overflow-x-auto");
+    // 넓은 화면에서는 스크롤 상자가 아니다 — 스크롤 상자는 기준선이 상자 아래로 잡혀 제목과 줄이 어긋난다
+    expect(tokens(list)).toContain("max-lg:overflow-x-auto");
+    expect(tokens(list)).not.toContain("overflow-x-auto");
     const dev = screen.getByRole("tab", { name: /개발 중/ });
     expect(dev).toHaveAttribute("aria-selected", "true");
     expect(dev).toHaveAttribute("tabindex", "0");
@@ -98,6 +100,9 @@ describe("SubTabs", () => {
     const row = h.parentElement as HTMLElement;
     expect(row.contains(list)).toBe(true);
     expect(tokens(row)).toContain("flex");
+    // 제목(text-xl)·건수·탭 글자가 한 기준선 — 가운데 정렬이면 글자 크기가 달라 줄이 어긋난다
+    expect(tokens(row)).toContain("items-baseline");
+    expect(tokens(row)).not.toContain("items-center");
   });
 
   it("비활성 패널도 DOM 에 남고 hidden 이다(입력 중인 폼 보존)", () => {

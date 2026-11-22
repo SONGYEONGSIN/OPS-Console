@@ -29,4 +29,16 @@ describe("GroupShell", () => {
     expect(screen.queryByRole("button")).toBeNull();
     expect(screen.queryByLabelText("직접 추가 제목")).toBeNull();
   });
+
+  it("headingHidden — 하위 탭이 이미 이름·건수를 보여 줄 때 제목 줄은 화면에서 숨고(sr-only) 이름은 남는다", () => {
+    render(
+      <GroupShell title="운영 중" count={192} headingHidden>
+        <p>본문</p>
+      </GroupShell>,
+    );
+    const h = screen.getByRole("heading", { name: "운영 중" });
+    expect((h.parentElement as HTMLElement).className.split(/\s+/)).toContain(
+      "sr-only",
+    );
+  });
 });

@@ -184,6 +184,11 @@ describe("ApplicationTab — 하위 탭", () => {
     expect(
       screen.getByRole("heading", { name: "개발 중" }),
     ).toBeInTheDocument();
+    // 묶음 제목·건수는 하위 탭 라벨과 같아 화면에서는 숨긴다(sr-only)
+    expect(
+      (screen.getByRole("heading", { name: "개발 중" }).parentElement as HTMLElement)
+        .className.split(/\s+/),
+    ).toContain("sr-only");
     // 비활성 묶음 제목은 DOM 에는 있되 접근 트리에는 없다
     expect(screen.queryByRole("heading", { name: "운영 중" })).toBeNull();
     expect(
