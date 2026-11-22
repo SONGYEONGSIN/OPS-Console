@@ -303,11 +303,13 @@ describe("WeekHeader", () => {
       ).toBe(false);
     });
 
-    it("상태 배지 — 작성 중(vermilion) / 제출함(숫자 정렬) / 다시 작성 요청(vermilion)", () => {
+    it("상태 배지 — 작성 중(빨간 바탕) / 제출함(숫자 정렬) / 다시 작성 요청(vermilion)", () => {
       const { rerender } = render(<WeekHeader {...base} />);
       const draft = screen.getByText("작성 중");
-      expect(tokens(draft)).toContain("border-vermilion");
-      expect(tokens(draft)).toContain("text-vermilion");
+      // 작성 중은 빨간 바탕 + 흰 글씨(채운 배지)
+      expect(tokens(draft)).toEqual(
+        expect.arrayContaining(["border-vermilion", "bg-vermilion", "text-cream"]),
+      );
       rerender(
         <WeekHeader
           {...base}
