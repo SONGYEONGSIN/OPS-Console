@@ -337,20 +337,18 @@ describe("WeekHeader", () => {
       ).toBeInTheDocument();
     });
 
-    it("주 이동 링크는 터치 폭 36px 이상", () => {
-      render(<WeekHeader {...base} />);
-      const t = tokens(screen.getByRole("link", { name: "이전 주" }));
-      expect(t).toContain("size-9");
-    });
-
-    it("주 이동은 오늘 할 일과 같은 글씨 — 버튼 text-sm·border-line·정사각형, 주 표시 text-base bold tracking", () => {
+    it("주 이동은 오늘 할 일과 같은 글씨 — 버튼 text-sm·border-line·같은 치수, 주 표시 text-base bold tracking", () => {
       render(<WeekHeader {...base} />);
       const t = tokens(screen.getByRole("link", { name: "이전 주" }));
       expect(t).toEqual(expect.arrayContaining(["text-sm", "border-line", "text-ink"]));
-      // 가로 = 세로, 높이는 옆 내 보고서 | 전체 보고서 토글과 같다(lg 미만 36px · lg 이상 28px)
-      expect(t).toEqual(expect.arrayContaining(["size-9", "lg:size-7"]));
+      // 오늘 할 일(WeeklyView)의 ‹ › 와 같은 치수 — px-2 py-1
+      expect(t).toEqual(expect.arrayContaining(["px-2", "py-1"]));
+      expect(t).not.toContain("size-9");
+      // 토글 칸은 오늘 할 일 MineScopeToggle 과 같은 px-3 py-1 text-xs, 고정 높이 없음
+      const seg = tokens(screen.getByRole("link", { name: "전체 보고서" }));
+      expect(seg).toEqual(expect.arrayContaining(["px-3", "py-1", "text-xs"]));
       const toggle = screen.getByRole("link", { name: "전체 보고서" }).parentElement as HTMLElement;
-      expect(toggle.className.split(/\s+/)).toEqual(expect.arrayContaining(["h-9", "lg:h-7"]));
+      expect(toggle.className.split(/\s+/)).not.toContain("h-9");
       expect(t).not.toContain("text-xs");
       const label = tokens(screen.getByText(/주차 · /));
       expect(label).toEqual(expect.arrayContaining(["text-base", "font-bold", "tracking-[-0.02em]"]));
