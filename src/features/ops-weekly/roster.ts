@@ -22,6 +22,22 @@ export type WriterCandidate = {
 const WRITER_TEAM_SET: ReadonlySet<string> = new Set(WRITER_TEAMS);
 const EXCLUDED_ROLE_SET: ReadonlySet<string> = new Set(EXCLUDED_WRITER_ROLES);
 
+const teamRank = (team: string): number => {
+  const i = (WRITER_TEAMS as readonly string[]).indexOf(team);
+  return i < 0 ? WRITER_TEAMS.length : i;
+};
+
+/** 표 순서 — 운영1팀 이름 가나다순, 그다음 운영2팀 이름 가나다순. 새 배열을 돌려준다. */
+export function sortByTeamName<T extends { team: string; name: string }>(
+  rows: readonly T[],
+): T[] {
+  return [...rows].sort(
+    (a, b) =>
+      teamRank(a.team) - teamRank(b.team) ||
+      a.name.localeCompare(b.name, "ko"),
+  );
+}
+
 /**
  * 작성 대상 = 운영1·2팀 · 활성 · 부장/팀장 제외 · 제외 목록 제외.
  * 부장·팀장도 작성 포함 목록(includedEmails)에 있으면 대상이다 — 직급을 바꾸지 않고 예외로 넣는다.
@@ -34,15 +50,17 @@ export function writerRoster(
 ): WriterCandidate[] {
   const excluded = new Set(excludedEmails);
   const included = new Set(includedEmails);
-  return rows
-    .filter(
-      (r) =>
-        WRITER_TEAM_SET.has(r.team) &&
-        r.status === "active" &&
-        (!EXCLUDED_ROLE_SET.has(r.role) || included.has(r.email)) &&
-        !excluded.has(r.email),
-    )
-    .map((r) => ({ ...r, name: r.name.trim() }));
+  return sortByTeamName(
+    rows
+      .filter(
+        (r) =>
+          WRITER_TEAM_SET.has(r.team) &&
+          r.status === "active" &&
+          (!EXCLUDED_ROLE_SET.has(r.role) || included.has(r.email)) &&
+          !excluded.has(r.email),
+      )
+      .map((r) => ({ ...r, name: r.name.trim() })),
+  );
 }
 
 export function dutyForWeek(
