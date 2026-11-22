@@ -57,20 +57,24 @@ const SEG_BASE =
   "-m-1 flex min-w-0 flex-1 flex-col gap-0.5 border p-1 transition-colors focus-visible:outline-2 focus-visible:outline-ink";
 const SEG_IDLE = "border-transparent hover:border-ink";
 
-/** 대학구분 칸 — 차주 오픈/마감 카드의 두 칸과 같은 모양(작은 라벨 + 숫자, 칸 사이 세로선). 칸마다 같은 몫(균등 배열). */
+/**
+ * 대학구분 칸 — lg 이상은 차주 오픈/마감 카드의 두 칸과 같은 모양(작은 라벨 위·숫자 아래, 세로선, 균등 배열).
+ * lg 미만은 카드가 좁아 칸으로 나누면 글자가 한 자씩 꺾인다 — `라벨 … 건수` 한 줄씩 세로로 쌓는다.
+ */
 function UnivCells({ cells }: { cells: UnivBreakdown }) {
   if (cells.length === 0) return null;
   return (
-    <div className="mt-1 flex">
+    <div className="mt-1 flex flex-col gap-0.5 lg:flex-row lg:gap-0">
       {cells.map((c, i) => (
-        <div key={c.label} className="flex min-w-0 flex-1 gap-2">
+        <div key={c.label} className="flex min-w-0 flex-1 lg:gap-2">
           {i > 0 ? (
-            <div className="w-px shrink-0 self-stretch bg-line-soft" />
+            <div className="w-px shrink-0 self-stretch bg-line-soft max-lg:hidden" />
           ) : null}
-          <div data-testid="weekly-kpi-univ" className="flex min-w-0 flex-col">
-            <span className="text-2xs text-muted [overflow-wrap:anywhere]">
-              {c.label}
-            </span>
+          <div
+            data-testid="weekly-kpi-univ"
+            className="flex min-w-0 flex-1 items-baseline justify-between gap-1 whitespace-nowrap lg:flex-col lg:items-start lg:justify-start lg:gap-0"
+          >
+            <span className="text-2xs text-muted">{c.label}</span>
             <span className="text-sm font-bold tabular-nums text-ink">
               {c.count.toLocaleString("ko-KR")}
               <span className="ml-0.5 text-2xs font-medium text-muted">건</span>
