@@ -303,9 +303,11 @@ describe("WeekHeader", () => {
       ).toBe(false);
     });
 
-    it("상태 배지 — 작성 중 / 제출함(숫자 정렬) / 다시 작성 요청(vermilion)", () => {
+    it("상태 배지 — 작성 중(vermilion) / 제출함(숫자 정렬) / 다시 작성 요청(vermilion)", () => {
       const { rerender } = render(<WeekHeader {...base} />);
-      expect(screen.getByText("작성 중")).toBeInTheDocument();
+      const draft = screen.getByText("작성 중");
+      expect(tokens(draft)).toContain("border-vermilion");
+      expect(tokens(draft)).toContain("text-vermilion");
       rerender(
         <WeekHeader
           {...base}
@@ -340,6 +342,15 @@ describe("WeekHeader", () => {
       const t = tokens(screen.getByRole("link", { name: "이전 주" }));
       expect(t).toContain("min-h-9");
       expect(t).toContain("min-w-9");
+    });
+
+    it("주 이동은 오늘 할 일과 같은 치수 — 버튼 text-sm·border-line·px-2 py-1, 주 표시 text-base bold tracking", () => {
+      render(<WeekHeader {...base} />);
+      const t = tokens(screen.getByRole("link", { name: "이전 주" }));
+      expect(t).toEqual(expect.arrayContaining(["text-sm", "border-line", "px-2", "py-1", "text-ink"]));
+      expect(t).not.toContain("text-xs");
+      const label = tokens(screen.getByText(/주차 · /));
+      expect(label).toEqual(expect.arrayContaining(["text-base", "font-bold", "tracking-[-0.02em]"]));
     });
   });
 });

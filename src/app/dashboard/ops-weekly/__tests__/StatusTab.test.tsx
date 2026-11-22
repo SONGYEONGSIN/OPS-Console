@@ -162,6 +162,29 @@ describe("StatusTab", () => {
     expect(rowText("운영자C")).toContain("미제출");
   });
 
+  it("표 칸 순서는 팀이 맨 앞", () => {
+    render(<StatusTab {...base} writers={[wa, wb, wc]} reports={[]} />);
+    const headers = screen
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent);
+    expect(headers.slice(0, 2)).toEqual(["팀", "이름"]);
+  });
+
+  it("상태는 배지 — 제출(회색 테두리) · 다시 작성 요청(빨강 채움) · 미제출(빨강 테두리)", () => {
+    render(
+      <StatusTab
+        {...base}
+        writers={[wa, wb, wc]}
+        reports={[rep("a@x", "submitted"), rep("b@x", "returned")]}
+      />,
+    );
+    const cls = (name: string, text: string) =>
+      (within(row(name)).getByText(text).className ?? "").split(/\s+/);
+    expect(cls("운영자A", "제출")).toEqual(expect.arrayContaining(["border", "border-line-soft", "text-ink"]));
+    expect(cls("운영자B", "다시 작성 요청")).toEqual(expect.arrayContaining(["border-vermilion", "bg-vermilion", "text-cream"]));
+    expect(cls("운영자C", "미제출")).toEqual(expect.arrayContaining(["border", "border-vermilion", "text-vermilion"]));
+  });
+
   it("보고서 이메일 대소문자가 달라도 같은 사람으로 맞춘다", () => {
     render(<StatusTab {...base} reports={[rep("A@X", "submitted")]} />);
     expect(rowText("운영자A")).not.toContain("미제출");
@@ -458,23 +481,6 @@ describe("StatusTab", () => {
       const box = screen.getByText("작성 대상 명단이 비어 있습니다")
         .parentElement as Element;
       expect(tokens(box)).toContain("bg-situation-bg");
-    });
-
-    it("상태 칸 색 — 미제출 muted / 다시 작성 vermilion / 제출 ink", () => {
-      render(
-        <StatusTab
-          {...base}
-          writers={[wa, wb, wc]}
-          reports={[rep("a@x", "submitted"), rep("b@x", "returned")]}
-        />,
-      );
-      const cell = (name: string, text: string) =>
-        within(row(name)).getByText(text);
-      expect(tokens(cell("운영자A", "제출"))).toContain("text-ink");
-      expect(tokens(cell("운영자B", "다시 작성 요청"))).toContain(
-        "text-vermilion",
-      );
-      expect(tokens(cell("운영자C", "미제출"))).toContain("text-muted");
     });
 
     it("admin 에게만 명단 빈 상자에 설정 링크", () => {

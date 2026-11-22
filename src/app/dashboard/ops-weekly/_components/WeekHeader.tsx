@@ -6,7 +6,6 @@ import type { WeekRef } from "@/features/ops-weekly/week";
 import { formatMdHm } from "../_format";
 import type { HeaderWeek } from "../_header-week";
 import { ALL_OP, opsWeeklyHref } from "../_params";
-import { BADGE_CLASS } from "./styles";
 import { useOpsArea } from "./use-ops-area";
 
 type Props = {
@@ -37,8 +36,9 @@ type Props = {
   nextHref: string;
 };
 
+// 오늘 할 일의 주 이동과 같은 치수(text-sm·border-line·px-2 py-1). 터치(lg 미만)에서만 36px 를 보장한다. 호버는 버튼 표준(검정).
 const NAV_LINK =
-  "inline-flex min-h-9 min-w-9 items-center justify-center border border-line-soft px-2 py-0.5 text-xs text-ink-soft hover:border-ink hover:bg-ink hover:text-cream";
+  "inline-flex min-h-9 min-w-9 items-center justify-center border border-line px-2 py-1 text-sm text-ink hover:border-ink hover:bg-ink hover:text-cream lg:min-h-0 lg:min-w-0";
 
 function StatusBadge(props: {
   status: ReportStatus | null;
@@ -59,7 +59,14 @@ function StatusBadge(props: {
       </span>
     );
   }
-  if (status === "draft") return <span className={BADGE_CLASS}>작성 중</span>;
+  // 아직 안 낸 것은 할 일이라 빨갛게 — 다시 작성 요청과 같은 색이다. 제출하면 회색 `제출함 시각` 으로 바뀐다.
+  if (status === "draft") {
+    return (
+      <span className="border border-vermilion px-1.5 py-0.5 text-xs text-vermilion">
+        작성 중
+      </span>
+    );
+  }
   return null;
 }
 
@@ -149,7 +156,7 @@ export function WeekHeader(props: Props) {
             <Link href={prevHref} aria-label="이전 주" className={NAV_LINK}>
               ‹
             </Link>
-            <span className="min-w-0 text-base font-bold tabular-nums">{`${weekRef.label} · ${weekRef.rangeLabel}`}</span>
+            <span className="min-w-0 text-base font-bold tracking-[-0.02em] tabular-nums">{`${weekRef.label} · ${weekRef.rangeLabel}`}</span>
             <Link href={nextHref} aria-label="다음 주" className={NAV_LINK}>
               ›
             </Link>

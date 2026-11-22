@@ -22,7 +22,7 @@ type Props<R extends RosterRow> = {
 const CELL = "px-3 py-2";
 
 /**
- * 관리 탭의 사람 목록 — 조직·권한 목록과 같은 표 모양에 행 끝 버튼 칸.
+ * 관리 탭의 사람 목록 — 팀·이름·이메일 순(팀이 맨 앞, 순번 칸이 있으면 그 뒤) + 행 끝 버튼 칸.
  * 당번 지정·받는 사람·당번 순번·작성 제외가 같이 쓴다.
  */
 export function RosterTable<R extends RosterRow>(props: Props<R>) {
@@ -34,8 +34,8 @@ export function RosterTable<R extends RosterRow>(props: Props<R>) {
         <thead>
           <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
             {lead ? <th className={`${CELL} w-14`}>{lead.header}</th> : null}
-            <th className={CELL}>이름</th>
             <th className={CELL}>팀</th>
+            <th className={CELL}>이름</th>
             <th className={CELL}>이메일</th>
             <th className={`${CELL} text-right`}>{action.header}</th>
           </tr>
@@ -61,10 +61,10 @@ export function RosterTable<R extends RosterRow>(props: Props<R>) {
                     {lead.cell(row)}
                   </td>
                 ) : null}
+                <td className={`${CELL} text-ink-soft`}>{row.team ?? "—"}</td>
                 <td className={`${CELL} font-medium text-ink`}>
                   {row.name ?? row.email}
                 </td>
-                <td className={`${CELL} text-ink-soft`}>{row.team ?? "—"}</td>
                 <td className={`${CELL} font-mono text-xs text-muted`}>
                   {row.name === null ? "" : row.email}
                 </td>
