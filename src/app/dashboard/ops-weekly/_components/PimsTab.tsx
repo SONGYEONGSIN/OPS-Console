@@ -64,16 +64,20 @@ export function PimsTab({
     ]),
   );
   return (
-    <div className="flex flex-col gap-7">
-      <TabHeading
-        title={AREA_TAB_LABEL.pims}
-        summary={`자동 ${autoCount}건 · 직접 ${
-          detail.manual.filter((m) => m.area === "pims").length
-        }건`}
-      >
-        {freezeNotice ? <AutoFreezeNotice /> : null}
-      </TabHeading>
-      <SubTabs tab="pims" ariaLabel={`${AREA_TAB_LABEL.pims} 묶음`} tabs={tabs} panels={panels} />
-    </div>
+    <SubTabs
+      tab="pims"
+      ariaLabel={`${AREA_TAB_LABEL.pims} 묶음`}
+      tabs={tabs}
+      panels={panels}
+      heading={
+        <TabHeading
+          title={AREA_TAB_LABEL.pims}
+          summary={`자동 ${autoCount}건 · 직접 ${
+            detail.manual.filter((m) => m.area === "pims").length
+          }건`}
+        />
+      }
+      notice={freezeNotice ? <AutoFreezeNotice /> : null}
+    />
   );
 }

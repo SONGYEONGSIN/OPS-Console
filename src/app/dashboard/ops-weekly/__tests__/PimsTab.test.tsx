@@ -73,6 +73,11 @@ describe("PimsTab", () => {
     expect(tabCount("금주 발표")).toBe("1");
     expect(tabCount("차주 발표")).toBe("2");
     expect(screen.getByText("자동 2건 · 직접 1건")).toBeInTheDocument();
+    // 제목·건수는 하위 탭 줄 왼쪽 같은 줄(메일함 머리)
+    expect(
+      screen.getByRole("tablist", { name: "합격자 발표 묶음" }).parentElement
+        ?.textContent,
+    ).toContain("자동 2건 · 직접 1건");
     expect(screen.getByRole("heading", { name: "합격자 발표" }).className).toContain(
       "text-xl",
     );
