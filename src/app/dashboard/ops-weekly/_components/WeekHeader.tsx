@@ -36,9 +36,9 @@ type Props = {
   nextHref: string;
 };
 
-// 오늘 할 일(WeeklyView)의 ‹ › 와 같은 치수·글씨(px-2 py-1 text-sm·border-line). 호버는 버튼 표준(검정).
+// 높이는 오늘 할 일(WeeklyView)의 ‹ › 그대로 — py-1(8) + text-sm 줄높이(20) + 테두리(2) = 30px. 가로를 같게 해 정사각형. 호버는 버튼 표준(검정).
 const NAV_LINK =
-  "shrink-0 border border-line px-2 py-1 text-sm text-ink hover:border-ink hover:bg-ink hover:text-cream";
+  "inline-flex size-7.5 shrink-0 items-center justify-center border border-line text-sm text-ink hover:border-ink hover:bg-ink hover:text-cream";
 
 function StatusBadge(props: {
   status: ReportStatus | null;
