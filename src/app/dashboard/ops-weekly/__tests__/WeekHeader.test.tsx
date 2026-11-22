@@ -341,9 +341,9 @@ describe("WeekHeader", () => {
       render(<WeekHeader {...base} />);
       const t = tokens(screen.getByRole("link", { name: "이전 주" }));
       expect(t).toEqual(expect.arrayContaining(["text-sm", "border-line", "text-ink"]));
-      // 오늘 할 일(WeeklyView)의 ‹ › 와 같은 치수 — px-2 py-1
-      expect(t).toEqual(expect.arrayContaining(["px-2", "py-1"]));
-      expect(t).not.toContain("size-9");
+      // 높이는 오늘 할 일 ‹ › 그대로(py-1 + text-sm 줄높이 + 테두리 = 30px), 가로만 같게 — 정사각형
+      expect(t).toEqual(expect.arrayContaining(["size-7.5", "justify-center"]));
+      expect(t).not.toContain("px-2");
       // 토글 칸은 오늘 할 일 MineScopeToggle 과 같은 px-3 py-1 text-xs, 고정 높이 없음
       const seg = tokens(screen.getByRole("link", { name: "전체 보고서" }));
       expect(seg).toEqual(expect.arrayContaining(["px-3", "py-1", "text-xs"]));
