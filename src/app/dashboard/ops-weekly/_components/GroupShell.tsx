@@ -6,6 +6,8 @@ type Props = {
   count: number;
   /** 제목 밑줄 — 표는 머리줄이 이미 선을 그어 두 줄이 되므로 끈다(다른 표들처럼 제목 아래 바로 머리줄). */
   underline?: boolean;
+  /** 하위 탭이 이미 이름·건수를 보여 줄 때 — 제목 줄을 화면에서 숨긴다(sr-only, 표의 이름은 남는다). */
+  headingHidden?: boolean;
   children: ReactNode;
 };
 
@@ -17,17 +19,27 @@ export function GroupShell({
   title,
   count,
   underline = true,
+  headingHidden = false,
   children,
 }: Props) {
   return (
     <section className="flex flex-col">
       <div
-        className={`flex flex-wrap items-baseline gap-x-2 gap-y-1 pb-2 ${underline ? "border-b border-line" : ""}`}
+        className={
+          headingHidden
+            ? "sr-only"
+            : `flex flex-wrap items-baseline gap-x-2 gap-y-1 pb-2 ${underline ? "border-b border-line" : ""}`
+        }
       >
         <h3 className="text-sm font-bold text-ink">{title}</h3>
         <span className="text-xs tabular-nums text-muted">{`${count}건`}</span>
       </div>
-      {children}
+      {headingHidden && underline ? (
+        // 숨긴 제목 줄이 긋던 선을 본문 위에 — 표는 머리줄이 선을 그어 끈다(underline=false).
+        <div className="border-t border-line">{children}</div>
+      ) : (
+        children
+      )}
     </section>
   );
 }

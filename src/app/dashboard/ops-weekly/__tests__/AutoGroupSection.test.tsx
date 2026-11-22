@@ -137,18 +137,20 @@ describe("AutoGroupSection", () => {
     expect(screen.getByText("없음")).toBeInTheDocument();
   });
 
-  it("묶음은 상자가 아니라 제목 밑줄 + 행 구분선이다", () => {
+  it("묶음은 상자가 아니라 위 선 + 행 구분선이다", () => {
     const { container } = render(
       <AutoGroupSection {...group([view("closing:1")])} editable />,
     );
     expect(tokens(container.querySelector("section") as Element)).not.toContain(
       "border",
     );
+    // 제목 줄은 하위 탭과 겹쳐 숨기고(sr-only), 목록 위 선은 본문이 긋는다
     const head = screen.getByRole("heading", { name: "운영 중" })
       .parentElement as Element;
-    expect(tokens(head)).toContain("border-b");
-    expect(tokens(head)).toContain("border-line");
+    expect(tokens(head)).toContain("sr-only");
     const ul = container.querySelector("ul") as Element;
+    const body = head.nextElementSibling as Element;
+    expect(tokens(body)).toEqual(expect.arrayContaining(["border-t", "border-line"]));
     expect(tokens(ul)).toContain("divide-y");
     expect(tokens(ul)).toContain("divide-line-soft");
   });

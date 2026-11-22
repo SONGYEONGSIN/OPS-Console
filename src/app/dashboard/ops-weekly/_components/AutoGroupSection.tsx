@@ -271,6 +271,7 @@ export function AutoGroupSection(props: Props) {
       title={title}
       count={items.filter((i) => !i.excluded).length + allManual.length}
       underline={!(props.table && total > 0)}
+      headingHidden
     >
       {body}
     </GroupShell>
