@@ -52,7 +52,14 @@ function LeaveRow(props: {
           {item.owners?.join(", ") ?? "—"}
         </td>
       ) : null}
-      <td className={`${TD} font-medium`}>{item.kindLabel}</td>
+      <td className={`${TD} font-medium`}>
+        {item.kindLabel}
+        {item.detail ? (
+          <span className="block text-xs font-normal text-ink-soft">
+            {item.detail}
+          </span>
+        ) : null}
+      </td>
       <td className={`${TD} whitespace-nowrap tabular-nums`}>
         {periodOf(item)}
       </td>

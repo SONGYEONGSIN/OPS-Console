@@ -120,6 +120,30 @@ describe("LeaveTab", () => {
     expect(screen.getByText("11/18(수) ~ 11/20(금)")).toBeInTheDocument();
   });
 
+  it("detail 이 있으면 구분 칸에 종류 아래로 보여 준다(외부미팅 제목)", () => {
+    render(
+      <LeaveTab
+        snapshot={snap({
+          leave: [
+            leaveItem({
+              key: "m",
+              title: "외부미팅",
+              kindLabel: "외부미팅",
+              detail: "헥토파이낸셜 미팅",
+              family: "field",
+            }),
+          ],
+        })}
+        detail={EMPTY}
+        reportId="r"
+        editable
+        freezeNotice={false}
+      />,
+    );
+    const cell = screen.getByText("헥토파이낸셜 미팅").closest("td");
+    expect(cell?.textContent).toContain("외부미팅");
+  });
+
   it("종류 라벨은 한 줄에 한 번만", () => {
     render(
       <LeaveTab

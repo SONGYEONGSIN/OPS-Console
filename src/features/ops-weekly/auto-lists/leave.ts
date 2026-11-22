@@ -31,6 +31,8 @@ export type LeaveItem = AutoItem & {
   startYmd: string;
   endYmd: string;
   substituteName: string | null;
+  /** 일정의 외부미팅·교육 제목(무슨 미팅인지). 휴가 일정 제목은 이름표라 넣지 않는다. */
+  detail?: string;
   sources: ("backup" | "schedule")[];
   needsBackup: boolean;
 };
@@ -42,7 +44,8 @@ const SCHEDULE_FAMILY: Record<ScheduleLeaveLite["type"], LeaveFamily> = {
 };
 const SCHEDULE_LABEL: Record<ScheduleLeaveLite["type"], string> = {
   leave: "휴가",
-  external_meeting: "외근",
+  // 일정 메뉴의 이름 그대로 — '외근' 이라 부르면 사무실 밖 근무로 읽힌다.
+  external_meeting: "외부미팅",
   training: "교육",
 };
 
@@ -103,6 +106,9 @@ function fromSchedule(
   if (!overlaps({ startYmd: start, endYmd: end }, window)) return null;
   const family = SCHEDULE_FAMILY[row.type];
   const kindLabel = SCHEDULE_LABEL[row.type];
+  const title = row.title.trim();
+  const detail =
+    family !== "leave" && title !== "" && title !== kindLabel ? title : undefined;
   return {
     key: `leave:se:${row.id}`,
     title: kindLabel,
@@ -113,6 +119,7 @@ function fromSchedule(
     startYmd: start,
     endYmd: end,
     substituteName: null,
+    ...(detail === undefined ? {} : { detail }),
     sources: ["schedule"],
     needsBackup: family === "leave",
   };
