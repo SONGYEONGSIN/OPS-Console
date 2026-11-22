@@ -24,9 +24,11 @@ vi.mock("../_components/WeekHeader", () => ({
     viewingOther: unknown;
     scope: unknown;
     dutyName: string | null;
+    nextHref: string;
   }) => (
     <div
       data-testid="week-header"
+      data-next={p.nextHref}
       data-duty={p.dutyName ?? "(null)"}
       data-scope={JSON.stringify(p.scope)}
       data-week={JSON.stringify(p.week)}
@@ -119,6 +121,7 @@ function viewFor(tab: string, isAdmin: boolean, over = {}) {
     unmatched: null,
     roles: ["report"],
     statusAccess: null,
+    allByDefault: false,
     ...over,
   };
 }
@@ -436,6 +439,7 @@ describe("주간업무보고 페이지 — 머리띠", () => {
     const { unmount } = await renderPage("application");
     expect(JSON.parse(screen.getByTestId("week-header").dataset.scope ?? "null")).toEqual({
       mine: true,
+      mineOp: null,
       active: "mine",
     });
     unmount();
@@ -447,8 +451,25 @@ describe("주간업무보고 페이지 — 머리띠", () => {
     await renderPage("application");
     expect(JSON.parse(screen.getByTestId("week-header").dataset.scope ?? "null")).toEqual({
       mine: true,
+      mineOp: null,
       active: null,
     });
+  });
+
+  it("관리자·당번이 내 보고서를 고르면 op=me 가 토글·주 이동·역할 탭에 실려 다닌다", async () => {
+    state.view = viewFor("application", true, {
+      roles: ["report", "status", "manage"],
+      statusAccess: "manage",
+      allByDefault: true,
+    });
+    await renderPage("application");
+    const header = screen.getByTestId("week-header");
+    expect(JSON.parse(header.dataset.scope ?? "null")).toEqual({
+      mine: true,
+      mineOp: "me",
+      active: "mine",
+    });
+    expect(header.dataset.next).toContain("op=me");
   });
 
   it("작성자도 아니고 남의 보고서도 못 보면 토글이 없다", async () => {

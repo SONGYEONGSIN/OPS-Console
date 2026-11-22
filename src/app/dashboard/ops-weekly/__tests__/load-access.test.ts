@@ -392,6 +392,28 @@ describe("loadOpsWeeklyPage — 열람 판정", () => {
     expect(m.loadReportDetails).toHaveBeenCalledWith([frozen]);
   });
 
+  it("기본 선택: 그 주 당번(작성자)은 op 없이 열면 전체 보고, ?op=me 면 본인 보고서", async () => {
+    getWeekMock({ duty_email: "a@x" });
+    const v = await load("a@x", "member", {});
+    expect(v).toMatchObject({ tab: "application", viewed: null, allByDefault: true });
+    expect(v.kind === "week" && v.all !== null).toBe(true);
+    const mine = await load("a@x", "member", { op: "me" });
+    expect(mine).toMatchObject({ viewed: { email: "a@x" }, all: null, allByDefault: true });
+  });
+
+  it("기본 선택: 당번 아닌 작성자는 op 없이 열면 본인 보고서", async () => {
+    getWeekMock({ duty_email: "d@x" });
+    const v = await load("a@x", "member", {});
+    expect(v).toMatchObject({ viewed: { email: "a@x" }, all: null, allByDefault: false });
+  });
+
+  it("기본 선택: 명단 밖 관리자는 내 보고서 쪽 탭을 op 없이 열면 전체 보고(탭 없이 열면 제출 현황 그대로)", async () => {
+    const v = await load("z@x", "admin", { tab: "application" });
+    expect(v).toMatchObject({ tab: "application", viewed: null, allByDefault: true });
+    expect(v.kind === "week" && v.all !== null).toBe(true);
+    expect(await load("z@x", "admin", {})).toMatchObject({ tab: "status" });
+  });
+
   it("전체 보고: 명단 밖 관리자도 연다(탭 줄은 제출 현황·관리)", async () => {
     const v = await load("z@x", "admin", { op: "all" });
     expect(v).toMatchObject({ tab: "application", viewed: null, roles: ["status", "manage"] });

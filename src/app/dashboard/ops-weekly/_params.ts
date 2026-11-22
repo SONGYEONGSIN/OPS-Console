@@ -98,6 +98,12 @@ export function resolveAppSub(
 /** `?op=all` — 전체 보고(작성자 전원의 내용을 한 화면에). 이메일 자리를 빌려 쓰므로 주·하위 탭·KPI 링크가 그대로 들고 다닌다. */
 export const ALL_OP = "all";
 
+/**
+ * `?op=me` — 본인 보고서를 고른 것. 관리자·당번은 op 가 없으면 전체 보고로 열리므로,
+ * 내 보고서를 고른 선택이 주 이동·하위 탭 링크에 실려 다니게 따로 적는다.
+ */
+export const MINE_OP = "me";
+
 export function opsWeeklyHref(
   weekStart: string,
   tab: string,

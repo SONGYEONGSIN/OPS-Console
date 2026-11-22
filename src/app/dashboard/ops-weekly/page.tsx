@@ -21,6 +21,7 @@ import { headerWeekOf } from "./_header-week";
 import { loadOpsWeeklyPage, type OpsWeeklyWeekView } from "./_load";
 import {
   ALL_OP,
+  MINE_OP,
   AREA_TAB_LABEL,
   buildRoleTabs,
   opsWeeklyHref,
@@ -54,11 +55,15 @@ function unknownCountOf(v: Week): number {
   return list.filter((i) => !overrides?.get(i.key)?.excluded).length;
 }
 
-/** 남의 보고서를 보는 중이면 그 사람 이메일, 전체 보고면 `all`, 본인 보고서(또는 보고서 없음)면 null. */
+/**
+ * 남의 보고서를 보는 중이면 그 사람 이메일, 전체 보고면 `all`, 본인 보고서(또는 보고서 없음)면 null.
+ * 관리자·당번은 op 가 없으면 전체 보고로 열리므로 본인 보고서를 `me` 로 적는다.
+ */
 function otherOpOf(view: Week): string | null {
   if (view.all !== null) return ALL_OP;
   const { viewed, actor } = view;
-  return viewed !== null && viewed.email !== actor.email ? viewed.email : null;
+  if (viewed !== null && viewed.email !== actor.email) return viewed.email;
+  return viewed !== null && view.allByDefault ? MINE_OP : null;
 }
 
 function WeekBody({ view }: { view: Week }) {
@@ -158,10 +163,11 @@ function WeekView({ view }: { view: Week }) {
     isWriter || view.statusAccess !== null
       ? {
           mine: isWriter,
+          mineOp: view.allByDefault ? MINE_OP : null,
           active:
             view.all !== null
               ? ("all" as const)
-              : roleTabOf(tab) === "report" && op === null
+              : roleTabOf(tab) === "report" && (op === null || op === MINE_OP)
                 ? ("mine" as const)
                 : null,
         }
@@ -173,7 +179,7 @@ function WeekView({ view }: { view: Week }) {
           active={
             roleTabOf(tab) !== "report"
               ? roleTabOf(tab)
-              : op === null || (op === ALL_OP && isWriter)
+              : op === null || op === MINE_OP || (op === ALL_OP && isWriter)
                 ? "report"
                 : "status"
           }
@@ -212,7 +218,9 @@ function WeekView({ view }: { view: Week }) {
           <StickyKpiBar>
             <WeeklyKpiRow
               kpis={kpis}
-              ownerName={view.all !== null ? "작성자 전원" : (viewed?.name ?? "")}
+              ownerName={
+                view.all !== null ? "작성자 전원" : (viewed?.name ?? "")
+              }
               unknownCount={unknownCountOf(view)}
               weekStart={weekStart}
               op={op}

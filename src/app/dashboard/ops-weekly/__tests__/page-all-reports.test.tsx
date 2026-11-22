@@ -107,7 +107,7 @@ describe("전체 보고 화면", () => {
 
   it("머리띠 토글은 전체가 켜지고, 작성자면 내 보고도 있다", async () => {
     await renderPage(allView());
-    expect(state.header.scope).toEqual({ mine: true, active: "all" });
+    expect(state.header.scope).toEqual({ mine: true, mineOp: null, active: "all" });
   });
 
   it("명단 밖 관리자가 보면 내 보고는 없고 역할 탭은 제출 현황이 켜진다", async () => {
@@ -118,7 +118,7 @@ describe("전체 보고 화면", () => {
         statusAccess: "manage",
       }),
     );
-    expect(state.header.scope).toEqual({ mine: false, active: "all" });
+    expect(state.header.scope).toEqual({ mine: false, mineOp: null, active: "all" });
     expect(screen.getByTestId("role-tabs")).toHaveAttribute("data-active", "status");
   });
 });

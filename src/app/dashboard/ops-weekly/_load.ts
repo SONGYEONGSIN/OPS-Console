@@ -69,6 +69,7 @@ import {
 } from "@/features/ops-weekly/week-queries";
 import {
   ALL_OP,
+  OPS_TABS,
   parseWeekParam,
   resolveTab,
   roleTabOf,
@@ -102,6 +103,8 @@ export type OpsWeeklyView =
        * 그 밖에는 null.
        */
       all: AllReportsView | null;
+      /** 관리자·당번 — op 가 없으면 전체 보고가 기본이라 내 보고서는 `?op=me` 로 고른다 */
+      allByDefault: boolean;
       /**
        * viewed 가 null 이면 report·snapshot·detail·kpis 모두 null(스냅샷을 만들 사람이 없다).
        * snapshot·detail·kpis 는 내 보고서 쪽 탭에서만 읽는다 — 제출 현황·관리에서는 null.
@@ -155,10 +158,17 @@ type Access = {
   viewed: WriterCandidate | null;
   /** 전체 보고를 읽을 탭인가 */
   all: boolean;
+  /** 관리자·당번 — op 가 없으면 전체 보고가 기본이다 */
+  allByDefault: boolean;
   tab: OpsTab;
   roles: RoleTab[];
   statusAccess: StatusAccess;
 };
+
+function roleOfParam(raw: string | undefined): RoleTab | null {
+  const tab = OPS_TABS.find((t) => t === raw);
+  return tab === undefined ? null : roleTabOf(tab);
+}
 
 /** 누구의 보고서를, 어떤 탭으로 여는가 — 볼 화면이 없으면 null(안내 화면). */
 async function resolveAccess(
@@ -177,7 +187,17 @@ async function resolveAccess(
   // derive 의 writerEmails.has(actor.email) 와 같은 판정 — 둘 다 정규화된 값이다.
   const isWriter = writers.some((w) => w.email === actor.email);
   // 전체 보고는 작성자 전원과, 남의 보고서를 열 수 있는 사람(당번·관리자·보고 끝난 주의 받는 사람)이 본다.
-  const wantsAll = sp.op === ALL_OP && (isWriter || access !== null);
+  // 관리자·당번은 op 가 없으면 전체 보고가 기본이다 — 명단 밖이면 내 보고서 쪽 탭을 연 때만(탭 없이 열면 제출 현황).
+  const allByDefault = actor.isAdmin || isDuty(actor, state);
+  const defaultAll =
+    sp.op === undefined &&
+    allByDefault &&
+    access !== null &&
+    (isWriter
+      ? roleOfParam(sp.tab) === null || roleOfParam(sp.tab) === "report"
+      : roleOfParam(sp.tab) === "report");
+  const wantsAll =
+    (sp.op === ALL_OP && (isWriter || access !== null)) || defaultAll;
   const viewed = wantsAll
     ? null
     : pickViewed(writers, actor, sp.op, access !== null);
@@ -191,6 +211,7 @@ async function resolveAccess(
   return {
     viewed,
     all: wantsAll && roleTabOf(tab) === "report",
+    allByDefault,
     tab,
     statusAccess: access,
     roles: roleTabsOf({ ...tabAccess, canReport: isWriter }),

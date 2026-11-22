@@ -35,8 +35,9 @@ const base = {
   week: WEEK,
   showReportState: true,
   checkedCount: 0,
-  scope: { mine: true, active: "mine" } as {
+  scope: { mine: true, mineOp: null, active: "mine" } as {
     mine: boolean;
+    mineOp: string | null;
     active: "mine" | "all" | null;
   } | null,
   submittedCount: 0,
@@ -137,8 +138,8 @@ describe("WeekHeader", () => {
   it("내 보고 | 전체 보고 — 지금 영역으로 가는 링크, 전체는 op=all", () => {
     setUrl("?week=2026-11-16&tab=pims");
     render(<WeekHeader {...base} />);
-    const mine = screen.getByRole("link", { name: "내 보고" });
-    const all = screen.getByRole("link", { name: "전체 보고" });
+    const mine = screen.getByRole("link", { name: "내 보고서" });
+    const all = screen.getByRole("link", { name: "전체 보고서" });
     expect(mine).toHaveAttribute("href", "/dashboard/ops-weekly?week=2026-11-16&tab=pims");
     expect(all).toHaveAttribute("href", "/dashboard/ops-weekly?week=2026-11-16&tab=pims&op=all");
     expect(mine).toHaveAttribute("aria-current", "page");
@@ -149,25 +150,35 @@ describe("WeekHeader", () => {
   it("제출 현황에서 누르면 원서접수로 간다", () => {
     setUrl("?week=2026-11-16&tab=status");
     render(<WeekHeader {...base} showReportState={false} />);
-    expect(screen.getByRole("link", { name: "전체 보고" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "전체 보고서" })).toHaveAttribute(
       "href",
       "/dashboard/ops-weekly?week=2026-11-16&tab=application&op=all",
     );
   });
 
-  it("전체 보고 중이면 전체가 켜지고, 작성자가 아니면 내 보고가 없다", () => {
-    render(<WeekHeader {...base} scope={{ mine: false, active: "all" }} />);
-    expect(screen.queryByRole("link", { name: "내 보고" })).toBeNull();
-    expect(screen.getByRole("link", { name: "전체 보고" })).toHaveAttribute("aria-current", "page");
+  it("전체 보고 중이면 전체가 켜지고, 작성자가 아니면 내 보고서는 누를 수 없는 칸으로 남는다", () => {
+    render(<WeekHeader {...base} scope={{ mine: false, mineOp: "me", active: "all" }} />);
+    expect(screen.queryByRole("link", { name: "내 보고서" })).toBeNull();
+    expect(screen.getByText("내 보고서")).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("link", { name: "전체 보고서" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("관리자·당번(mineOp=me)의 내 보고서 링크는 op=me 를 단다 — 기본이 전체 보고라서", () => {
+    setUrl("?week=2026-11-16&tab=pims");
+    render(<WeekHeader {...base} scope={{ mine: true, mineOp: "me", active: "all" }} />);
+    expect(screen.getByRole("link", { name: "내 보고서" })).toHaveAttribute(
+      "href",
+      "/dashboard/ops-weekly?week=2026-11-16&tab=pims&op=me",
+    );
   });
 
   it("scope 가 없으면 토글이 없다", () => {
     render(<WeekHeader {...base} scope={null} />);
-    expect(screen.queryByRole("link", { name: "전체 보고" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "전체 보고서" })).toBeNull();
   });
 
   it("전체 보고 중에는 내 상태 배지·확인 수가 없고 제출·당번은 있다", () => {
-    render(<WeekHeader {...base} scope={{ mine: true, active: "all" }} />);
+    render(<WeekHeader {...base} scope={{ mine: true, mineOp: null, active: "all" }} />);
     expect(screen.queryByText("작성 중")).toBeNull();
     expect(screen.queryByText(/^확인 \d\/5$/)).toBeNull();
     expect(screen.getByText("제출 0/2")).toBeInTheDocument();
@@ -254,7 +265,7 @@ describe("WeekHeader", () => {
       expect(tokens(right?.parentElement as Element)).toContain(
         "justify-between",
       );
-      expect(right?.contains(screen.getByRole("link", { name: "전체 보고" }))).toBe(false);
+      expect(right?.contains(screen.getByRole("link", { name: "전체 보고서" }))).toBe(false);
     });
 
     it("상태 배지 — 작성 중 / 제출함(숫자 정렬) / 다시 작성 요청(vermilion)", () => {
