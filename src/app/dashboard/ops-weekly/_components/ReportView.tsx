@@ -46,9 +46,6 @@ function areasOf({ view, snapshot, detail }: Props, editable: boolean): Slots {
     reportId: view.report?.id ?? null,
     editable,
     freezeNotice: view.freezeNotice,
-    // 담당자 이름이 안 맞는 서비스는 관리자가 고칠 일이다 — 비관리자에게는 안내 자체를 안 낸다.
-    isAdmin: view.actor.isAdmin,
-    settingsHref: manageHref(view.week.week_start, "unmatched"),
   };
   return {
     application: <ApplicationTab {...props} />,

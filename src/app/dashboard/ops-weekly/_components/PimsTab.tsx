@@ -11,7 +11,6 @@ import { AutoGroupSection } from "./AutoGroupSection";
 import { AutoFreezeNotice } from "./AutoFreezeNotice";
 import { SubTabs } from "./SubTabs";
 import { TabHeading } from "./TabHeading";
-import { UnmatchedNotice } from "./UnmatchedNotice";
 
 type Props = {
   snapshot: AutoSnapshot;
@@ -20,9 +19,7 @@ type Props = {
   editable: boolean;
   freezeNotice: boolean;
   /** 안 붙은 서비스 안내는 관리자에게만 보인다 */
-  isAdmin: boolean;
   /** 설정 탭의 안 붙은 서비스 패널 주소 */
-  settingsHref: string;
 };
 
 const GROUPS = [
@@ -37,10 +34,7 @@ export function PimsTab({
   reportId,
   editable,
   freezeNotice,
-  isAdmin,
-  settingsHref,
 }: Props) {
-  const unmatched = snapshot.unmatched.pims;
   // 숫자는 KPI 카드와 같은 식(뺀 건 제외 + 직접)이다.
   const tabs = GROUPS.map((g) => ({
     key: g.key,
@@ -78,13 +72,6 @@ export function PimsTab({
         }건`}
       >
         {freezeNotice ? <AutoFreezeNotice /> : null}
-        <UnmatchedNotice
-          isAdmin={isAdmin}
-          count={unmatched}
-          noun="발표 서비스"
-          action="발표 서비스 담당자 맞추기를 다시 확인하세요"
-          settingsHref={settingsHref}
-        />
       </TabHeading>
       <SubTabs tab="pims" ariaLabel={`${AREA_TAB_LABEL.pims} 묶음`} tabs={tabs} panels={panels} />
     </div>

@@ -172,34 +172,20 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     expect(screen.queryByText("관리에서 목록 보기")).toBeNull();
   });
 
-  it("원서접수 탭: 관리자는 안내와 설정 패널 링크가 보인다", async () => {
+  it("안 붙은 서비스 안내는 관리자에게도 보고서 화면에 없다(관리 탭에서 본다)", async () => {
     state.view = viewFor("application", true);
-    await renderPage("application");
-    expect(
-      screen.getByText(/안 붙은 서비스 3건 — 서비스마감 메뉴/),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "관리에서 목록 보기" }),
-    ).toHaveAttribute(
-      "href",
-      "/dashboard/ops-weekly?week=2026-11-16&tab=settings&section=unmatched",
-    );
-  });
-
-  it("PIMS 탭: 관리자만 안내, 하위 탭은 금주·차주", async () => {
+    const { unmount } = await renderPage("application");
+    expect(screen.queryByText(/안 붙은 서비스/)).toBeNull();
+    unmount();
     setUrl("?week=2026-11-16&tab=pims");
-    state.view = viewFor("pims", false);
-    const { unmount } = await renderPage("pims");
+    state.view = viewFor("pims", true);
+    await renderPage("pims");
     expect(screen.queryByText(/안 붙은 발표 서비스/)).toBeNull();
     expect(
       within(
         screen.getByRole("tablist", { name: "합격자 발표 묶음" }),
       ).getAllByRole("tab"),
     ).toHaveLength(2);
-    unmount();
-    state.view = viewFor("pims", true);
-    await renderPage("pims");
-    expect(screen.getByText(/안 붙은 발표 서비스 2건/)).toBeInTheDocument();
   });
 
   it("원서접수: 영역 탭·쓸 것 패널, 특이사항 셋이 모두 마운트된다", async () => {

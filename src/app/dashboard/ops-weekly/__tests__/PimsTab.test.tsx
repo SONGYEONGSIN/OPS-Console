@@ -18,14 +18,11 @@ import type { ManualItem } from "@/features/ops-weekly/merge";
 import { setUrl } from "./search-params-mock";
 import { EMPTY, snap } from "./tab-fixtures";
 
-const SETTINGS = "/dashboard/ops-weekly?week=2026-11-16&tab=settings#unmatched";
 const PROPS = {
   detail: EMPTY,
   reportId: "r",
   editable: true,
   freezeNotice: false,
-  isAdmin: false,
-  settingsHref: SETTINGS,
 };
 
 const manual = (group: string, id = "m1"): ManualItem => ({
@@ -119,33 +116,10 @@ describe("PimsTab", () => {
     expect(screen.queryByRole("heading", { name: "영역 특이사항" })).toBeNull();
   });
 
-  it("안 붙음 줄 — 비관리자에게는 없다", () => {
+  it("안 붙은 서비스 안내는 없다 — 관리 탭(지정 안된 서비스)에서 본다", () => {
     render(<PimsTab {...PROPS} snapshot={snap({ unmatchedPims: 2 })} />);
     expect(screen.queryByText(/안 붙은/)).toBeNull();
     expect(screen.queryByText("관리에서 목록 보기")).toBeNull();
-  });
-
-  it("안 붙음 줄 — 관리자는 0건도 적고 조치·링크는 n>0 일 때만", () => {
-    const { rerender } = render(
-      <PimsTab {...PROPS} isAdmin snapshot={snap()} />,
-    );
-    expect(
-      screen.getByText("담당자가 맞지 않아 아무에게도 안 붙은 발표 서비스 0건"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "관리에서 목록 보기" }),
-    ).toBeNull();
-    rerender(
-      <PimsTab {...PROPS} isAdmin snapshot={snap({ unmatchedPims: 2 })} />,
-    );
-    expect(
-      screen.getByText(
-        "담당자가 맞지 않아 아무에게도 안 붙은 발표 서비스 2건 — 발표 서비스 담당자 맞추기를 다시 확인하세요",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "관리에서 목록 보기" }),
-    ).toHaveAttribute("href", SETTINGS);
   });
 });
 
