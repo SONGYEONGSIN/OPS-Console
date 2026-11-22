@@ -21,7 +21,6 @@ vi.mock("../../_components/page-header/PageHeader", () => ({
 vi.mock("../_components/WeekHeader", () => ({
   WeekHeader: (p: {
     week: unknown;
-    viewingOther: unknown;
     scope: unknown;
     dutyName: string | null;
     nextHref: string;
@@ -32,7 +31,6 @@ vi.mock("../_components/WeekHeader", () => ({
       data-duty={p.dutyName ?? "(null)"}
       data-scope={JSON.stringify(p.scope)}
       data-week={JSON.stringify(p.week)}
-      data-other={JSON.stringify(p.viewingOther)}
     />
   ),
 }));
@@ -194,9 +192,9 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     const { unmount } = await renderPage("pims");
     expect(screen.queryByText(/안 붙은 발표 서비스/)).toBeNull();
     expect(
-      within(screen.getByRole("tablist", { name: "합격자 발표 묶음" })).getAllByRole(
-        "tab",
-      ),
+      within(
+        screen.getByRole("tablist", { name: "합격자 발표 묶음" }),
+      ).getAllByRole("tab"),
     ).toHaveLength(2);
     unmount();
     state.view = viewFor("pims", true);
@@ -364,15 +362,21 @@ describe("주간업무보고 페이지 — 직접 추가", () => {
     state.view = viewFor("application", false);
     await renderPage("application");
     const panel = screen.getByRole("complementary", { name: "쓸 것" });
-    expect(within(panel).getByRole("region", { name: "직접 추가" })).toBeInTheDocument();
-    expect(screen.getAllByLabelText("직접 추가 제목", { selector: "input" }).length).toBeGreaterThan(0);
+    expect(
+      within(panel).getByRole("region", { name: "직접 추가" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByLabelText("직접 추가 제목", { selector: "input" }).length,
+    ).toBeGreaterThan(0);
   });
 
   it("읽기 전용(canEdit=false)이면 직접 추가 칸이 없다", async () => {
     state.view = viewFor("application", false, { canEdit: false });
     await renderPage("application");
     const panel = screen.getByRole("complementary", { name: "쓸 것" });
-    expect(within(panel).queryByRole("region", { name: "직접 추가" })).toBeNull();
+    expect(
+      within(panel).queryByRole("region", { name: "직접 추가" }),
+    ).toBeNull();
     expect(screen.queryByLabelText("직접 추가 제목")).toBeNull();
   });
 });
@@ -409,35 +413,61 @@ describe("주간업무보고 페이지 — 머리띠", () => {
     viewed: { email: "b@example.com", name: "김철수" },
     statusAccess: "manage",
   };
-  const otherOf = () =>
-    JSON.parse(screen.getByTestId("week-header").dataset.other ?? "null");
 
   it("머리띠 week 는 세 칸만 — 당번 총평이 실리지 않는다", async () => {
     state.view = viewFor("application", false);
     (state.view.week as Record<string, unknown>).summary_this = "총평";
     (state.view.week as Record<string, unknown>).summary_next = "차주 총평";
     await renderPage("application");
-    const week = JSON.parse(screen.getByTestId("week-header").dataset.week ?? "{}");
-    expect(Object.keys(week).sort()).toEqual(["reported_at", "status", "week_start"]);
+    const week = JSON.parse(
+      screen.getByTestId("week-header").dataset.week ?? "{}",
+    );
+    expect(Object.keys(week).sort()).toEqual([
+      "reported_at",
+      "status",
+      "week_start",
+    ]);
   });
 
-  it("남의 보고서면 머리띠가 그 사람 이름과 제출 현황 주소를 받는다 — 본인 보고서면 null", async () => {
+  it("남의 보고서면 영역 탭 위에 '{이름}의 보고서' 제목과 ‹ 제출 현황 — 머리띠에는 없다, 본인 보고서면 둘 다 없다", async () => {
     state.view = viewFor("application", false, OTHER);
     const { unmount } = await renderPage("application");
-    expect(otherOf()).toEqual({
-      name: "김철수",
-      backHref: "/dashboard/ops-weekly?week=2026-11-16&tab=status",
-    });
+    const title = screen.getByRole("heading", { name: "김철수의 보고서" });
+    const tabs = screen.getAllByRole("tablist")[0];
+    expect(
+      title.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByRole("link", { name: "‹ 제출 현황" })).toHaveAttribute(
+      "href",
+      "/dashboard/ops-weekly?week=2026-11-16&tab=status",
+    );
+    expect(screen.getByTestId("week-header").dataset.other).toBeUndefined();
     unmount();
     state.view = viewFor("application", false);
     await renderPage("application");
-    expect(screen.getByTestId("week-header").dataset.other).toBe("null");
+    expect(screen.queryByRole("heading", { name: /의 보고서$/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: "‹ 제출 현황" })).toBeNull();
+  });
+
+  it("관리자·당번이 op=me 로 본인 보고서를 열면 제목 없이 제출완료가 있다", async () => {
+    state.view = viewFor("application", true, {
+      roles: ["report", "status", "manage"],
+      statusAccess: "manage",
+      allByDefault: true,
+    });
+    await renderPage("application");
+    expect(screen.queryByRole("heading", { name: /의 보고서$/ })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "제출완료" }),
+    ).toBeInTheDocument();
   });
 
   it("내 보고 | 전체 보고 — 작성자는 내 보고가 켜지고, 남의 보고서를 보는 중이면 둘 다 꺼진다", async () => {
     state.view = viewFor("application", false, { roles: ["report"] });
     const { unmount } = await renderPage("application");
-    expect(JSON.parse(screen.getByTestId("week-header").dataset.scope ?? "null")).toEqual({
+    expect(
+      JSON.parse(screen.getByTestId("week-header").dataset.scope ?? "null"),
+    ).toEqual({
       mine: true,
       mineOp: null,
       active: "mine",
@@ -449,7 +479,9 @@ describe("주간업무보고 페이지 — 머리띠", () => {
       viewed: { email: "b@example.com", name: "김철수" },
     });
     await renderPage("application");
-    expect(JSON.parse(screen.getByTestId("week-header").dataset.scope ?? "null")).toEqual({
+    expect(
+      JSON.parse(screen.getByTestId("week-header").dataset.scope ?? "null"),
+    ).toEqual({
       mine: true,
       mineOp: null,
       active: null,
@@ -473,7 +505,10 @@ describe("주간업무보고 페이지 — 머리띠", () => {
   });
 
   it("작성자도 아니고 남의 보고서도 못 보면 토글이 없다", async () => {
-    state.view = viewFor("application", false, { roles: [], statusAccess: null });
+    state.view = viewFor("application", false, {
+      roles: [],
+      statusAccess: null,
+    });
     await renderPage("application");
     expect(screen.getByTestId("week-header").dataset.scope).toBe("null");
   });
@@ -515,7 +550,7 @@ describe("주간업무보고 페이지 — 머리띠", () => {
   it("예전 주소(tab=settings&op=…)로 열어도 관리 화면 머리띠에 남의 보고서 표시가 붙지 않는다", async () => {
     state.view = viewFor("settings", true, OTHER);
     await renderPage("settings");
-    expect(screen.getByTestId("week-header").dataset.other).toBe("null");
+    expect(screen.queryByRole("heading", { name: /의 보고서$/ })).toBeNull();
   });
 });
 
@@ -541,16 +576,19 @@ describe("역할 탭 줄", () => {
     expect(names(nav)).toEqual(["내 보고서", "제출 현황", "관리"]);
     expect(nav.dataset.active).toBe("report");
     expect(nav.dataset.size).toBe("md");
-    expect(nav.className.split(/\s+/).sort()).toEqual(
-      ["lg:px-7", "pt-4", "px-5"],
-    );
+    expect(nav.className.split(/\s+/).sort()).toEqual([
+      "lg:px-7",
+      "pt-4",
+      "px-5",
+    ]);
     const header = screen.getByTestId("week-header");
     expect(
       nav.compareDocumentPosition(header) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      header.compareDocumentPosition(screen.getByRole("tablist", { name: "영역" })) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
+      header.compareDocumentPosition(
+        screen.getByRole("tablist", { name: "영역" }),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
   it("제출 현황·관리에서는 그 역할 탭이 켜진다", async () => {

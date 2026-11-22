@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, type MouseEvent } from "react";
-import type { WeeklyKpis } from "@/features/ops-weekly/merge";
+import type { UnivBreakdown, WeeklyKpis } from "@/features/ops-weekly/merge";
 import { opsWeeklyHref, resolveAppSub } from "../_params";
 import { useDismissProjectDrawer } from "./project-drawer-context";
 import { subTabsIdOf } from "./SubTabs";
@@ -57,6 +57,29 @@ const SEG_BASE =
   "-m-1 flex min-w-0 flex-1 flex-col gap-0.5 border p-1 transition-colors focus-visible:outline-2 focus-visible:outline-ink";
 const SEG_IDLE = "border-transparent hover:border-ink";
 
+/** 대학구분 칸 — 차주 오픈/마감 카드의 두 칸과 같은 모양(작은 라벨 + 숫자, 칸 사이 세로선). */
+function UnivCells({ cells }: { cells: UnivBreakdown }) {
+  if (cells.length === 0) return null;
+  return (
+    <div className="mt-1 flex flex-wrap gap-y-1">
+      {cells.map((c, i) => (
+        <div key={c.label} className="flex min-w-0 gap-2 pr-2">
+          {i > 0 ? (
+            <div className="w-px shrink-0 self-stretch bg-line-soft" />
+          ) : null}
+          <div data-testid="weekly-kpi-univ" className="flex flex-col">
+            <span className="text-2xs text-muted">{c.label}</span>
+            <span className="text-sm font-bold tabular-nums text-ink">
+              {c.count.toLocaleString("ko-KR")}
+              <span className="ml-0.5 text-2xs font-medium text-muted">건</span>
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const isPlainLeftClick = (e: MouseEvent) =>
   e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
 
@@ -79,6 +102,7 @@ export function WeeklyKpiRow({
   weekStart,
   op,
   appSubState = { showUnknown: false, collected: true },
+  breakdowns,
 }: {
   kpis: WeeklyKpis;
   /** 이 숫자가 누구의 보고서 것인지 — 제출 현황·설정 탭에서도 카드가 남아 있어 밝혀야 한다 */
@@ -89,6 +113,8 @@ export function WeeklyKpiRow({
   op: string | null;
   /** 원서접수 하위 탭의 보이는 키·기본값을 정하는 사실 — SubTabs 와 같은 해석을 위해 page 가 넘긴다 */
   appSubState?: { showUnknown: boolean; collected: boolean };
+  /** 개발·테스트·운영 카드 아래 대학구분 칸(stageBreakdowns) — 차주 오픈/마감 카드처럼 세로선으로 가른다 */
+  breakdowns?: Partial<Record<keyof WeeklyKpis, UnivBreakdown>>;
 }) {
   const { area, setArea } = useOpsArea();
   const { raw } = useOpsSub();
@@ -157,6 +183,7 @@ export function WeeklyKpiRow({
             <span className="ml-0.5 text-sm font-medium text-muted">건</span>
           </div>
         )}
+        {value !== null ? <UnivCells cells={breakdowns?.[key] ?? []} /> : null}
         {value !== null && STAGE_KEYS.has(key) && unknownCount > 0 ? (
           <div className="text-xs text-muted [overflow-wrap:anywhere]">{`구분 미확인 ${unknownCount}건`}</div>
         ) : null}

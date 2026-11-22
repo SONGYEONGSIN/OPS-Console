@@ -159,6 +159,48 @@ export function computeKpis(
   };
 }
 
+export type UnivBreakdown = { label: string; count: number }[];
+
+const UNIV_ORDER = ["4년제", "2년제", "대학원", "기타", "직접"] as const;
+
+/** 대학구분 원값 → 카드 칸. 전문대는 2년제(경쟁률 점검 조건과 같은 묶음), 그 밖은 기타. */
+function univBucket(type: string | null | undefined): string {
+  if (type === "4년제" || type === "대학원") return type;
+  if (type === "2년제" || type === "전문대") return "2년제";
+  return "기타";
+}
+
+/**
+ * 개발·테스트·운영 카드의 대학구분 칸 — 카드 숫자(computeKpis)와 같은 식(뺀 건 제외 + 직접 추가)이라
+ * 칸의 합이 카드 숫자와 같다. 직접 추가는 대학구분이 없어 `직접` 칸이다. 0 인 칸은 내지 않는다.
+ */
+export function stageBreakdowns(
+  snap: AutoSnapshot,
+  overrides: ReadonlyMap<string, ItemOverride>,
+  manual: readonly ManualItem[],
+): Record<"dev" | "test" | "running", UnivBreakdown> {
+  const of = (list: readonly AutoItem[], key: string): UnivBreakdown => {
+    const counts = new Map<string, number>();
+    for (const i of list) {
+      if (overrides.get(i.key)?.excluded) continue;
+      const b = univBucket(i.universityType);
+      counts.set(b, (counts.get(b) ?? 0) + 1);
+    }
+    const extra = manualCount(manual, "application", [key]);
+    if (extra > 0) counts.set("직접", extra);
+    return UNIV_ORDER.filter((l) => (counts.get(l) ?? 0) > 0).map((l) => ({
+      label: l,
+      count: counts.get(l) ?? 0,
+    }));
+  };
+  const app = snap.application;
+  return {
+    dev: of(app.dev, "dev"),
+    test: of(app.test, "test"),
+    running: of(app.running, "running"),
+  };
+}
+
 export type ProjectEntryView = {
   projectId: string;
   projectName: string;

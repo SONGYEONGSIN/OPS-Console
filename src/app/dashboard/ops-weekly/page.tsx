@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { stageBreakdowns } from "@/features/ops-weekly/merge";
 import { PageTabs } from "@/components/common/PageTabs";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { OPS_WEEKLY_SLUG } from "@/features/ops-weekly/constants";
@@ -135,7 +136,14 @@ function WeekBody({ view }: { view: Week }) {
           view={view}
           snapshot={snapshot}
           detail={detail}
-          op={otherOpOf(view)}
+          viewingOther={
+            viewed !== null && viewed.email !== view.actor.email
+              ? {
+                  name: viewed.name,
+                  backHref: opsWeeklyHref(view.week.week_start, "status", null),
+                }
+              : null
+          }
         />
       );
     }
@@ -203,14 +211,6 @@ function WeekView({ view }: { view: Week }) {
         prevOpen={view.prevOpen}
         prevHref={opsWeeklyHref(shiftWeek(weekStart, -1), tab, op)}
         nextHref={opsWeeklyHref(shiftWeek(weekStart, 1), tab, op)}
-        viewingOther={
-          roleTabOf(tab) === "report" && op !== null && viewed !== null
-            ? {
-                name: viewed.name,
-                backHref: opsWeeklyHref(weekStart, "status", null),
-              }
-            : null
-        }
       />
       {/* KPI 줄이 [쓰기]로 연 서랍을 닫으려면 서랍과 같은 Provider 아래여야 한다(DOM 이 없어 sticky 에 영향 없다). */}
       <ProjectDrawerProvider key={roleTabOf(tab)}>
@@ -225,6 +225,15 @@ function WeekView({ view }: { view: Week }) {
               weekStart={weekStart}
               op={op}
               appSubState={appSubStateOf(view.snapshot?.application)}
+              breakdowns={
+                view.snapshot !== null && view.detail !== null
+                  ? stageBreakdowns(
+                      view.snapshot,
+                      view.detail.overrides,
+                      view.detail.manual,
+                    )
+                  : undefined
+              }
             />
           </StickyKpiBar>
         ) : null}

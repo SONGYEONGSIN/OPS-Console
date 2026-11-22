@@ -3,6 +3,7 @@ import {
   render,
   screen,
   cleanup,
+  within,
   fireEvent,
   act,
 } from "@testing-library/react";
@@ -140,7 +141,9 @@ describe("WeeklyKpiRow", () => {
       // 2 + 7 = 9 를 적지 않는다 — 겹칠 수 있어 합이 뜻을 잃는다
       expect(card).not.toHaveTextContent("9");
       // 폰·태블릿 3열에서는 두 칸, lg 5열에서는 다른 카드와 같은 한 칸
-      expect(tok(card)).toEqual(expect.arrayContaining(["col-span-2", "lg:col-span-1"]));
+      expect(tok(card)).toEqual(
+        expect.arrayContaining(["col-span-2", "lg:col-span-1"]),
+      );
       expect(tok(card)).toContain("border-line-soft");
       expect(tok(card)).toContain("bg-situation-bg");
     });
@@ -409,11 +412,15 @@ describe("WeeklyKpiRow", () => {
         </>,
       );
       expect(
-        document.querySelectorAll("#ops-subtabs-application, #ops-subtabs-pims"),
+        document.querySelectorAll(
+          "#ops-subtabs-application, #ops-subtabs-pims",
+        ),
       ).toHaveLength(2);
       const target = document.getElementById("ops-subtabs-pims") as HTMLElement;
       target.scrollIntoView = vi.fn();
-      fireEvent.click(screen.getByText("합격자 발표").closest("a") as HTMLElement);
+      fireEvent.click(
+        screen.getByText("합격자 발표").closest("a") as HTMLElement,
+      );
       expect(target.scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
     });
 
@@ -455,7 +462,9 @@ describe("WeeklyKpiRow", () => {
       target.scrollIntoView = vi.fn(() => {
         visibleAtCall.push(target.closest("[hidden]") === null);
       });
-      fireEvent.click(screen.getByText("합격자 발표").closest("a") as HTMLElement);
+      fireEvent.click(
+        screen.getByText("합격자 발표").closest("a") as HTMLElement,
+      );
       expect(visibleAtCall).toEqual([true]);
       expect(target.scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
     });
@@ -506,10 +515,35 @@ describe("WeeklyKpiRow", () => {
       const cls = (el: Element) => el.className.split(/\s+/);
       const narrow = (el: Element) => (cls(el).includes("col-span-2") ? 2 : 1);
       const wide = (el: Element) =>
-        cls(el).includes("col-span-2") && !cls(el).includes("lg:col-span-1") ? 2 : 1;
+        cls(el).includes("col-span-2") && !cls(el).includes("lg:col-span-1")
+          ? 2
+          : 1;
       const kids = [...grid.children];
       expect(kids.reduce((n, c) => n + narrow(c), 0)).toBe(6);
       expect(kids.reduce((n, c) => n + wide(c), 0)).toBe(5);
     });
+  });
+
+  it("개발·테스트·운영 카드 아래 대학구분 칸 — 칸마다 라벨과 건수, 칸이 없으면 줄도 없다", () => {
+    render(
+      <WeeklyKpiRow
+        {...BASE}
+        ownerName="홍길동"
+        kpis={KPIS}
+        breakdowns={{
+          dev: [],
+          test: [{ label: "대학원", count: 2 }],
+          running: [
+            { label: "4년제", count: 3 },
+            { label: "2년제", count: 1 },
+          ],
+        }}
+      />,
+    );
+    const running = screen.getByRole("link", { name: /운영 중/ });
+    const cells = within(running).getAllByTestId("weekly-kpi-univ");
+    expect(cells.map((c) => c.textContent)).toEqual(["4년제3건", "2년제1건"]);
+    const dev = screen.getByRole("link", { name: /개발 중/ });
+    expect(within(dev).queryAllByTestId("weekly-kpi-univ")).toHaveLength(0);
   });
 });

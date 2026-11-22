@@ -48,7 +48,6 @@ const base = {
   prevOpen: false,
   prevHref: "/dashboard/ops-weekly?week=2026-11-09&tab=application",
   nextHref: "/dashboard/ops-weekly?week=2026-11-23&tab=application",
-  viewingOther: null,
 };
 
 const tokens = (el: Element) => el.className.split(/\s+/);
@@ -140,8 +139,14 @@ describe("WeekHeader", () => {
     render(<WeekHeader {...base} />);
     const mine = screen.getByRole("link", { name: "내 보고서" });
     const all = screen.getByRole("link", { name: "전체 보고서" });
-    expect(mine).toHaveAttribute("href", "/dashboard/ops-weekly?week=2026-11-16&tab=pims");
-    expect(all).toHaveAttribute("href", "/dashboard/ops-weekly?week=2026-11-16&tab=pims&op=all");
+    expect(mine).toHaveAttribute(
+      "href",
+      "/dashboard/ops-weekly?week=2026-11-16&tab=pims",
+    );
+    expect(all).toHaveAttribute(
+      "href",
+      "/dashboard/ops-weekly?week=2026-11-16&tab=pims&op=all",
+    );
     expect(mine).toHaveAttribute("aria-current", "page");
     expect(all).not.toHaveAttribute("aria-current");
     expect(screen.queryByLabelText("작성자")).toBeNull();
@@ -157,15 +162,31 @@ describe("WeekHeader", () => {
   });
 
   it("전체 보고 중이면 전체가 켜지고, 작성자가 아니면 내 보고서는 누를 수 없는 칸으로 남는다", () => {
-    render(<WeekHeader {...base} scope={{ mine: false, mineOp: "me", active: "all" }} />);
+    render(
+      <WeekHeader
+        {...base}
+        scope={{ mine: false, mineOp: "me", active: "all" }}
+      />,
+    );
     expect(screen.queryByRole("link", { name: "내 보고서" })).toBeNull();
-    expect(screen.getByText("내 보고서")).toHaveAttribute("aria-disabled", "true");
-    expect(screen.getByRole("link", { name: "전체 보고서" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByText("내 보고서")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(screen.getByRole("link", { name: "전체 보고서" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("관리자·당번(mineOp=me)의 내 보고서 링크는 op=me 를 단다 — 기본이 전체 보고라서", () => {
     setUrl("?week=2026-11-16&tab=pims");
-    render(<WeekHeader {...base} scope={{ mine: true, mineOp: "me", active: "all" }} />);
+    render(
+      <WeekHeader
+        {...base}
+        scope={{ mine: true, mineOp: "me", active: "all" }}
+      />,
+    );
     expect(screen.getByRole("link", { name: "내 보고서" })).toHaveAttribute(
       "href",
       "/dashboard/ops-weekly?week=2026-11-16&tab=pims&op=me",
@@ -178,7 +199,12 @@ describe("WeekHeader", () => {
   });
 
   it("전체 보고 중에는 내 상태 배지·확인 수가 없고 제출·당번은 있다", () => {
-    render(<WeekHeader {...base} scope={{ mine: true, mineOp: null, active: "all" }} />);
+    render(
+      <WeekHeader
+        {...base}
+        scope={{ mine: true, mineOp: null, active: "all" }}
+      />,
+    );
     expect(screen.queryByText("작성 중")).toBeNull();
     expect(screen.queryByText(/^확인 \d\/5$/)).toBeNull();
     expect(screen.getByText("제출 0/2")).toBeInTheDocument();
@@ -186,7 +212,12 @@ describe("WeekHeader", () => {
 
   it("내 보고서: 상태 배지와 확인 n/5(숫자 정렬)", () => {
     render(
-      <WeekHeader {...base} showReportState checkedCount={2} reportStatus="draft" />,
+      <WeekHeader
+        {...base}
+        showReportState
+        checkedCount={2}
+        reportStatus="draft"
+      />,
     );
     expect(screen.getByText("작성 중")).toBeInTheDocument();
     expect(tokens(screen.getByText("확인 2/5"))).toContain("tabular-nums");
@@ -238,7 +269,9 @@ describe("WeekHeader", () => {
     // 서랍(tab=project)은 영역이 아니라 원서접수로 푼다 — 서버가 준 낡은 tab 을 그대로 두지 않는다.
     expect(
       screen.getByRole("link", { name: "다음 주" }).getAttribute("href"),
-    ).toBe("/dashboard/ops-weekly?week=2026-11-23&tab=application&op=b%40example.com");
+    ).toBe(
+      "/dashboard/ops-weekly?week=2026-11-23&tab=application&op=b%40example.com",
+    );
   });
 
   it("제출 현황·관리(showReportState 없음)에서는 링크를 그대로 둔다", () => {
@@ -265,7 +298,9 @@ describe("WeekHeader", () => {
       expect(tokens(right?.parentElement as Element)).toContain(
         "justify-between",
       );
-      expect(right?.contains(screen.getByRole("link", { name: "전체 보고서" }))).toBe(false);
+      expect(
+        right?.contains(screen.getByRole("link", { name: "전체 보고서" })),
+      ).toBe(false);
     });
 
     it("상태 배지 — 작성 중 / 제출함(숫자 정렬) / 다시 작성 요청(vermilion)", () => {
@@ -306,33 +341,5 @@ describe("WeekHeader", () => {
       expect(t).toContain("min-h-9");
       expect(t).toContain("min-w-9");
     });
-  });
-});
-
-describe("WeekHeader — 남의 보고서", () => {
-  const BACK = "/dashboard/ops-weekly?week=2026-11-16&tab=status";
-  const toks = (el: Element) => el.className.split(/\s+/);
-
-  it("남의 보고서: 누구의 것인지와 제출 현황으로 돌아가는 링크", () => {
-    render(
-      <WeekHeader
-        {...base}
-        viewingOther={{ name: "김철수", backHref: BACK }}
-      />,
-    );
-    const label = screen.getByText("김철수의 보고서");
-    expect(label).toBeInTheDocument();
-    expect(toks(label)).toEqual(
-      expect.arrayContaining(["text-xs", "font-bold", "text-ink", "border-line-soft"]),
-    );
-    const link = screen.getByRole("link", { name: "‹ 제출 현황" });
-    expect(link).toHaveAttribute("href", BACK);
-    expect(toks(link)).toContain("underline");
-  });
-
-  it("본인 보고서면 남의 보고서 줄이 없다", () => {
-    render(<WeekHeader {...base} />);
-    expect(screen.queryByText(/의 보고서$/)).toBeNull();
-    expect(screen.queryByRole("link", { name: "‹ 제출 현황" })).toBeNull();
   });
 });

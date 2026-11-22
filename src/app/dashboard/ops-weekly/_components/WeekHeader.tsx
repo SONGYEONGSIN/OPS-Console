@@ -35,8 +35,6 @@ type Props = {
   prevOpen: boolean;
   prevHref: string;
   nextHref: string;
-  /** 남의 보고서를 보는 중이면 그 사람 이름과 제출 현황으로 돌아가는 주소. */
-  viewingOther: { name: string; backHref: string } | null;
 };
 
 const NAV_LINK =
@@ -162,19 +160,6 @@ export function WeekHeader(props: Props) {
               weekStart={week.week_start}
               area={area}
             />
-          ) : null}
-          {props.viewingOther !== null ? (
-            <span className="flex items-center gap-2 text-xs">
-              <span className="border border-line-soft px-1.5 py-0.5 text-xs font-bold text-ink">
-                {`${props.viewingOther.name}의 보고서`}
-              </span>
-              <Link
-                href={props.viewingOther.backHref}
-                className="text-ink-soft underline"
-              >
-                ‹ 제출 현황
-              </Link>
-            </span>
           ) : null}
         </div>
         <div className="ml-auto flex flex-wrap items-center justify-end gap-x-4 gap-y-2 text-ink-soft">

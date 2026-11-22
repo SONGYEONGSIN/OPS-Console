@@ -171,7 +171,11 @@ describe("loadOpsWeeklyPage — 안 붙은 서비스 목록", () => {
     m.report = reportOf({ status: "draft", snapshot: snap() });
     m.loadUnmatchedServices.mockResolvedValue(LIST);
     // 관리자는 op 없이 열면 전체 보고라 본인 보고서(op=me)로 연다
-    const a = await loadOpsWeeklyPage(ADMIN, { tab: "application", op: "me" }, NOW);
+    const a = await loadOpsWeeklyPage(
+      ADMIN,
+      { tab: "application", op: "me" },
+      NOW,
+    );
     const b = await loadOpsWeeklyPage(ME, { tab: "settings" }, NOW);
     expect(m.loadUnmatchedServices).not.toHaveBeenCalled();
     expect(kindOf(a).unmatched).toBeNull();

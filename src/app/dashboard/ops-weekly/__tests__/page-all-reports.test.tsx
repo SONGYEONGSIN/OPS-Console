@@ -22,7 +22,9 @@ vi.mock("../_components/WeekHeader", () => ({
   },
 }));
 vi.mock("@/components/common/PageTabs", () => ({
-  PageTabs: (p: { active: string }) => <div data-testid="role-tabs" data-active={p.active} />,
+  PageTabs: (p: { active: string }) => (
+    <div data-testid="role-tabs" data-active={p.active} />
+  ),
 }));
 vi.mock("next/navigation", async () => ({
   ...(await import("./search-params-mock")).navigationModule,
@@ -44,7 +46,13 @@ function allView(over: Record<string, unknown> = {}) {
   };
   return {
     kind: "week",
-    week: { id: "w1", week_start: "2026-11-16", duty_email: null, status: "open", reported_at: null },
+    week: {
+      id: "w1",
+      week_start: "2026-11-16",
+      duty_email: null,
+      status: "open",
+      reported_at: null,
+    },
     weekRef: weekRefFromStart("2026-11-16"),
     tab: "application",
     actor: { email: "a@example.com", isAdmin: false },
@@ -98,16 +106,25 @@ describe("전체 보고 화면", () => {
     await renderPage(allView());
     expect(screen.getByText(/^작성자 전원의 이번 주/)).toBeInTheDocument();
     expect(screen.getAllByText("홍길동, 김철수").length).toBeGreaterThan(0);
-    const notes = screen.getAllByRole("region", { name: "원서접수 특이사항", hidden: true })[0];
+    const notes = screen.getAllByRole("region", {
+      name: "원서접수 특이사항",
+      hidden: true,
+    })[0];
     expect(within(notes).getByText("연장 접수")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "제출완료" })).toBeNull();
     expect(screen.queryByRole("textbox")).toBeNull();
-    expect(screen.getByRole("heading", { name: "프로젝트·TF 모아보기" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "프로젝트·TF 모아보기" }),
+    ).toBeInTheDocument();
   });
 
   it("머리띠 토글은 전체가 켜지고, 작성자면 내 보고도 있다", async () => {
     await renderPage(allView());
-    expect(state.header.scope).toEqual({ mine: true, mineOp: null, active: "all" });
+    expect(state.header.scope).toEqual({
+      mine: true,
+      mineOp: null,
+      active: "all",
+    });
   });
 
   it("명단 밖 관리자가 보면 내 보고는 없고 역할 탭은 제출 현황이 켜진다", async () => {
@@ -118,7 +135,14 @@ describe("전체 보고 화면", () => {
         statusAccess: "manage",
       }),
     );
-    expect(state.header.scope).toEqual({ mine: false, mineOp: null, active: "all" });
-    expect(screen.getByTestId("role-tabs")).toHaveAttribute("data-active", "status");
+    expect(state.header.scope).toEqual({
+      mine: false,
+      mineOp: null,
+      active: "all",
+    });
+    expect(screen.getByTestId("role-tabs")).toHaveAttribute(
+      "data-active",
+      "status",
+    );
   });
 });
