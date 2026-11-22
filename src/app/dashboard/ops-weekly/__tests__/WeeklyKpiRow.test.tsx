@@ -547,6 +547,16 @@ describe("WeeklyKpiRow", () => {
     expect(within(dev).queryAllByTestId("weekly-kpi-univ")).toHaveLength(0);
     // 균등 배열 — 칸마다 같은 몫을 차지한다
     cells.forEach((c) => expect(c.parentElement?.className).toContain("flex-1"));
+    // 좁은 화면(lg 미만): 한 줄에 `라벨 건수` 로 세로로 쌓고 글자가 한 자씩 꺾이지 않는다 — 세로선은 숨긴다
+    cells.forEach((c) => {
+      expect(c.className.split(/\s+/)).toEqual(
+        expect.arrayContaining(["justify-between", "whitespace-nowrap", "lg:flex-col"]),
+      );
+    });
+    const wrap = cells[0].parentElement?.parentElement as HTMLElement;
+    expect(wrap.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["flex-col", "lg:flex-row"]),
+    );
   });
 
   it("차주 오픈·마감 칸 아래에도 대학구분 칸", () => {
