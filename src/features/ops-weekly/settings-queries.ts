@@ -10,6 +10,7 @@ import { WRITER_TEAMS, type ProjectKind } from "./constants";
 import { normEmail } from "./email";
 import {
   recipientWarning,
+  sortByTeamName,
   writerRoster,
   type RecipientOperator,
   type RecipientWarning,
@@ -127,11 +128,13 @@ async function listTeamOperators(): Promise<WriterCandidate[]> {
     .select("email, name, team, role, status")
     .in("team", [...WRITER_TEAMS])
     .eq("status", "active");
-  return rowsOf<WriterCandidate>("operators", res).map((r) => ({
-    ...r,
-    email: normEmail(r.email),
-    name: r.name.trim(),
-  }));
+  return sortByTeamName(
+    rowsOf<WriterCandidate>("operators", res).map((r) => ({
+      ...r,
+      email: normEmail(r.email),
+      name: r.name.trim(),
+    })),
+  );
 }
 
 async function listRotation(): Promise<string[]> {

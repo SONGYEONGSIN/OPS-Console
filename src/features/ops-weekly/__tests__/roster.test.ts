@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   dutyForWeek,
   recipientWarning,
+  sortByTeamName,
   writerRoster,
   type RecipientOperator,
   type WriterCandidate,
@@ -23,6 +24,33 @@ const op = (over: Partial<RecipientOperator> = {}): RecipientOperator => ({
   ...over,
 });
 
+describe("sortByTeamName", () => {
+  it("운영1팀 이름 가나다순, 그다음 운영2팀 이름 가나다순", () => {
+    const rows = [
+      w("d@x", "운영2팀", "사원", "active", "하민"),
+      w("a@x", "운영1팀", "사원", "active", "정윤나"),
+      w("c@x", "운영2팀", "사원", "active", "김지영"),
+      w("b@x", "운영1팀", "사원", "active", "김승기"),
+    ];
+    expect(sortByTeamName(rows).map((r) => r.name)).toEqual([
+      "김승기",
+      "정윤나",
+      "김지영",
+      "하민",
+    ]);
+    // 원본은 그대로
+    expect(rows[0].name).toBe("하민");
+  });
+
+  it("작성 명단도 같은 순서로 나온다", () => {
+    const rows = [
+      w("b@x", "운영2팀", "사원", "active", "가나"),
+      w("a@x", "운영1팀", "사원", "active", "하하"),
+    ];
+    expect(writerRoster(rows, []).map((r) => r.email)).toEqual(["a@x", "b@x"]);
+  });
+});
+
 describe("writerRoster", () => {
   it("작성 포함 목록에 든 부장·팀장은 작성 대상이 된다(운영1·2팀·활성일 때만)", () => {
     const rows = [
@@ -33,7 +61,7 @@ describe("writerRoster", () => {
     ];
     expect(
       writerRoster(rows, [], ["lead@x", "gone@x"]).map((r) => r.email),
-    ).toEqual(["lead@x", "a@x"]);
+    ).toEqual(["a@x", "lead@x"]);
   });
 
   it("제외 목록이 포함보다 앞선다", () => {
