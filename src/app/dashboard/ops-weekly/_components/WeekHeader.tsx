@@ -36,9 +36,9 @@ type Props = {
   nextHref: string;
 };
 
-// 오늘 할 일의 주 이동과 같은 글씨·테두리(text-sm·border-line), 가로=세로 정사각형. 터치(lg 미만)에서만 36px 를 보장한다. 호버는 버튼 표준(검정).
+// 오늘 할 일의 주 이동과 같은 글씨·테두리(text-sm·border-line). 가로=세로, 높이는 옆 범위 토글과 같다(lg 미만 36px 터치 · lg 이상 28px). 호버는 버튼 표준(검정).
 const NAV_LINK =
-  "inline-flex aspect-square min-h-9 min-w-9 items-center justify-center border border-line py-1 text-sm text-ink hover:border-ink hover:bg-ink hover:text-cream lg:min-h-0 lg:min-w-0";
+  "inline-flex size-9 shrink-0 items-center justify-center border border-line text-sm text-ink hover:border-ink hover:bg-ink hover:text-cream lg:size-7";
 
 function StatusBadge(props: {
   status: ReportStatus | null;
@@ -79,7 +79,7 @@ function withTab(href: string, tab: string): string {
 }
 
 // 오늘 할 일의 내 업무 | 전체 업무(MineScopeToggle)와 같은 모양
-const SEG_BASE = "min-h-9 px-3 py-1 text-xs lg:min-h-0";
+const SEG_BASE = "h-full px-3 text-xs";
 const SEG_ON = "bg-ink text-cream";
 const SEG_OFF = "bg-transparent text-ink hover:text-vermilion";
 
@@ -100,7 +100,8 @@ function ScopeToggle(props: {
     { key: "all" as const, label: "전체 보고서", op: ALL_OP, enabled: true },
   ];
   return (
-    <div className="flex items-center border border-line">
+    // 높이는 주 이동 버튼과 같다(h-9 · lg:h-7) — 칸은 그 높이를 채운다.
+    <div className="flex h-9 items-stretch border border-line lg:h-7">
       {items.map((it, i) => {
         const cls = `${SEG_BASE} ${i > 0 ? "border-l border-line" : ""}`;
         if (!it.enabled) {
