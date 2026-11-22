@@ -66,8 +66,8 @@ export function SubmissionTable(props: Props) {
       <table className="w-full min-w-[34rem] text-sm">
         <thead>
           <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-            <th className="px-3 py-2">이름</th>
             <th className="px-3 py-2">팀</th>
+            <th className="px-3 py-2">이름</th>
             <th className="px-3 py-2">상태</th>
             <th className="px-3 py-2">제출 시각</th>
             <th className="px-3 py-2">보기</th>
@@ -82,8 +82,8 @@ export function SubmissionTable(props: Props) {
                 key={w.email}
                 className="border-b border-line-soft text-ink hover:bg-line-soft"
               >
-                <td className={`${TD} font-medium`}>{w.name}</td>
                 <td className={TD}>{w.team}</td>
+                <td className={`${TD} font-medium`}>{w.name}</td>
                 <td className={TD}>
                   <span className={`${BADGE} ${STATUS_TONE[toneOf(report)]}`}>
                     {statusLabel(report)}

@@ -162,6 +162,14 @@ describe("StatusTab", () => {
     expect(rowText("운영자C")).toContain("미제출");
   });
 
+  it("표 칸 순서는 팀이 맨 앞", () => {
+    render(<StatusTab {...base} writers={[wa, wb, wc]} reports={[]} />);
+    const headers = screen
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent);
+    expect(headers.slice(0, 2)).toEqual(["팀", "이름"]);
+  });
+
   it("상태는 배지 — 제출(회색 테두리) · 다시 작성 요청(빨강 채움) · 미제출(빨강 테두리)", () => {
     render(
       <StatusTab

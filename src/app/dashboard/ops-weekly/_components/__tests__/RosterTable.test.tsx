@@ -10,7 +10,7 @@ const rows = [
 ];
 
 describe("RosterTable", () => {
-  it("이름·팀·이메일 칸과 행 끝 칸 — 이름이 없으면 이메일, 팀이 없으면 —", () => {
+  it("팀·이름·이메일 칸과 행 끝 칸 — 이름이 없으면 이메일, 팀이 없으면 —", () => {
     render(
       <RosterTable
         label="후보"
@@ -25,7 +25,7 @@ describe("RosterTable", () => {
     const headers = within(table)
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
-    expect(headers).toEqual(["이름", "팀", "이메일", "작업"]);
+    expect(headers).toEqual(["팀", "이름", "이메일", "작업"]);
     const out = within(table).getAllByRole("row")[2];
     expect(within(out).getAllByText("out@y")).toHaveLength(1);
     expect(within(out).getByText("—")).toBeInTheDocument();

@@ -498,7 +498,7 @@ describe("ManageTab", () => {
     const names = within(region)
       .getAllByRole("row")
       .slice(1)
-      .map((r) => r.querySelector("td")?.textContent);
+      .map((r) => r.querySelectorAll("td")[1]?.textContent);
     expect(names).toEqual(["운영자A", "운영자B"]);
   });
 });
