@@ -26,6 +26,16 @@ describe("SectionMenuLayout", () => {
     );
   });
 
+  it("md 이상에서 왼쪽 메뉴는 붙어 있고 오른쪽 내용만 스크롤된다 — 세로선은 칸 전체 높이", () => {
+    view();
+    const nav = screen.getByRole("navigation", { name: "관리 메뉴" });
+    expect(tokens(nav)).toEqual(expect.arrayContaining(["md:sticky", "md:top-4"]));
+    // 메뉴가 짧아져도 세로선은 오른쪽 내용 높이만큼 — 선은 늘어나는 바깥 칸이 긋는다
+    expect(tokens(nav.parentElement as Element)).toEqual(
+      expect.arrayContaining(["md:border-r", "border-line"]),
+    );
+  });
+
   it("선택 항목은 목록 선택 표준, 나머지는 hover:bg-line-soft", () => {
     view();
     const on = screen.getByRole("button", { name: /전체 현황/ });
