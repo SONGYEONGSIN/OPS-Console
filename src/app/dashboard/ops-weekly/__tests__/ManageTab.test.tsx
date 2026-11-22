@@ -476,8 +476,8 @@ describe("ManageTab", () => {
         .map((b) => b.textContent?.replace(/^[◉·]/, "").replace(/\d+$/, "")),
     ).toEqual([
       "전체 현황",
-      "당번 지정",
       "받는 사람",
+      "당번 지정",
       "당번 순번",
       "프로젝트·TF",
       "작성 제외",

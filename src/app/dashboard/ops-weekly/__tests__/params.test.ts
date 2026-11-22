@@ -163,7 +163,7 @@ describe("역할 탭", () => {
 describe("관리 메뉴", () => {
   it("관리 메뉴 일곱 개 순서와 section 해석", () => {
     expect(MANAGE_SECTIONS.map((s) => MANAGE_SECTION_LABEL[s])).toEqual([
-      "전체 현황", "당번 지정", "받는 사람", "당번 순번", "프로젝트·TF", "작성 제외", "지정 안된 서비스",
+      "전체 현황", "받는 사람", "당번 지정", "당번 순번", "프로젝트·TF", "작성 제외", "지정 안된 서비스",
     ]);
     expect(parseSection(null)).toBe("overview");
     expect(parseSection("unmatched")).toBe("unmatched");
