@@ -67,8 +67,35 @@ export function RotationPanel({ rotation, anchorWeekStart, writers }: Props) {
       <h2 className="text-xl font-bold text-ink">당번 순번</h2>
       <p className="text-xs text-muted">
         기준 주에 1번이 당번이고 매주 다음 순번으로 넘어갑니다. 이미 열린 주의
-        당번은 바뀌지 않습니다. ON 으로 넣고 순서를 바꾼 뒤 [순번 저장]을 누르세요.
+        당번은 바뀌지 않습니다. ON 으로 넣고 순서를 바꾼 뒤 [순번 저장]을
+        누르세요.
       </p>
+      {/* 명단이 길면 표 아래는 스크롤 끝이라 안 보인다 — 표 위 오른쪽에 둔다. */}
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <label className="flex items-center gap-2 text-xs text-muted">
+          기준 주(월요일)
+          <DateInput
+            className={FIELD_CLASS}
+            value={anchor}
+            onChange={(e) => {
+              setAnchor(e.target.value);
+            }}
+          />
+        </label>
+        <button
+          type="button"
+          className={BTN_CLASS}
+          disabled={save.pending}
+          onClick={submit}
+        >
+          순번 저장
+        </button>
+        {localError !== null || save.error !== null ? (
+          <p role="alert" className={ERROR_CLASS}>
+            {localError ?? save.error}
+          </p>
+        ) : null}
+      </div>
       <RosterTable
         label="당번 순번 명단"
         rows={rowsOf(emails, writers)}
@@ -125,31 +152,6 @@ export function RotationPanel({ rotation, anchorWeekStart, writers }: Props) {
           },
         }}
       />
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-xs text-muted">
-          기준 주(월요일)
-          <DateInput
-            className={FIELD_CLASS}
-            value={anchor}
-            onChange={(e) => {
-              setAnchor(e.target.value);
-            }}
-          />
-        </label>
-        <button
-          type="button"
-          className={BTN_CLASS}
-          disabled={save.pending}
-          onClick={submit}
-        >
-          순번 저장
-        </button>
-        {localError !== null || save.error !== null ? (
-          <p role="alert" className={ERROR_CLASS}>
-            {localError ?? save.error}
-          </p>
-        ) : null}
-      </div>
     </section>
   );
 }
