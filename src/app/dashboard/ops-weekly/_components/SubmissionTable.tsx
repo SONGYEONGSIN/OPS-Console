@@ -21,10 +21,12 @@ type Props = {
 
 const TD = "px-3 py-2";
 
+// 상태는 배지 — 머리띠의 내 상태 배지와 같은 치수. 할 일이 남은 둘(미제출·다시 작성 요청)은 빨강, 다시 작성 요청은 채워서 가른다.
+const BADGE = "inline-block border px-1.5 py-0.5 text-xs";
 const STATUS_TONE = {
-  submitted: "text-ink",
-  returned: "text-vermilion",
-  missing: "text-muted",
+  submitted: "border-line-soft text-ink",
+  returned: "border-vermilion bg-vermilion text-cream",
+  missing: "border-vermilion text-vermilion",
 } as const;
 
 function statusLabel(report: ReportRow | undefined): string {
@@ -82,8 +84,10 @@ export function SubmissionTable(props: Props) {
               >
                 <td className={`${TD} font-medium`}>{w.name}</td>
                 <td className={TD}>{w.team}</td>
-                <td className={`${TD} ${STATUS_TONE[toneOf(report)]}`}>
-                  {statusLabel(report)}
+                <td className={TD}>
+                  <span className={`${BADGE} ${STATUS_TONE[toneOf(report)]}`}>
+                    {statusLabel(report)}
+                  </span>
                 </td>
                 <td className={`${TD} tabular-nums`}>
                   {report?.status === "submitted" && report.submitted_at
