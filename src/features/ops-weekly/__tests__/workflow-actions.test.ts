@@ -78,7 +78,8 @@ const seedReport = (over: Row): Row => ({
   returned_by: null,
   return_reason: null,
   snapshot: null,
-  checked_tabs: [],
+  // 제출 조건(다섯 영역 확인)을 채운 채 시작한다 — 미확인 거절은 따로 시험한다.
+  checked_tabs: ["application", "pims", "project", "tf", "leave"],
   ...over,
 });
 
@@ -105,6 +106,19 @@ describe("submitReport", () => {
     expect(emitSpy).toHaveBeenCalledWith(
       expect.objectContaining({ type: "all-submitted", weekId: W }),
     );
+  });
+
+  it("다섯 영역을 다 확인하지 않으면 거절한다 — 남은 영역을 알려 준다", async () => {
+    me("a@x");
+    setup({
+      writers: [op("a@x", "운영자A")],
+      report: { checked_tabs: ["application", "pims", "leave"] },
+    });
+    expect(await submitReport({ reportId: R })).toEqual({
+      ok: false,
+      error: "모든 영역을 확인해야 제출할 수 있습니다 — 남은 확인: 프로젝트, TF",
+    });
+    expect(updates("ops_weekly_reports")).toHaveLength(0);
   });
 
   it("아직 미제출자가 있으면 all-submitted 는 없다", async () => {

@@ -30,19 +30,22 @@ describe("SubmitBar", () => {
     expect(screen.queryByRole("button", { name: "제출완료" })).toBeNull();
   });
 
-  it("바깥은 위 구분선이 있는 세로 묶음", () => {
+  it("머리띠 오른쪽에 놓인다 — 구분선 상자 없이 오른쪽 정렬 세로 묶음", () => {
     const { container } = render(<SubmitBar reportId="r1" canSubmit />);
-    expect(tokens(container.firstElementChild as Element)).toEqual(
-      expect.arrayContaining([
-        "flex",
-        "flex-col",
-        "items-stretch",
-        "gap-2",
-        "border-t",
-        "border-line",
-        "pt-4",
-      ]),
+    const t = tokens(container.firstElementChild as Element);
+    expect(t).toEqual(expect.arrayContaining(["flex", "flex-col", "items-end"]));
+    expect(t).not.toContain("border-t");
+  });
+
+  it("다섯 영역을 다 확인하기 전에는 버튼이 꺼지고 남은 영역을 알려 준다", () => {
+    const { rerender } = render(
+      <SubmitBar reportId="r1" canSubmit unchecked={["프로젝트", "TF"]} />,
     );
+    expect(screen.getByRole("button", { name: "제출완료" })).toBeDisabled();
+    expect(screen.getByText("남은 확인: 프로젝트, TF")).toBeInTheDocument();
+    rerender(<SubmitBar reportId="r1" canSubmit unchecked={[]} />);
+    expect(screen.getByRole("button", { name: "제출완료" })).toBeEnabled();
+    expect(screen.queryByText(/남은 확인/)).toBeNull();
   });
 
   it("제출 성공 → 새로고침", async () => {
@@ -79,13 +82,12 @@ describe("SubmitBar", () => {
     expect(screen.getByRole("status")).toHaveTextContent(msg);
   });
 
-  it("보일 것이 없으면(제출 불가·대기 없음·안내 없음) 구분선 상자도 그리지 않는다", () => {
+  it("보일 것이 없으면(제출 불가·대기 없음·안내 없음) 아무것도 그리지 않는다", () => {
     const { container } = render(<SubmitBar reportId="r1" canSubmit={false} />);
-    expect(container.querySelector(".border-t")).toBeNull();
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("안내가 남은 동안은 구분선 상자가 있고 안내는 text-ink-soft", async () => {
+  it("안내가 남은 동안은 묶음이 남고 안내는 text-ink-soft", async () => {
     submitReport.mockResolvedValue({
       ok: false,
       error: "제출은 끝났지만 전원 제출 확인에 실패했습니다: x",
@@ -96,7 +98,7 @@ describe("SubmitBar", () => {
     fireEvent.click(screen.getByRole("button", { name: "제출완료" }));
     await waitFor(() => expect(refresh).toHaveBeenCalled());
     rerender(<SubmitBar reportId="r1" canSubmit={false} />);
-    expect(container.querySelector(".border-t")).not.toBeNull();
+    expect(container).not.toBeEmptyDOMElement();
     expect(tokens(screen.getByRole("status"))).toContain("text-ink-soft");
   });
 

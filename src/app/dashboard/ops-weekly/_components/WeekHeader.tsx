@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { AREAS, type ReportStatus } from "@/features/ops-weekly/constants";
 import type { WeekRef } from "@/features/ops-weekly/week";
 import { formatMdHm } from "../_format";
@@ -34,6 +35,8 @@ type Props = {
   prevOpen: boolean;
   prevHref: string;
   nextHref: string;
+  /** 머리띠 오른쪽 끝 제출 버튼 — 내 보고서(전체 보고 아님)에서만 */
+  submit?: ReactNode;
 };
 
 // 높이는 오늘 할 일(WeeklyView)의 ‹ › 그대로 — py-1(8) + text-sm 줄높이(20) + 테두리(2) = 30px. 가로를 같게 해 정사각형. 호버는 버튼 표준(검정).
@@ -189,6 +192,7 @@ export function WeekHeader(props: Props) {
                 </span>
                 <span>{`당번 ${props.dutyName ?? "미지정"}`}</span>
               </span>
+              {showOwnState ? (props.submit ?? null) : null}
             </>
           ) : null}
         </div>

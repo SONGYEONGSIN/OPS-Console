@@ -50,7 +50,7 @@ beforeEach(() => {
 });
 
 describe("ProjectTab", () => {
-  it("hideHeading — 서랍 안에서는 자체 제목을 그리지 않는다(서랍 머리가 그 영역의 제목)", () => {
+  it("프로젝트·TF 탭 안 한 절 — 자체 제목(종류 이름)과 건수를 그린다", () => {
     render(
       <ProjectTab
         kind="tf"
@@ -58,14 +58,13 @@ describe("ProjectTab", () => {
         reportId="r"
         editable
         notes={N}
-        hideHeading
       />,
     );
-    expect(screen.queryByRole("heading", { name: "TF" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "TF" })).toBeInTheDocument();
     expect(screen.getByText("t1")).toBeInTheDocument();
   });
 
-  it("바깥 여백은 서랍 body 가 진다 — 자체 p-5 가 없다", () => {
+  it("바깥 여백은 영역 패널이 진다 — 자체 p-5 가 없다", () => {
     const { container } = render(
       <ProjectTab kind="tf" entries={[]} reportId="r" editable notes={N} />,
     );

@@ -14,13 +14,17 @@ type Props = {
   thisWeek: string;
   nextWeek: string;
   editable: boolean;
+  /** false 면 [이 영역 확인] 을 그리지 않는다 — 쓸 것 칸의 특이사항(확인은 영역 탭 줄 버튼) */
+  showCheck?: boolean;
 };
 
 function ReadOnlyNote({ label, text }: { label: string; text: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <span className="text-xs font-medium text-muted">{label}</span>
-      <p className="whitespace-pre-wrap text-sm text-ink [overflow-wrap:anywhere]">{text || "—"}</p>
+      <p className="whitespace-pre-wrap text-sm text-ink [overflow-wrap:anywhere]">
+        {text || "—"}
+      </p>
     </div>
   );
 }
@@ -28,6 +32,7 @@ function ReadOnlyNote({ label, text }: { label: string; text: string }) {
 /** 영역 특이사항(금주/차주) + [이 영역 확인]. blur 하면 저장한다. */
 export function AreaNotes(props: Props) {
   const { reportId, area, thisWeek, nextWeek, editable } = props;
+  const showCheck = props.showCheck ?? true;
   const [thisDraft, setThis] = useState(thisWeek);
   const [nextDraft, setNext] = useState(nextWeek);
   const note = useSave({
@@ -94,22 +99,26 @@ export function AreaNotes(props: Props) {
               {note.error}
             </p>
           ) : null}
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              disabled={check.pending}
-              className={BTN_CLASS}
-              onClick={() =>
-                check.run(() => markTabChecked({ reportId, area }))
-              }
-            >
-              이 영역 확인
-            </button>
-            <span className="text-xs text-muted">
-              확인하면 탭 옆에 확인 표시가 남습니다
-            </span>
-            {check.error ? <p className={ERROR_CLASS}>{check.error}</p> : null}
-          </div>
+          {showCheck ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                disabled={check.pending}
+                className={BTN_CLASS}
+                onClick={() =>
+                  check.run(() => markTabChecked({ reportId, area }))
+                }
+              >
+                이 영역 확인
+              </button>
+              <span className="text-xs text-muted">
+                확인하면 탭 옆에 확인 표시가 남습니다
+              </span>
+              {check.error ? (
+                <p className={ERROR_CLASS}>{check.error}</p>
+              ) : null}
+            </div>
+          ) : null}
         </>
       ) : (
         <div className="grid gap-3 @md:grid-cols-2">

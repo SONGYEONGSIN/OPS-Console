@@ -102,7 +102,7 @@ async function renderPage(view: Record<string, unknown>) {
 }
 
 describe("전체 보고 화면", () => {
-  it("KPI 는 작성자 전원의 숫자, 표에 담당자, 쓸 칸 대신 사람별 특이사항, 제출 버튼 없음", async () => {
+  it("KPI 는 작성자 전원의 숫자, 표에 담당자, 쓸 칸 대신 사람별 특이사항, 제출 버튼 없음, 모아보기는 프로젝트·TF 탭", async () => {
     await renderPage(allView());
     expect(screen.getByText(/^작성자 전원의 이번 주/)).toBeInTheDocument();
     expect(screen.getAllByText("홍길동, 김철수").length).toBeGreaterThan(0);
@@ -113,9 +113,15 @@ describe("전체 보고 화면", () => {
     expect(within(notes).getByText("연장 접수")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "제출완료" })).toBeNull();
     expect(screen.queryByRole("textbox")).toBeNull();
-    expect(
-      screen.getByRole("heading", { name: "프로젝트·TF 모아보기" }),
-    ).toBeInTheDocument();
+    // 모아보기는 프로젝트·TF 영역 탭 본문(지금은 원서접수 탭이라 숨어 있다)
+    const overview = screen.getByRole("heading", {
+      name: "프로젝트·TF 모아보기",
+      hidden: true,
+    });
+    expect(overview.closest('[role="tabpanel"]')).toHaveAttribute(
+      "id",
+      "area-panel-project",
+    );
   });
 
   it("머리띠 토글은 전체가 켜지고, 작성자면 내 보고도 있다", async () => {

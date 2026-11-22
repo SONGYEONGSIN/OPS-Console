@@ -266,11 +266,11 @@ describe("WeekHeader", () => {
         nextHref="/dashboard/ops-weekly?week=2026-11-23&tab=project&op=b%40example.com"
       />,
     );
-    // 서랍(tab=project)은 영역이 아니라 원서접수로 푼다 — 서버가 준 낡은 tab 을 그대로 두지 않는다.
+    // 프로젝트·TF 는 이제 영역 탭 — 주를 넘겨도 그 탭에 머문다.
     expect(
       screen.getByRole("link", { name: "다음 주" }).getAttribute("href"),
     ).toBe(
-      "/dashboard/ops-weekly?week=2026-11-23&tab=application&op=b%40example.com",
+      "/dashboard/ops-weekly?week=2026-11-23&tab=project&op=b%40example.com",
     );
   });
 
@@ -354,6 +354,28 @@ describe("WeekHeader", () => {
       expect(t).not.toContain("text-xs");
       const label = tokens(screen.getByText(/주차 · /));
       expect(label).toEqual(expect.arrayContaining(["text-base", "font-bold", "tracking-[-0.02em]"]));
+    });
+  });
+
+  describe("제출 버튼 자리", () => {
+    it("submit 은 머리띠 오른쪽, 확인 n/5 뒤에 놓인다", () => {
+      render(<WeekHeader {...base} submit={<button type="button">제출완료</button>} />);
+      const btn = screen.getByRole("button", { name: "제출완료" });
+      const check = screen.getByText("확인 0/5");
+      expect(
+        check.compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(check.parentElement?.contains(btn)).toBe(true);
+    });
+    it("전체 보고 중에는 제출 자리가 없다", () => {
+      render(
+        <WeekHeader
+          {...base}
+          scope={{ mine: true, mineOp: null, active: "all" }}
+          submit={<button type="button">제출완료</button>}
+        />,
+      );
+      expect(screen.queryByRole("button", { name: "제출완료" })).toBeNull();
     });
   });
 });

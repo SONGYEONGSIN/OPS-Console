@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
-import type { ProjectKind } from "@/features/ops-weekly/constants";
+import {
+  PROJECT_KINDS,
+  type ProjectKind,
+} from "@/features/ops-weekly/constants";
 import type { AllReportsView } from "@/features/ops-weekly/all-view";
 import {
   groupEntriesByProject,
@@ -10,22 +13,21 @@ import type { OpsWeeklyWeekView } from "../_load";
 import { appSubStateOf, directAddGroups } from "../_groups";
 import {
   AREA_TAB_LABEL,
-  AREA_TABS,
+  PANEL_AREAS,
   manageHref,
   type AreaTab,
+  type PanelArea,
 } from "../_params";
 import { AllAreaNotes } from "./AllAreaNotes";
 import { ApplicationTab } from "./ApplicationTab";
+import { AreaCheckButton } from "./AreaCheckButton";
 import { AreaNotes } from "./AreaNotes";
 import { DirectAddPanel } from "./DirectAddPanel";
 import { LeaveTab } from "./LeaveTab";
 import { PimsTab } from "./PimsTab";
-import { ProjectDrawer } from "./ProjectDrawer";
 import { ProjectOverview } from "./ProjectOverview";
-import { ProjectSummaryCards } from "./ProjectSummaryCards";
 import { ProjectTab } from "./ProjectTab";
 import { ReportLayout } from "./ReportLayout";
-import { SubmitBar } from "./SubmitBar";
 import { WritePanel } from "./WritePanel";
 
 type Props = {
@@ -37,10 +39,15 @@ type Props = {
 };
 
 type Slots = Record<AreaTab, ReactNode>;
+type PanelSlots = Record<PanelArea, ReactNode>;
 
-/** 영역 본문 셋 — 지금 page 가 한 탭씩 넘기던 props 그대로다. */
-function areasOf({ view, snapshot, detail }: Props, editable: boolean): Slots {
-  const props = {
+const panelSlots = (make: (area: PanelArea) => ReactNode): PanelSlots =>
+  Object.fromEntries(PANEL_AREAS.map((k) => [k, make(k)])) as PanelSlots;
+
+/** 영역 본문 넷 — 프로젝트·TF 탭은 프로젝트 절과 TF 절을 위아래로(각자 특이사항·확인). */
+function areasOf(props: Props, editable: boolean): Slots {
+  const { view, snapshot, detail } = props;
+  const tabProps = {
     snapshot,
     detail,
     reportId: view.report?.id ?? null,
@@ -48,54 +55,64 @@ function areasOf({ view, snapshot, detail }: Props, editable: boolean): Slots {
     freezeNotice: view.freezeNotice,
   };
   return {
-    application: <ApplicationTab {...props} />,
-    pims: <PimsTab {...props} />,
-    leave: <LeaveTab {...props} />,
+    application: <ApplicationTab {...tabProps} />,
+    pims: <PimsTab {...tabProps} />,
+    project: projectsOf(props, editable),
+    leave: <LeaveTab {...tabProps} />,
   };
 }
 
-/** 영역 특이사항 셋 — 쓸 것 패널에 놓인다. */
-function notesOf({ view, detail }: Props, editable: boolean): Slots {
-  const note = (area: AreaTab) => (
+/** 영역 특이사항 셋 — 쓸 것 칸에 놓인다. 확인 버튼은 영역 탭 줄(actionsOf)에 있다. */
+function notesOf({ view, detail }: Props, editable: boolean): PanelSlots {
+  return panelSlots((area) => (
     <AreaNotes
       reportId={view.report?.id ?? null}
       area={area}
       thisWeek={detail.notes[area].thisWeek}
       nextWeek={detail.notes[area].nextWeek}
       editable={editable}
+      showCheck={false}
     />
-  );
-  return Object.fromEntries(AREA_TABS.map((k) => [k, note(k)])) as Slots;
+  ));
+}
+
+/** 영역 탭 줄 [이 영역 확인] — 쓸 수 있는 본인 보고서에서만. */
+function actionsOf({ view }: Props, editable: boolean): PanelSlots | null {
+  const report = view.report;
+  if (!editable || report === null) return null;
+  return panelSlots((area) => (
+    <AreaCheckButton
+      reportId={report.id}
+      area={area}
+      checked={report.checked_tabs.includes(area)}
+    />
+  ));
 }
 
 /** 직접 추가 셋 — 영역마다 하나, 셋 다 마운트한다. 쓸 수 없는 보고서(보고서 없음·읽기 전용)면 null. */
 function directAddOf(
   { view, snapshot }: Props,
   editable: boolean,
-): Slots | null {
+): PanelSlots | null {
   const reportId = view.report?.id;
   if (!editable || !reportId) return null;
   const appSubState = appSubStateOf(snapshot.application);
-  const panel = (area: AreaTab) => (
+  return panelSlots((area) => (
     <DirectAddPanel
       area={area}
       reportId={reportId}
       groups={directAddGroups(area, appSubState.collected)}
       appSubState={appSubState}
     />
-  );
-  return Object.fromEntries(AREA_TABS.map((k) => [k, panel(k)])) as Slots;
+  ));
 }
 
-/** 서랍 안 프로젝트·TF — 제목은 서랍 머리가 그린다(hideHeading). */
-function drawerPanelsOf(
-  { view, detail }: Props,
-  editable: boolean,
-): Record<ProjectKind, ReactNode> {
+/** 프로젝트·TF 탭 본문 — 프로젝트 절 위, TF 절 아래. */
+function projectsOf({ view, detail }: Props, editable: boolean): ReactNode {
   const panel = (kind: ProjectKind) => (
     <ProjectTab
+      key={kind}
       kind={kind}
-      hideHeading
       entries={detail.projects}
       reportId={view.report?.id ?? null}
       editable={editable}
@@ -107,70 +124,51 @@ function drawerPanelsOf(
       }
     />
   );
-  return { project: panel("project"), tf: panel("tf") };
-}
-
-/**
- * 전체 보고 — 볼 것은 같은 영역 본문(담당자가 실린 합친 목록, 읽기 전용), 쓸 것 패널 자리에 사람별 특이사항,
- * 아래에 프로젝트·TF 모아보기. 직접 추가·제출·서랍은 없다(누구의 보고서도 아니다).
- */
-function AllReportsBody(props: Props & { all: AllReportsView }) {
-  const { all, detail } = props;
-  const notes = Object.fromEntries(
-    AREA_TABS.map((k) => [
-      k,
-      <AllAreaNotes key={k} title={AREA_TAB_LABEL[k]} notes={all.notes[k]} />,
-    ]),
-  ) as Slots;
   return (
-    <>
-      <ReportLayout
-        checked={[]}
-        areas={areasOf(props, false)}
-        panel={<WritePanel notes={notes} directAdd={null} />}
-      />
-      <div className="px-5 pb-7 lg:px-7">
-        <ProjectOverview groups={groupEntriesByProject(detail.projects)} />
-      </div>
-    </>
+    <div className="flex flex-col gap-10">{PROJECT_KINDS.map(panel)}</div>
   );
 }
 
-/** 내 보고서 — 왼쪽 영역 본문 셋, 오른쪽 쓸 것 패널, 프로젝트·TF 서랍. snapshot·detail 이 있을 때만 page 가 부른다. */
+/**
+ * 전체 보고 — 볼 것은 같은 영역 본문(담당자가 실린 합친 목록, 읽기 전용), 프로젝트·TF 탭은 모아보기,
+ * 쓸 것 칸 자리에 사람별 특이사항. 직접 추가·확인·제출은 없다(누구의 보고서도 아니다).
+ */
+function AllReportsBody(props: Props & { all: AllReportsView }) {
+  const { all, detail } = props;
+  const notes = panelSlots((k) => (
+    <AllAreaNotes key={k} title={AREA_TAB_LABEL[k]} notes={all.notes[k]} />
+  ));
+  return (
+    <ReportLayout
+      checked={[]}
+      areas={{
+        ...areasOf(props, false),
+        project: (
+          <ProjectOverview groups={groupEntriesByProject(detail.projects)} />
+        ),
+      }}
+      panel={<WritePanel notes={notes} directAdd={null} />}
+    />
+  );
+}
+
+/** 내 보고서 — 영역 본문 넷, [특이사항] 으로 여는 쓸 것 칸. 제출은 머리띠(page). snapshot·detail 이 있을 때만 page 가 부른다. */
 export function ReportView(props: Props) {
-  const { view, detail } = props;
+  const { view } = props;
   if (view.all !== null) return <AllReportsBody {...props} all={view.all} />;
   const editable = view.canEdit && view.report !== null;
-  const checked = view.report?.checked_tabs ?? [];
   return (
-    <>
-      <ReportLayout
-        checked={checked}
-        heading={props.viewingOther}
-        areas={areasOf(props, editable)}
-        panel={
-          <WritePanel
-            notes={notesOf(props, editable)}
-            directAdd={directAddOf(props, editable)}
-            submit={
-              props.viewingOther === null ? (
-                <SubmitBar
-                  reportId={view.report?.id ?? null}
-                  canSubmit={view.canSubmit}
-                />
-              ) : null
-            }
-            projects={
-              <ProjectSummaryCards
-                entries={detail.projects}
-                checked={checked}
-                editable={editable}
-              />
-            }
-          />
-        }
-      />
-      <ProjectDrawer panels={drawerPanelsOf(props, editable)} />
-    </>
+    <ReportLayout
+      checked={view.report?.checked_tabs ?? []}
+      heading={props.viewingOther}
+      areas={areasOf(props, editable)}
+      actions={actionsOf(props, editable)}
+      panel={
+        <WritePanel
+          notes={notesOf(props, editable)}
+          directAdd={directAddOf(props, editable)}
+        />
+      }
+    />
   );
 }

@@ -4,6 +4,7 @@ import {
   APP_SUBS,
   AREA_TABS,
   AREA_TAB_LABEL,
+  AREA_TAB_TITLE,
   MANAGE_SECTIONS,
   MANAGE_SECTION_LABEL,
   OPS_TABS,
@@ -180,16 +181,19 @@ describe("AREA_TAB_LABEL", () => {
 });
 
 describe("영역 주소", () => {
-  it("resolveArea — 서랍·역할 탭 값은 원서접수", () => {
+  it("resolveArea — project·tf 는 프로젝트·TF 탭, 역할 탭 값·없는 값은 원서접수", () => {
     expect(resolveArea("pims")).toBe("pims");
     expect(resolveArea("leave")).toBe("leave");
-    for (const raw of ["project", "tf", "status", null])
+    expect(resolveArea("project")).toBe("project");
+    expect(resolveArea("tf")).toBe("project");
+    for (const raw of ["status", "settings", null])
       expect(resolveArea(raw)).toBe("application");
   });
-  it("AREA_TABS — 왼쪽 영역 셋의 순서와 라벨", () => {
-    expect(AREA_TABS.map((a) => AREA_TAB_LABEL[a])).toEqual([
+  it("AREA_TABS — 영역 넷의 순서와 탭 라벨(프로젝트·TF 는 합격자 발표 옆)", () => {
+    expect(AREA_TABS.map((a) => AREA_TAB_TITLE[a])).toEqual([
       "원서접수",
       "합격자 발표",
+      "프로젝트·TF",
       "휴가·외근",
     ]);
   });
