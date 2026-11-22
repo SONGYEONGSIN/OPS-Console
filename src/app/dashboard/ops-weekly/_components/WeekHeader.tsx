@@ -6,7 +6,6 @@ import type { WeekRef } from "@/features/ops-weekly/week";
 import { formatMdHm } from "../_format";
 import type { HeaderWeek } from "../_header-week";
 import { ALL_OP, opsWeeklyHref } from "../_params";
-import { BADGE_CLASS } from "./styles";
 import { useOpsArea } from "./use-ops-area";
 
 type Props = {
@@ -59,7 +58,14 @@ function StatusBadge(props: {
       </span>
     );
   }
-  if (status === "draft") return <span className={BADGE_CLASS}>작성 중</span>;
+  // 아직 안 낸 것은 할 일이라 빨갛게 — 다시 작성 요청과 같은 색이다. 제출하면 회색 `제출함 시각` 으로 바뀐다.
+  if (status === "draft") {
+    return (
+      <span className="border border-vermilion px-1.5 py-0.5 text-xs text-vermilion">
+        작성 중
+      </span>
+    );
+  }
   return null;
 }
 

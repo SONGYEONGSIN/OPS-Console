@@ -303,9 +303,11 @@ describe("WeekHeader", () => {
       ).toBe(false);
     });
 
-    it("상태 배지 — 작성 중 / 제출함(숫자 정렬) / 다시 작성 요청(vermilion)", () => {
+    it("상태 배지 — 작성 중(vermilion) / 제출함(숫자 정렬) / 다시 작성 요청(vermilion)", () => {
       const { rerender } = render(<WeekHeader {...base} />);
-      expect(screen.getByText("작성 중")).toBeInTheDocument();
+      const draft = screen.getByText("작성 중");
+      expect(tokens(draft)).toContain("border-vermilion");
+      expect(tokens(draft)).toContain("text-vermilion");
       rerender(
         <WeekHeader
           {...base}
