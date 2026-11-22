@@ -57,18 +57,20 @@ const SEG_BASE =
   "-m-1 flex min-w-0 flex-1 flex-col gap-0.5 border p-1 transition-colors focus-visible:outline-2 focus-visible:outline-ink";
 const SEG_IDLE = "border-transparent hover:border-ink";
 
-/** 대학구분 칸 — 차주 오픈/마감 카드의 두 칸과 같은 모양(작은 라벨 + 숫자, 칸 사이 세로선). */
+/** 대학구분 칸 — 차주 오픈/마감 카드의 두 칸과 같은 모양(작은 라벨 + 숫자, 칸 사이 세로선). 칸마다 같은 몫(균등 배열). */
 function UnivCells({ cells }: { cells: UnivBreakdown }) {
   if (cells.length === 0) return null;
   return (
-    <div className="mt-1 flex flex-wrap gap-y-1">
+    <div className="mt-1 flex">
       {cells.map((c, i) => (
-        <div key={c.label} className="flex min-w-0 gap-2 pr-2">
+        <div key={c.label} className="flex min-w-0 flex-1 gap-2">
           {i > 0 ? (
             <div className="w-px shrink-0 self-stretch bg-line-soft" />
           ) : null}
-          <div data-testid="weekly-kpi-univ" className="flex flex-col">
-            <span className="text-2xs text-muted">{c.label}</span>
+          <div data-testid="weekly-kpi-univ" className="flex min-w-0 flex-col">
+            <span className="text-2xs text-muted [overflow-wrap:anywhere]">
+              {c.label}
+            </span>
             <span className="text-sm font-bold tabular-nums text-ink">
               {c.count.toLocaleString("ko-KR")}
               <span className="ml-0.5 text-2xs font-medium text-muted">건</span>
@@ -234,6 +236,7 @@ export function WeeklyKpiRow({
                         건
                       </span>
                     </div>
+                    <UnivCells cells={breakdowns?.[key] ?? []} />
                   </Link>
                 </div>
               );

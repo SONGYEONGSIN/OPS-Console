@@ -545,5 +545,30 @@ describe("WeeklyKpiRow", () => {
     expect(cells.map((c) => c.textContent)).toEqual(["4년제3건", "2년제1건"]);
     const dev = screen.getByRole("link", { name: /개발 중/ });
     expect(within(dev).queryAllByTestId("weekly-kpi-univ")).toHaveLength(0);
+    // 균등 배열 — 칸마다 같은 몫을 차지한다
+    cells.forEach((c) => expect(c.parentElement?.className).toContain("flex-1"));
+  });
+
+  it("차주 오픈·마감 칸 아래에도 대학구분 칸", () => {
+    render(
+      <WeeklyKpiRow
+        {...BASE}
+        ownerName="홍길동"
+        kpis={KPIS}
+        breakdowns={{
+          opening: [{ label: "4년제", count: 3 }],
+          closing: [
+            { label: "2년제", count: 4 },
+            { label: "대학원", count: 1 },
+          ],
+        }}
+      />,
+    );
+    const group = screen.getByRole("group", { name: "차주 오픈 / 마감" });
+    expect(
+      within(group)
+        .getAllByTestId("weekly-kpi-univ")
+        .map((c) => c.textContent),
+    ).toEqual(["4년제3건", "2년제4건", "대학원1건"]);
   });
 });

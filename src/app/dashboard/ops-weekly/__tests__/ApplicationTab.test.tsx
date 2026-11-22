@@ -18,14 +18,11 @@ import { computeKpis, type ManualItem } from "@/features/ops-weekly/merge";
 import { setUrl } from "./search-params-mock";
 import { EMPTY, item, snap } from "./tab-fixtures";
 
-const SETTINGS = "/dashboard/ops-weekly?week=2026-11-16&tab=settings#unmatched";
 const PROPS = {
   detail: EMPTY,
   reportId: "r",
   editable: true,
   freezeNotice: false,
-  isAdmin: false,
-  settingsHref: SETTINGS,
 };
 
 const manual = (group: string, id = "m1"): ManualItem => ({
@@ -312,55 +309,13 @@ describe("ApplicationTab", () => {
   });
 });
 
-describe("ApplicationTab — 안 붙은 서비스 안내는 관리자에게만", () => {
-  it("비관리자에게는 문구도 링크도 없다(0건이어도 4건이어도)", () => {
-    for (const n of [0, 4]) {
-      const { unmount } = render(
-        <ApplicationTab
-          {...PROPS}
-          isAdmin={false}
-          snapshot={snap({ unmatchedApplication: n })}
-        />,
-      );
-      expect(screen.queryByText(/안 붙은 서비스/)).toBeNull();
-      expect(screen.queryByText("관리에서 목록 보기")).toBeNull();
-      unmount();
-    }
-  });
-
-  it("관리자: 0 건도 적고 링크는 없다", () => {
+describe("ApplicationTab — 안 붙은 서비스 안내", () => {
+  it("없다 — 관리 탭(지정 안된 서비스)에서 본다", () => {
     render(
-      <ApplicationTab
-        {...PROPS}
-        isAdmin
-        snapshot={snap({ unmatchedApplication: 0 })}
-      />,
+      <ApplicationTab {...PROPS} snapshot={snap({ unmatchedApplication: 4 })} />,
     );
-    expect(
-      screen.getByText("담당자가 맞지 않아 아무에게도 안 붙은 서비스 0건"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "관리에서 목록 보기" }),
-    ).toBeNull();
-  });
-
-  it("관리자: 있으면 한 문장으로 조치까지 + 설정 패널로 가는 링크", () => {
-    render(
-      <ApplicationTab
-        {...PROPS}
-        isAdmin
-        snapshot={snap({ unmatchedApplication: 4 })}
-      />,
-    );
-    expect(
-      screen.getByText(
-        "담당자가 맞지 않아 아무에게도 안 붙은 서비스 4건 — 서비스마감 메뉴에서 담당자 이름을 확인하세요",
-      ),
-    ).toBeInTheDocument();
-    const link = screen.getByRole("link", { name: "관리에서 목록 보기" });
-    expect(link).toHaveAttribute("href", SETTINGS);
-    expect(link.className).toContain("text-xs");
-    expect(link.className).toContain("underline");
+    expect(screen.queryByText(/안 붙은 서비스/)).toBeNull();
+    expect(screen.queryByText("관리에서 목록 보기")).toBeNull();
   });
 });
 

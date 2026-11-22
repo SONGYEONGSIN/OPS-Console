@@ -54,8 +54,6 @@ function mount() {
         reportId="r"
         editable
         freezeNotice={false}
-        isAdmin={false}
-        settingsHref="/s"
       />
     </PendingSavesProvider>,
   );

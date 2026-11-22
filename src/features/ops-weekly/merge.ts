@@ -171,14 +171,14 @@ function univBucket(type: string | null | undefined): string {
 }
 
 /**
- * 개발·테스트·운영 카드의 대학구분 칸 — 카드 숫자(computeKpis)와 같은 식(뺀 건 제외 + 직접 추가)이라
+ * 개발·테스트·운영·차주 오픈/마감 카드의 대학구분 칸 — 카드 숫자(computeKpis)와 같은 식(뺀 건 제외 + 직접 추가)이라
  * 칸의 합이 카드 숫자와 같다. 직접 추가는 대학구분이 없어 `직접` 칸이다. 0 인 칸은 내지 않는다.
  */
 export function stageBreakdowns(
   snap: AutoSnapshot,
   overrides: ReadonlyMap<string, ItemOverride>,
   manual: readonly ManualItem[],
-): Record<"dev" | "test" | "running", UnivBreakdown> {
+): Record<"dev" | "test" | "running" | "opening" | "closing", UnivBreakdown> {
   const of = (list: readonly AutoItem[], key: string): UnivBreakdown => {
     const counts = new Map<string, number>();
     for (const i of list) {
@@ -198,6 +198,8 @@ export function stageBreakdowns(
     dev: of(app.dev, "dev"),
     test: of(app.test, "test"),
     running: of(app.running, "running"),
+    opening: of(app.opening, "opening"),
+    closing: of(app.closing, "closing"),
   };
 }
 

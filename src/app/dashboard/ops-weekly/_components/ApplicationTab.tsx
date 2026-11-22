@@ -13,7 +13,6 @@ import { AutoGroupSection } from "./AutoGroupSection";
 import { AutoFreezeNotice } from "./AutoFreezeNotice";
 import { SubTabs, type SubTabItem } from "./SubTabs";
 import { TabHeading } from "./TabHeading";
-import { UnmatchedNotice } from "./UnmatchedNotice";
 
 type Props = {
   snapshot: AutoSnapshot;
@@ -22,9 +21,7 @@ type Props = {
   editable: boolean;
   freezeNotice: boolean;
   /** 안 붙은 서비스 안내는 관리자에게만 보인다 */
-  isAdmin: boolean;
   /** 설정 탭의 안 붙은 서비스 패널 주소 */
-  settingsHref: string;
 };
 
 type StageKey = "dev" | "test";
@@ -48,11 +45,8 @@ export function ApplicationTab({
   reportId,
   editable,
   freezeNotice,
-  isAdmin,
-  settingsHref,
 }: Props) {
   const app = snapshot.application;
-  const unmatched = snapshot.unmatched.application;
   // 숫자는 KPI 카드와 같은 식 하나(뺀 건 제외 + 직접)다 — 탭 숫자와 카드가 갈릴 수 없다.
   const kpis = computeKpis(snapshot, detail.overrides, detail.manual);
   const shownLists = [
@@ -140,13 +134,6 @@ export function ApplicationTab({
         summary={`자동 ${autoCount}건 · 직접 ${directCount}건`}
       >
         {freezeNotice ? <AutoFreezeNotice /> : null}
-        <UnmatchedNotice
-          isAdmin={isAdmin}
-          count={unmatched}
-          noun="서비스"
-          action="서비스마감 메뉴에서 담당자 이름을 확인하세요"
-          settingsHref={settingsHref}
-        />
       </TabHeading>
       <SubTabs
         tab="application"

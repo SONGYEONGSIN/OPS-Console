@@ -247,4 +247,19 @@ describe("stageBreakdowns — 개발·테스트·운영 카드의 대학구분 �
     expect(out.test).toEqual([]);
     expect(out.running).toEqual([]);
   });
+
+  it("차주 오픈·마감도 같은 칸으로 센다", () => {
+    const snap = snapshot();
+    const s: AutoSnapshot = {
+      ...snap,
+      application: {
+        ...snap.application,
+        opening: [typed("o1", "4년제")],
+        closing: [typed("c1", "대학원"), typed("c2", "대학원")],
+      },
+    };
+    const out = stageBreakdowns(s, new Map(), []);
+    expect(out.opening).toEqual([{ label: "4년제", count: 1 }]);
+    expect(out.closing).toEqual([{ label: "대학원", count: 2 }]);
+  });
 });
