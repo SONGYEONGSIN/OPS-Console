@@ -59,6 +59,11 @@ describe("DutySection", () => {
       expect.arrayContaining(["text-xl", "font-bold"]),
     );
     expect(screen.getByText("11월 3주 · 11.16 ~ 11.22")).toBeInTheDocument();
+    // 지금 당번은 주 라벨 옆 — 같은 줄
+    const line = screen.getByText("11월 3주 · 11.16 ~ 11.22").parentElement as HTMLElement;
+    expect(line.tagName).not.toBe("SECTION");
+    expect(line.className.split(/\s+/)).toContain("flex");
+    expect(screen.getByText(/^지금 당번:/).parentElement).toBe(line);
     expect(screen.getByRole("table")).toBeInTheDocument();
     const onA = within(rowOf("운영자A")).getByRole("button", { name: "ON" });
     expect(onA).toHaveAttribute("aria-pressed", "true");
