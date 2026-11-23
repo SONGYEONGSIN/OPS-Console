@@ -600,14 +600,19 @@ describe("WeeklyKpiRow", () => {
     );
     const group = screen.getByRole("group", { name: "차주 오픈 / 마감" });
     const cells = within(group).getAllByTestId("weekly-kpi-univ");
+    // 칸마다 왼쪽 세로선 + 좌우 여백 — 글자보다 좁아지지 않는다
     cells.forEach((c) =>
-      expect(c.parentElement?.className.split(/\s+/)).toContain("lg:min-w-fit"),
+      expect(c.parentElement?.className.split(/\s+/)).toEqual(
+        expect.arrayContaining(["lg:min-w-fit", "lg:border-l", "lg:pl-2", "lg:pr-2"]),
+      ),
     );
-    // 숫자 오른쪽에도 여백 — 칸이 빠듯해도 `129 건` 이 다음 세로선에 붙지 않는다
-    cells.forEach((c) => expect(c.className.split(/\s+/)).toContain("lg:pr-2"));
+    // 다음 줄로 넘어간 칸도 줄 맨 앞의 세로선은 잘려 안 보인다 — 줄을 왼쪽으로 선+여백만큼 당기고 바깥에서 자른다
     const wrap = cells[0].parentElement?.parentElement as HTMLElement;
     expect(wrap.className.split(/\s+/)).toEqual(
-      expect.arrayContaining(["lg:flex-wrap", "lg:gap-y-1"]),
+      expect.arrayContaining(["lg:flex-wrap", "lg:gap-y-1", "lg:-ml-[calc(0.5rem+1px)]"]),
+    );
+    expect((wrap.parentElement as HTMLElement).className.split(/\s+/)).toContain(
+      "lg:overflow-hidden",
     );
   });
 });
