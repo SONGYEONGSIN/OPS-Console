@@ -3,6 +3,7 @@
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { APP_SUBS, PIMS_SUBS, parseSub, type SubTabArea } from "../_params";
 import { useOpsSub } from "./use-ops-sub";
+import { WritePanelToggle } from "./write-panel-toggle";
 
 export type SubTabItem = {
   key: string;
@@ -94,8 +95,9 @@ export function SubTabs({
     refs.current.get(keys[next])?.focus();
   }
 
+  // 제목 줄 → [특이사항] → 표, 간격은 기본(gap-3) — 휴가·외근 탭도 같은 간격이다.
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <div
           id={subTabsIdOf(tab)}
@@ -151,6 +153,7 @@ export function SubTabs({
         </div>
         {notice}
       </div>
+      <WritePanelToggle />
       {tabs.map((t) => (
         <div
           key={t.key}
