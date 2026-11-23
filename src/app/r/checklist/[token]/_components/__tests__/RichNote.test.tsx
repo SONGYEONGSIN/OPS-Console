@@ -38,4 +38,40 @@ describe("RichNote (메모 리치 에디터)", () => {
     fireEvent.blur(screen.getByRole("textbox"));
     expect(onSave).toHaveBeenCalledWith("<div>메모내용</div>");
   });
+
+  it("저장 뒤 서버가 새 HTML(새 서명 주소)을 내려도 편집 중인 내용을 덮어쓰지 않는다", () => {
+    const { rerender } = render(
+      <RichNote
+        initialHtml='<img src="https://x/a.png?token=1">'
+        onSave={() => {}}
+        onPasteImage={async () => null}
+      />,
+    );
+    const box = screen.getByRole("textbox");
+    box.innerHTML = "";
+    rerender(
+      <RichNote
+        initialHtml='<img src="https://x/a.png?token=2">'
+        onSave={() => {}}
+        onPasteImage={async () => null}
+      />,
+    );
+    expect(box.querySelector("img")).toBeNull();
+  });
+
+  it("그림을 끌지 않고 누르면 그 그림이 선택된다 — Delete/Backspace 로 지울 수 있게", () => {
+    render(
+      <RichNote
+        initialHtml='<p>앞</p><img src="https://x/a.png" alt="첨부 이미지">'
+        onSave={() => {}}
+        onPasteImage={async () => null}
+      />,
+    );
+    const img = screen.getByAltText("첨부 이미지");
+    fireEvent.mouseDown(img, { clientX: 10 });
+    fireEvent.mouseUp(window, { clientX: 10 });
+    const range = window.getSelection()?.getRangeAt(0);
+    expect(range?.startContainer).toBe(img.parentNode);
+    expect(range?.cloneContents().querySelector("img")).not.toBeNull();
+  });
 });
