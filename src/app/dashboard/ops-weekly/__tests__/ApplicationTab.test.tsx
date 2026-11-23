@@ -185,8 +185,10 @@ describe("ApplicationTab — 하위 탭", () => {
     ).toBeInTheDocument();
     // 묶음 제목·건수는 하위 탭 라벨과 같아 화면에서는 숨긴다(sr-only)
     expect(
-      (screen.getByRole("heading", { name: "개발 중" }).parentElement as HTMLElement)
-        .className.split(/\s+/),
+      (
+        screen.getByRole("heading", { name: "개발 중" })
+          .parentElement as HTMLElement
+      ).className.split(/\s+/),
     ).toContain("sr-only");
     // 비활성 묶음 제목은 DOM 에는 있되 접근 트리에는 없다
     expect(screen.queryByRole("heading", { name: "운영 중" })).toBeNull();
@@ -317,7 +319,10 @@ describe("ApplicationTab", () => {
 describe("ApplicationTab — 안 붙은 서비스 안내", () => {
   it("없다 — 관리 탭(지정 안된 서비스)에서 본다", () => {
     render(
-      <ApplicationTab {...PROPS} snapshot={snap({ unmatchedApplication: 4 })} />,
+      <ApplicationTab
+        {...PROPS}
+        snapshot={snap({ unmatchedApplication: 4 })}
+      />,
     );
     expect(screen.queryByText(/안 붙은 서비스/)).toBeNull();
     expect(screen.queryByText("관리에서 목록 보기")).toBeNull();
@@ -420,7 +425,10 @@ describe("ApplicationTab — 숫자 규칙·기본 탭(리뷰 반영)", () => {
     );
     unmount();
     render(
-      <ApplicationTab {...PROPS} snapshot={snap({ devStatusCollected: true })} />,
+      <ApplicationTab
+        {...PROPS}
+        snapshot={snap({ devStatusCollected: true })}
+      />,
     );
     expect(screen.getByRole("tab", { name: /개발 중/ })).toHaveAttribute(
       "aria-selected",
@@ -444,10 +452,40 @@ describe("ApplicationTab — 숫자 규칙·기본 탭(리뷰 반영)", () => {
 
   it("lg 이상에서 제목·하위 탭 줄이 영역 탭 줄 아래에 붙는다(KPI → 영역 탭 → 제목 줄)", () => {
     render(<ApplicationTab {...PROPS} snapshot={snap()} />);
-    const row = screen.getByRole("tablist", { name: "원서접수 묶음" }).parentElement as Element;
+    const row = screen.getByRole("tablist", { name: "원서접수 묶음" })
+      .parentElement as Element;
     const sticky = row.parentElement as Element;
     expect(sticky.className.split(/\s+/)).toEqual(
-      expect.arrayContaining(["lg:sticky", "lg:top-[calc(var(--ops-kpi-h,0px)+var(--ops-area-h,0px))]", "bg-paper"]),
+      expect.arrayContaining([
+        "lg:sticky",
+        "lg:top-[calc(var(--ops-kpi-h,0px)+var(--ops-area-h,0px))]",
+        "bg-paper",
+      ]),
+    );
+  });
+
+  it("lg 이상에서 표 머리줄도 제목 줄 아래에 붙는다 — 감싸는 상자의 가로 스크롤은 lg 에서 푼다", () => {
+    const base = snap();
+    render(
+      <ApplicationTab
+        {...PROPS}
+        snapshot={{
+          ...base,
+          application: { ...base.application, running: [item("running:a")] },
+        }}
+      />,
+    );
+    const table = screen.getAllByRole("table", { hidden: true })[0];
+    const thead = table.querySelector("thead") as Element;
+    expect(thead.className.split(/\s+/)).toEqual(
+      expect.arrayContaining([
+        "lg:sticky",
+        "lg:top-[calc(var(--ops-kpi-h,0px)+var(--ops-area-h,0px)+var(--ops-title-h,0px))]",
+        "bg-paper",
+      ]),
+    );
+    expect((table.parentElement as Element).className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["overflow-x-auto", "lg:overflow-visible"]),
     );
   });
 });

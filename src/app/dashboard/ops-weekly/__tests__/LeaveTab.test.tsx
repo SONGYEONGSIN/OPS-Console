@@ -235,7 +235,11 @@ describe("LeaveTab — 표", () => {
   it("다른 묶음처럼 표 — 구분·기간·백업·출처·메모, 제목 밑줄 없이 머리줄 하나", () => {
     render(
       <LeaveTab
-        snapshot={snap({ leave: [leaveItem({ key: "a", kindLabel: "연차", subtitle: "백업 김승현" })] })}
+        snapshot={snap({
+          leave: [
+            leaveItem({ key: "a", kindLabel: "연차", subtitle: "백업 김승현" }),
+          ],
+        })}
         detail={EMPTY}
         reportId="r"
         editable
@@ -243,13 +247,9 @@ describe("LeaveTab — 표", () => {
       />,
     );
     const table = screen.getByRole("table", { name: "휴가·외근 일정" });
-    expect([...table.querySelectorAll("th")].map((h) => h.textContent)).toEqual([
-      "구분",
-      "기간",
-      "백업",
-      "출처",
-      "메모",
-    ]);
+    expect([...table.querySelectorAll("th")].map((h) => h.textContent)).toEqual(
+      ["구분", "기간", "백업", "출처", "메모"],
+    );
     expect(screen.queryByRole("listitem")).toBeNull();
   });
 
@@ -263,9 +263,14 @@ describe("LeaveTab — 표", () => {
         freezeNotice={false}
       />,
     );
-    const h3 = screen.getByRole("heading", { level: 3, name: "휴가·외근 일정" });
+    const h3 = screen.getByRole("heading", {
+      level: 3,
+      name: "휴가·외근 일정",
+    });
     expect(h3.parentElement).toHaveClass("sr-only");
-    expect(screen.getByRole("table", { name: "휴가·외근 일정" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("table", { name: "휴가·외근 일정" }),
+    ).toBeInTheDocument();
   });
 
   it("전체 보고면 담당자 칸이 맨 앞", () => {
@@ -287,7 +292,9 @@ describe("LeaveTab — 전체 보고", () => {
   it("누구의 휴가인지 이름이 앞에 오고, 남의 휴가에는 [백업요청 만들기] 가 없다", () => {
     render(
       <LeaveTab
-        snapshot={snap({ leave: [leaveItem({ needsBackup: true, owners: ["김슬기"] })] })}
+        snapshot={snap({
+          leave: [leaveItem({ needsBackup: true, owners: ["김슬기"] })],
+        })}
         detail={EMPTY}
         reportId={null}
         editable={false}
@@ -312,7 +319,29 @@ describe("LeaveTab — 전체 보고", () => {
     const sticky = heading.closest(".lg\\:sticky") as Element;
     expect(sticky).not.toBeNull();
     expect(sticky.className.split(/\s+/)).toEqual(
-      expect.arrayContaining(["lg:top-[calc(var(--ops-kpi-h,0px)+var(--ops-area-h,0px))]", "bg-paper"]),
+      expect.arrayContaining([
+        "lg:top-[calc(var(--ops-kpi-h,0px)+var(--ops-area-h,0px))]",
+        "bg-paper",
+      ]),
+    );
+  });
+
+  it("lg 이상에서 표 머리줄도 제목 줄 아래에 붙는다", () => {
+    render(
+      <LeaveTab
+        snapshot={snap({ leave: [leaveItem()] })}
+        detail={EMPTY}
+        reportId="r"
+        editable
+        freezeNotice={false}
+      />,
+    );
+    const table = screen.getByRole("table");
+    expect((table.querySelector("thead") as Element).className).toContain(
+      "lg:top-[calc(var(--ops-kpi-h,0px)+var(--ops-area-h,0px)+var(--ops-title-h,0px))]",
+    );
+    expect((table.parentElement as Element).className.split(/\s+/)).toContain(
+      "lg:overflow-visible",
     );
   });
 

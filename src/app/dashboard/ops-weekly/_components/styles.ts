@@ -14,3 +14,11 @@ export const ERROR_CLASS = "text-xs text-vermilion";
 // 일회성 임의 값: 두 높이는 각 막대가 ResizeObserver 로 재서 CSS 변수로 알린다.
 export const STICKY_TITLE_CLASS =
   "bg-paper lg:sticky lg:top-[calc(var(--ops-kpi-h,0px)+var(--ops-area-h,0px))] lg:z-10";
+/** 표 제목 줄 높이 — 그 아래 표 머리줄 고정 자리가 읽는다(useHeightVar 로 잰다). */
+export const TITLE_HEIGHT_VAR = "--ops-title-h";
+// 표 머리줄 고정 — 표 제목 줄 바로 아래. 표가 border-collapse 라 머리줄 밑줄은 붙은 동안 따라오지 않아
+// 안쪽 그림자로 다시 긋는다. 감싸는 상자의 가로 스크롤(overflow-x-auto)은 lg 에서 풀어야 붙는다(TABLE_SCROLL_CLASS).
+export const STICKY_THEAD_CLASS =
+  "bg-paper lg:sticky lg:top-[calc(var(--ops-kpi-h,0px)+var(--ops-area-h,0px)+var(--ops-title-h,0px))] lg:z-[5] lg:shadow-[inset_0_-1px_0_var(--color-line)]";
+// 좁은 화면은 표를 가로로 밀고, lg 이상은 풀어 둔다 — 가로 스크롤 상자는 sticky 를 그 안에 가둔다.
+export const TABLE_SCROLL_CLASS = "overflow-x-auto lg:overflow-visible";

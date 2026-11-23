@@ -8,6 +8,7 @@ import { formatMdHm } from "../_format";
 import { GroupShell } from "./GroupShell";
 import { ManualRow } from "./ManualRow";
 import { OverrideControls } from "./OverrideControls";
+import { STICKY_THEAD_CLASS, TABLE_SCROLL_CLASS } from "./styles";
 
 type Props = {
   title: string;
@@ -111,9 +112,9 @@ function AutoTable(props: {
   const cols = showOwners ? 7 : 6;
   return (
     // 일회성: 6열이 좁은 화면에서 찌그러지지 않는 최소 폭
-    <div className="overflow-x-auto">
+    <div className={TABLE_SCROLL_CLASS}>
       <table aria-label={title} className="w-full min-w-[44rem] text-sm">
-        <thead>
+        <thead className={STICKY_THEAD_CLASS}>
           <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
             <th className={TH}>대학구분</th>
             <th className={TH}>카테고리</th>
