@@ -177,7 +177,7 @@ function AllReportsBody(props: Props & { all: AllReportsView }) {
       areas={{
         ...areasOf(props, false),
         project: (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
             <div className="flex">
               <WritePanelToggle />
             </div>
