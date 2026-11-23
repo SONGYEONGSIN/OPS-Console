@@ -88,7 +88,9 @@ describe("SubmitTab — 제출 전 검토", () => {
     const pt = block("프로젝트·TF");
     expect(within(pt).getByText("PIMS · 개발")).toBeInTheDocument();
     expect(within(pt).getByText("화면 개선")).toBeInTheDocument();
-    expect(within(pt).getByText("맡은 TF가 없습니다")).toBeInTheDocument();
+    // TF 담당이 아니면 TF 묶음이 없다
+    expect(within(pt).queryByText("TF")).toBeNull();
+    expect(within(pt).queryByText("맡은 TF가 없습니다")).toBeNull();
   });
 
   it("묶음 머리를 누르면 그 영역 탭으로 간다", () => {
