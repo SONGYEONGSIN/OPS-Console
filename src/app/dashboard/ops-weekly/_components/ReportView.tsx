@@ -27,6 +27,7 @@ import { ProjectTab } from "./ProjectTab";
 import { ReportLayout } from "./ReportLayout";
 import { SubmitTab } from "./SubmitTab";
 import { WritePanel } from "./WritePanel";
+import { WritePanelToggle } from "./write-panel-toggle";
 
 type Props = {
   view: OpsWeeklyWeekView;
@@ -60,17 +61,35 @@ function areasOf(props: Props, editable: boolean): Slots {
   };
 }
 
-/** 영역 특이사항 셋 — 쓸 것 칸에 놓인다. */
-function notesOf({ view, detail }: Props, editable: boolean): PanelSlots {
-  return panelSlots((area) => (
-    <AreaNotes
-      reportId={view.report?.id ?? null}
-      area={area}
-      thisWeek={detail.notes[area].thisWeek}
-      nextWeek={detail.notes[area].nextWeek}
-      editable={editable}
-    />
-  ));
+/** 영역 특이사항 — 쓸 것 칸에 놓인다. 프로젝트·TF 탭은 프로젝트·TF(담당일 때) 특이사항을 위아래로. */
+function notesOf({ view, detail }: Props, editable: boolean): Slots {
+  const reportId = view.report?.id ?? null;
+  return {
+    ...panelSlots((area) => (
+      <AreaNotes
+        reportId={reportId}
+        area={area}
+        thisWeek={detail.notes[area].thisWeek}
+        nextWeek={detail.notes[area].nextWeek}
+        editable={editable}
+      />
+    )),
+    project: (
+      <div className="flex flex-col gap-6">
+        {shownProjectKinds(detail).map((kind) => (
+          <AreaNotes
+            key={kind}
+            reportId={reportId}
+            area={kind}
+            title={`${AREA_TAB_LABEL[kind]} 특이사항`}
+            thisWeek={detail.notes[kind].thisWeek}
+            nextWeek={detail.notes[kind].nextWeek}
+            editable={editable}
+          />
+        ))}
+      </div>
+    ),
+  };
 }
 
 /** 제출 탭 — 본인 보고서(남의 보고서·전체 보고 아님)에서만. 요약을 보고 여기서 제출한다. */
@@ -117,7 +136,6 @@ function projectsOf({ view, detail }: Props, editable: boolean): ReactNode {
       entries={detail.projects}
       reportId={view.report?.id ?? null}
       editable={editable}
-      notes={detail.notes[kind]}
       settingsHref={
         view.actor.isAdmin
           ? manageHref(view.week.week_start, "projects")
@@ -138,15 +156,31 @@ function projectsOf({ view, detail }: Props, editable: boolean): ReactNode {
  */
 function AllReportsBody(props: Props & { all: AllReportsView }) {
   const { all, detail } = props;
-  const notes = panelSlots((k) => (
-    <AllAreaNotes key={k} title={AREA_TAB_LABEL[k]} notes={all.notes[k]} />
-  ));
+  const notes = {
+    ...panelSlots((k) => (
+      <AllAreaNotes key={k} title={AREA_TAB_LABEL[k]} notes={all.notes[k]} />
+    )),
+    project: (
+      <div className="flex flex-col gap-6">
+        {(["project", "tf"] as const).map((k) => (
+          <AllAreaNotes
+            key={k}
+            title={AREA_TAB_LABEL[k]}
+            notes={all.notes[k]}
+          />
+        ))}
+      </div>
+    ),
+  };
   return (
     <ReportLayout
       areas={{
         ...areasOf(props, false),
         project: (
-          <ProjectOverview groups={groupEntriesByProject(detail.projects)} />
+          <div className="flex flex-col gap-3">
+            <WritePanelToggle />
+            <ProjectOverview groups={groupEntriesByProject(detail.projects)} />
+          </div>
         ),
       }}
       panel={<WritePanel notes={notes} directAdd={null} />}

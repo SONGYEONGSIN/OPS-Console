@@ -14,8 +14,8 @@ import {
 } from "@/features/ops-weekly/constants";
 import type { ProjectEntryView } from "@/features/ops-weekly/merge";
 import { AREA_TAB_LABEL } from "../_params";
-import { AreaNotes } from "./AreaNotes";
 import { usePendingSaves } from "./pending-saves";
+import { WritePanelToggle } from "./write-panel-toggle";
 import { SaveStatus } from "./SaveStatus";
 import { TabHeading } from "./TabHeading";
 import { ERROR_CLASS, FIELD_CLASS } from "./styles";
@@ -26,7 +26,6 @@ type Props = {
   entries: ProjectEntryView[];
   reportId: string | null;
   editable: boolean;
-  notes: { thisWeek: string; nextWeek: string };
   /** 관리자에게만 준다 — 빈 상태 안내에 설정 링크를 붙인다 */
   settingsHref?: string;
 };
@@ -209,22 +208,18 @@ function EntryCard(props: {
 }
 
 export function ProjectTab(props: Props) {
-  const {
-    kind,
-    entries,
-    reportId,
-    editable,
-    notes,
-    settingsHref,
-  } = props;
+  const { kind, entries, reportId, editable, settingsHref } = props;
   const mine = entries
     .filter((e) => e.kind === kind)
     .sort((a, b) => a.sortOrder - b.sortOrder);
   const emptyText =
     kind === "tf" ? "맡은 TF가 없습니다" : "맡은 프로젝트가 없습니다";
   return (
-    <section data-tab={kind} className="flex flex-col gap-7">
+    // 제목 → [특이사항] → 목록, 간격은 다른 탭과 같은 기본(gap-3). 버튼은 맨 위 프로젝트 절에 한 번만 —
+    // 프로젝트·TF 특이사항 둘 다 같은 쓸 것 칸에 있다.
+    <section data-tab={kind} className="flex flex-col gap-3">
       <TabHeading title={AREA_TAB_LABEL[kind]} summary={`${mine.length}건`} />
+      {kind === "project" ? <WritePanelToggle /> : null}
       {mine.length === 0 ? (
         <div className="flex flex-col gap-1 border border-line-soft bg-situation-bg px-4 py-6 text-sm">
           <p className="text-ink">{emptyText}</p>
@@ -249,13 +244,6 @@ export function ProjectTab(props: Props) {
           ))}
         </div>
       )}
-      <AreaNotes
-        reportId={reportId}
-        area={kind}
-        thisWeek={notes.thisWeek}
-        nextWeek={notes.nextWeek}
-        editable={editable}
-      />
     </section>
   );
 }
