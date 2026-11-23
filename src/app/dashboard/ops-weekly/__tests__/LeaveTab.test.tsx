@@ -315,4 +315,19 @@ describe("LeaveTab — 전체 보고", () => {
       expect.arrayContaining(["lg:top-[calc(var(--ops-kpi-h,0px)+var(--ops-area-h,0px))]", "bg-paper"]),
     );
   });
+
+  it("제목 줄과 표 간격은 목록 표준(ListPattern 머리 mb-4)과 같은 gap-4", () => {
+    render(
+      <LeaveTab
+        snapshot={snap()}
+        detail={EMPTY}
+        reportId="r"
+        editable
+        freezeNotice={false}
+      />,
+    );
+    const heading = screen.getByRole("heading", { name: "휴가·외근" });
+    const titleRow = heading.closest(".lg\\:sticky") as Element;
+    expect((titleRow.parentElement as Element).className.split(/\s+/)).toContain("gap-4");
+  });
 });
