@@ -254,6 +254,21 @@ describe("LeaveTab — 표", () => {
     expect(screen.queryByRole("listitem")).toBeNull();
   });
 
+  it("표 위 묶음 제목(휴가·외근 일정 n건)은 화면에서 숨긴다 — 탭 제목과 같은 말이다, 표 이름은 남는다", () => {
+    render(
+      <LeaveTab
+        snapshot={snap({ leave: [leaveItem({ key: "a", kindLabel: "연차" })] })}
+        detail={EMPTY}
+        reportId="r"
+        editable
+        freezeNotice={false}
+      />,
+    );
+    const h3 = screen.getByRole("heading", { level: 3, name: "휴가·외근 일정" });
+    expect(h3.parentElement).toHaveClass("sr-only");
+    expect(screen.getByRole("table", { name: "휴가·외근 일정" })).toBeInTheDocument();
+  });
+
   it("전체 보고면 담당자 칸이 맨 앞", () => {
     render(
       <LeaveTab
