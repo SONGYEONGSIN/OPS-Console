@@ -102,6 +102,22 @@ describe("groupReceivablesByOperator", () => {
     expect(groups[0].items[0].customerName).toBe("가천대");
   });
 
+  it("적요에 '입금완료' 가 아닌 메모만 있으면 발송 대상에 남는다", () => {
+    const sheet = makeSheet(
+      ["청구일자", "거래처명", "운영자", "청구금액", "적요"],
+      [
+        ["2026-04-30", "가천대", "김슬기", "100000", "담당자 통화함"],
+        ["2026-04-30", "고려대", "김슬기", "50000", " 입금 완료 "],
+      ],
+      [
+        ["2026-04-30", "가천대", "김슬기", 100000, "담당자 통화함"],
+        ["2026-04-30", "고려대", "김슬기", 50000, " 입금 완료 "],
+      ],
+    );
+    const { groups } = groupReceivablesByOperator(sheet, 10, NOW);
+    expect(groups[0].items.map((it) => it.customerName)).toEqual(["가천대"]);
+  });
+
   it("OPERATORS에 없는 이름은 excluded(operator_email_not_mapped)", () => {
     const sheet = makeSheet(
       ["청구일자", "거래처명", "운영자", "청구금액", "적요"],
