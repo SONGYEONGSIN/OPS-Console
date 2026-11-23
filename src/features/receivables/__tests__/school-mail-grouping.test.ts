@@ -61,12 +61,22 @@ describe("groupSchoolByOperator", () => {
     expect(a.sender.email).toBe("ys1114@jinhakapply.com");
   });
 
-  it("적요(처리완료) 채워진 행은 제외", () => {
+  it("적요가 '입금완료'(공백 무시)인 행만 제외", () => {
     const sheet = mkSheet(HEADERS, [
-      ["2026-05-20", "A학교", "원서", 1000000, "송영신", "a@x.com", "입금확인", ""],
+      ["2026-05-20", "A학교", "원서", 1000000, "송영신", "a@x.com", "입금완료 ", ""],
+      ["2026-05-20", "B학교", "원서", 1000000, "송영신", "b@x.com", "11/20 입금 완료", ""],
     ]);
     const { groups } = groupSchoolByOperator(sheet, NOW);
     expect(groups).toHaveLength(0);
+  });
+
+  it("적요에 '입금완료' 가 아닌 메모가 있으면 그대로 발송 대상", () => {
+    const sheet = mkSheet(HEADERS, [
+      ["2026-05-20", "A학교", "원서", 1000000, "송영신", "a@x.com", "입금확인", ""],
+      ["2026-05-20", "B학교", "원서", 1000000, "송영신", "b@x.com", "담당자 통화함", ""],
+    ]);
+    const { groups } = groupSchoolByOperator(sheet, NOW);
+    expect(groups).toHaveLength(2);
   });
 
   it("운영자명 매핑 실패 → excluded", () => {

@@ -1,6 +1,7 @@
 import type { ReceivablesSheet } from "./queries";
 import type { ExcludedReason, ReminderItem } from "./mail-schemas";
 import { computeElapsedDays } from "./overdue";
+import { isDepositDone } from "./deposit-done";
 import { OPERATOR_TARGET_DAYS } from "./mail-schedule";
 import { OPERATORS } from "@/features/auth/operators";
 
@@ -94,10 +95,10 @@ export function groupReceivablesByOperator(
       continue;
     }
 
-    // 적요(K열) 비어있지 않은 행은 silent skip — 이미 처리완료
+    // 적요가 '입금완료' 인 행만 발송 대상 아님 — 다른 메모는 독려를 멈추지 않는다
     if (noteCol >= 0) {
-      const noteRaw = String(text[noteCol] ?? values[noteCol] ?? "").trim();
-      if (noteRaw !== "") continue;
+      const noteRaw = String(text[noteCol] ?? values[noteCol] ?? "");
+      if (isDepositDone(noteRaw)) continue;
     }
 
     // 경과일수 = 청구일자 기준 오늘까지 일수 (인스펙터 표시값과 동일)
