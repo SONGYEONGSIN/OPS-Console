@@ -1,13 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
-import {
-  PROJECT_KINDS,
-  type ReportStatus,
-} from "@/features/ops-weekly/constants";
+import type { ReportStatus } from "@/features/ops-weekly/constants";
 import type { AutoSnapshot } from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
 import { areaCounts, countLabel } from "../_area-counts";
+import { shownProjectKinds } from "../_project-kinds";
 import { formatMdHm } from "../_format";
 import {
   AREA_TAB_LABEL,
@@ -93,7 +91,7 @@ function NotesGrid({
 function ProjectsBlock({ detail }: { detail: ReportDetail }) {
   return (
     <Block area="project">
-      {PROJECT_KINDS.map((kind) => {
+      {shownProjectKinds(detail).map((kind) => {
         const mine = detail.projects
           .filter((e) => e.kind === kind)
           .sort((a, b) => a.sortOrder - b.sortOrder);
