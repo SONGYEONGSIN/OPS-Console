@@ -1,7 +1,7 @@
 // 주간업무보고 권한 판정 — 순수 함수. admin 은 설정·당번 변경이 본업이고,
 // 남의 보고서는 [정정]으로 다시 연 주에서만 고친다(spec §4.6).
 
-import { AREAS, type Area, type ReportStatus, type WeekStatus } from "./constants";
+import type { ReportStatus, WeekStatus } from "./constants";
 
 export type Actor = { email: string; isAdmin: boolean };
 
@@ -42,11 +42,6 @@ export function canEditReport(
     isDuty(actor, week) ||
     (actor.isAdmin && week.reopenedAt !== null)
   );
-}
-
-/** 제출 조건 — 다섯 영역을 모두 확인해야 한다. 확인 안 한 영역을 AREAS 순서로 돌려준다(화면·서버가 같이 쓴다). */
-export function uncheckedAreas(checked: readonly string[]): Area[] {
-  return AREAS.filter((a) => !checked.includes(a));
 }
 
 export function canSubmitReport(

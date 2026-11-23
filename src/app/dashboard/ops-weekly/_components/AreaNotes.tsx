@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { markTabChecked, saveAreaNote } from "@/features/ops-weekly/actions";
+import { saveAreaNote } from "@/features/ops-weekly/actions";
 import type { Area } from "@/features/ops-weekly/constants";
 import { AREA_TAB_LABEL } from "../_params";
 import { SaveStatus } from "./SaveStatus";
-import { BTN_CLASS, ERROR_CLASS, FIELD_CLASS } from "./styles";
+import { ERROR_CLASS, FIELD_CLASS } from "./styles";
 import { useSave } from "./use-save";
 
 type Props = {
@@ -14,8 +14,6 @@ type Props = {
   thisWeek: string;
   nextWeek: string;
   editable: boolean;
-  /** false 면 [이 영역 확인] 을 그리지 않는다 — 쓸 것 칸의 특이사항(확인은 영역 탭 줄 버튼) */
-  showCheck?: boolean;
 };
 
 function ReadOnlyNote({ label, text }: { label: string; text: string }) {
@@ -29,10 +27,9 @@ function ReadOnlyNote({ label, text }: { label: string; text: string }) {
   );
 }
 
-/** 영역 특이사항(금주/차주) + [이 영역 확인]. blur 하면 저장한다. */
+/** 영역 특이사항(금주/차주). blur 하면 저장한다. */
 export function AreaNotes(props: Props) {
   const { reportId, area, thisWeek, nextWeek, editable } = props;
-  const showCheck = props.showCheck ?? true;
   const [thisDraft, setThis] = useState(thisWeek);
   const [nextDraft, setNext] = useState(nextWeek);
   const note = useSave({
@@ -41,7 +38,6 @@ export function AreaNotes(props: Props) {
       label: `${AREA_TAB_LABEL[area]} 영역 특이사항`,
     },
   });
-  const check = useSave();
 
   function save() {
     if (reportId === null) return;
@@ -98,26 +94,6 @@ export function AreaNotes(props: Props) {
             <p role="alert" className={ERROR_CLASS}>
               {note.error}
             </p>
-          ) : null}
-          {showCheck ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                disabled={check.pending}
-                className={BTN_CLASS}
-                onClick={() =>
-                  check.run(() => markTabChecked({ reportId, area }))
-                }
-              >
-                이 영역 확인
-              </button>
-              <span className="text-xs text-muted">
-                확인하면 탭 옆에 확인 표시가 남습니다
-              </span>
-              {check.error ? (
-                <p className={ERROR_CLASS}>{check.error}</p>
-              ) : null}
-            </div>
           ) : null}
         </>
       ) : (

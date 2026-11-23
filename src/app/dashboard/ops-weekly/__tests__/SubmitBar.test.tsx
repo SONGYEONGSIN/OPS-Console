@@ -30,20 +30,8 @@ describe("SubmitBar", () => {
     expect(screen.queryByRole("button", { name: "제출완료" })).toBeNull();
   });
 
-  it("머리띠 오른쪽에 놓인다 — 구분선 상자 없이 오른쪽 정렬 세로 묶음", () => {
-    const { container } = render(<SubmitBar reportId="r1" canSubmit />);
-    const t = tokens(container.firstElementChild as Element);
-    expect(t).toEqual(expect.arrayContaining(["flex", "flex-col", "items-end"]));
-    expect(t).not.toContain("border-t");
-  });
-
-  it("다섯 영역을 다 확인하기 전에는 버튼이 꺼지고 남은 영역을 알려 준다", () => {
-    const { rerender } = render(
-      <SubmitBar reportId="r1" canSubmit unchecked={["프로젝트", "TF"]} />,
-    );
-    expect(screen.getByRole("button", { name: "제출완료" })).toBeDisabled();
-    expect(screen.getByText("남은 확인: 프로젝트, TF")).toBeInTheDocument();
-    rerender(<SubmitBar reportId="r1" canSubmit unchecked={[]} />);
+  it("확인 조건이 없다 — canSubmit 이면 바로 눌리고 '남은 확인' 문구도 없다", () => {
+    render(<SubmitBar reportId="r1" canSubmit />);
     expect(screen.getByRole("button", { name: "제출완료" })).toBeEnabled();
     expect(screen.queryByText(/남은 확인/)).toBeNull();
   });

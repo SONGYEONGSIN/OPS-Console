@@ -148,7 +148,7 @@ describe("역할 탭", () => {
     expect(roleTabsOf(acc({ status: "manage", manage: true }))).toEqual(["report", "status", "manage"]);
   });
   it("roleTabOf — tab 값 7개를 역할로", () => {
-    expect(OPS_TABS.map(roleTabOf)).toEqual(["report", "report", "report", "report", "report", "status", "manage"]);
+    expect(OPS_TABS.map(roleTabOf)).toEqual(["report", "report", "report", "report", "report", "report", "status", "manage"]);
   });
   it("buildRoleTabs — 라벨·주소, op·sub 를 들고 가지 않는다", () => {
     const t = buildRoleTabs({ weekStart: W, roles: ["report", "status", "manage"] });

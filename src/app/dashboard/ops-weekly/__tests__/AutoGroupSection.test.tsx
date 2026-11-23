@@ -15,7 +15,6 @@ vi.mock("@/features/ops-weekly/actions", () => ({
   removeManualItem: (...a: unknown[]) => removeManualItem(...a),
   addManualItem: vi.fn(),
   saveAreaNote: vi.fn(),
-  markTabChecked: vi.fn(),
 }));
 
 import { AutoGroupSection } from "../_components/AutoGroupSection";

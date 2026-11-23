@@ -34,7 +34,6 @@ const base = {
   weekRef,
   week: WEEK,
   showReportState: true,
-  checkedCount: 0,
   scope: { mine: true, mineOp: null, active: "mine" } as {
     mine: boolean;
     mineOp: string | null;
@@ -210,17 +209,10 @@ describe("WeekHeader", () => {
     expect(screen.getByText("제출 0/2")).toBeInTheDocument();
   });
 
-  it("내 보고서: 상태 배지와 확인 n/5(숫자 정렬)", () => {
-    render(
-      <WeekHeader
-        {...base}
-        showReportState
-        checkedCount={2}
-        reportStatus="draft"
-      />,
-    );
+  it("내 보고서: 상태 배지는 있고 확인 n/5 는 없다(영역 확인 절차가 없다)", () => {
+    render(<WeekHeader {...base} showReportState reportStatus="draft" />);
     expect(screen.getByText("작성 중")).toBeInTheDocument();
-    expect(tokens(screen.getByText("확인 2/5"))).toContain("tabular-nums");
+    expect(screen.queryByText(/^확인 \d\/5$/)).toBeNull();
   });
 
   it("제출 현황·관리에서는 배지·확인 수가 없다", () => {
@@ -228,7 +220,6 @@ describe("WeekHeader", () => {
       <WeekHeader
         {...base}
         showReportState={false}
-        checkedCount={2}
         reportStatus="draft"
       />,
     );
@@ -354,28 +345,6 @@ describe("WeekHeader", () => {
       expect(t).not.toContain("text-xs");
       const label = tokens(screen.getByText(/주차 · /));
       expect(label).toEqual(expect.arrayContaining(["text-base", "font-bold", "tracking-[-0.02em]"]));
-    });
-  });
-
-  describe("제출 버튼 자리", () => {
-    it("submit 은 머리띠 오른쪽, 확인 n/5 뒤에 놓인다", () => {
-      render(<WeekHeader {...base} submit={<button type="button">제출완료</button>} />);
-      const btn = screen.getByRole("button", { name: "제출완료" });
-      const check = screen.getByText("확인 0/5");
-      expect(
-        check.compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
-      expect(check.parentElement?.contains(btn)).toBe(true);
-    });
-    it("전체 보고 중에는 제출 자리가 없다", () => {
-      render(
-        <WeekHeader
-          {...base}
-          scope={{ mine: true, mineOp: null, active: "all" }}
-          submit={<button type="button">제출완료</button>}
-        />,
-      );
-      expect(screen.queryByRole("button", { name: "제출완료" })).toBeNull();
     });
   });
 });

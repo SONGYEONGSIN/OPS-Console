@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 
 vi.mock(
   "next/navigation",
@@ -23,7 +23,7 @@ describe("ReportLayout", () => {
   it("쓸 것 칸은 닫힌 채 시작한다 — 목록이 전체 폭, 칸은 마운트된 채 hidden", () => {
     setUrl("?week=2026-11-16&tab=application");
     const { container } = render(
-      <ReportLayout checked={[]} areas={areas} panel={<p>쓸 칸</p>} />,
+      <ReportLayout areas={areas} panel={<p>쓸 칸</p>} />,
     );
     expect(tokens(container.firstElementChild)).not.toContain(
       "lg:grid-cols-[minmax(0,1fr)_360px]",
@@ -38,7 +38,6 @@ describe("ReportLayout", () => {
     setUrl("?week=2026-11-16&tab=application");
     const { container } = render(
       <ReportLayout
-        checked={[]}
         areas={areas}
         panel={<input aria-label="메모" />}
       />,
@@ -60,30 +59,28 @@ describe("ReportLayout", () => {
     fireEvent.click(btn);
     expect(screen.getByLabelText("메모")).toHaveValue("쓰던 글");
   });
-  it("영역 탭 줄 오른쪽에 지금 영역의 버튼(이 영역 확인)이 [특이사항] 옆에 놓인다", () => {
-    setUrl("?week=2026-11-16&tab=pims");
+  it("submit 을 주면 제출 탭과 그 패널이 생긴다 — 제출 탭에는 [특이사항] 이 없다", () => {
+    setUrl("?week=2026-11-16&tab=submit");
     render(
-      <ReportLayout
-        checked={[]}
-        areas={areas}
-        panel={<p>쓸 칸</p>}
-        actions={{
-          application: <button type="button">원서 확인</button>,
-          pims: <button type="button">발표 확인</button>,
-          leave: <button type="button">휴가 확인</button>,
-        }}
-      />,
+      <ReportLayout areas={areas} panel={<p>쓸 칸</p>} submit={<p>제출 본문</p>} />,
     );
-    expect(screen.getByRole("button", { name: "발표 확인" })).toBeVisible();
-    expect(screen.queryByRole("button", { name: "원서 확인" })).toBeNull();
-    const row = screen.getByRole("tablist", { name: "영역" }).parentElement as HTMLElement;
-    expect(within(row).getByRole("button", { name: "특이사항" })).toBeInTheDocument();
-    expect(within(row).getByRole("button", { name: "발표 확인" })).toBeInTheDocument();
+    const panel = screen.getByText("제출 본문").closest('[role="tabpanel"]');
+    expect(panel).toHaveAttribute("id", "area-panel-submit");
+    expect(panel).not.toHaveAttribute("hidden");
+    expect(screen.queryByRole("button", { name: "특이사항" })).toBeNull();
+  });
+  it("submit 이 없으면 제출 탭도 패널도 없고, tab=submit 이면 원서접수를 보인다", () => {
+    setUrl("?week=2026-11-16&tab=submit");
+    render(<ReportLayout areas={areas} panel={<p>쓸 칸</p>} />);
+    expect(screen.queryByRole("tab", { name: "제출" })).toBeNull();
+    expect(
+      screen.getByText("원서 본문").closest('[role="tabpanel"]'),
+    ).not.toHaveAttribute("hidden");
   });
   it("프로젝트·TF 탭에는 [특이사항] 과 쓸 것 칸이 없다 — 그 탭의 특이사항은 본문 안이다", () => {
     setUrl("?week=2026-11-16&tab=project");
     const { container } = render(
-      <ReportLayout checked={[]} areas={areas} panel={<p>쓸 칸</p>} />,
+      <ReportLayout areas={areas} panel={<p>쓸 칸</p>} />,
     );
     expect(screen.queryByRole("button", { name: "특이사항" })).toBeNull();
     expect(container.querySelector('aside[aria-label="쓸 것"]')).toHaveAttribute(
@@ -95,7 +92,7 @@ describe("ReportLayout", () => {
   });
   it("영역 본문 넷을 모두 마운트하고 지금 영역만 보인다", () => {
     setUrl("?week=2026-11-16&tab=pims");
-    render(<ReportLayout checked={[]} areas={areas} panel={null} />);
+    render(<ReportLayout areas={areas} panel={null} />);
     expect(
       screen.getByText("발표 본문").closest('[role="tabpanel"]'),
     ).not.toHaveAttribute("hidden");
@@ -105,14 +102,14 @@ describe("ReportLayout", () => {
   });
   it("영역 패널은 탭과 id 로 이어진다", () => {
     setUrl("?week=2026-11-16&tab=pims");
-    render(<ReportLayout checked={[]} areas={areas} panel={null} />);
+    render(<ReportLayout areas={areas} panel={null} />);
     const panel = screen.getByText("발표 본문").closest('[role="tabpanel"]');
     expect(panel).toHaveAttribute("id", "area-panel-pims");
     expect(panel).toHaveAttribute("aria-labelledby", "area-tab-pims");
   });
   it("RF5 열린 쓸 칸 — lg 이상 KPI 높이만큼 비켜 붙고 화면보다 길면 안에서 스크롤", () => {
     setUrl("?week=2026-11-16&tab=application");
-    render(<ReportLayout checked={[]} areas={areas} panel={<p>쓸 칸</p>} />);
+    render(<ReportLayout areas={areas} panel={<p>쓸 칸</p>} />);
     fireEvent.click(screen.getByRole("button", { name: "특이사항" }));
     expect(
       tokens(screen.getByRole("complementary", { name: "쓸 것" })),
@@ -127,7 +124,7 @@ describe("ReportLayout", () => {
   });
   it("[목록 | 쓰기] 전환은 없다 — 같은 [특이사항] 버튼이 좁은 화면에서도 연다", () => {
     setUrl("?week=2026-11-16&tab=application");
-    render(<ReportLayout checked={[]} areas={areas} panel={<p>쓸 칸</p>} />);
+    render(<ReportLayout areas={areas} panel={<p>쓸 칸</p>} />);
     expect(screen.queryByRole("group", { name: "보기 전환" })).toBeNull();
   });
 });

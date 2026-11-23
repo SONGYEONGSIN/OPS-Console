@@ -31,7 +31,7 @@ function PerArea({ slots, area }: { slots: Slots; area: PanelArea | null }) {
 }
 
 /**
- * 쓸 것 칸 — 특이사항 → 직접 추가. 프로젝트·TF 는 영역 탭, 제출은 머리띠에 있다.
+ * 쓸 것 칸 — 특이사항 → 직접 추가. 프로젝트·TF 는 영역 탭, 제출은 제출 탭에 있다.
  * 영역별 칸은 왼쪽 영역을 따라 바뀌되 셋 다 마운트한 채 `hidden` 으로 가린다(쓰던 글 보존).
  */
 export function WritePanel({ notes, directAdd }: Props) {

@@ -72,7 +72,6 @@ vi.mock("@/features/ops-weekly/actions", () => ({
   removeManualItem: vi.fn(),
   addManualItem: vi.fn(),
   saveAreaNote: vi.fn(),
-  markTabChecked: vi.fn(),
 }));
 vi.mock("@/features/ops-weekly/settings-actions", () => ({
   addRecipient: vi.fn(),
@@ -205,9 +204,8 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     ).toHaveLength(3);
     fireEvent.click(screen.getByRole("button", { name: "특이사항" }));
     expect(panel).not.toHaveAttribute("hidden");
-    // 확인 버튼은 쓸 것 칸이 아니라 영역 탭 줄에
-    expect(within(panel).queryByRole("button", { name: "이 영역 확인" })).toBeNull();
-    expect(screen.getByRole("button", { name: "이 영역 확인" })).toBeInTheDocument();
+    // 영역 확인 절차는 없다 — 어디에도 확인 버튼이 없다
+    expect(screen.queryByRole("button", { name: "이 영역 확인" })).toBeNull();
   });
 
   it("설정 탭: 안 붙은 서비스 패널이 목록으로 그려진다", async () => {
@@ -340,27 +338,29 @@ describe("주간업무보고 페이지 — 직접 추가", () => {
 });
 
 describe("주간업무보고 페이지 — 제출", () => {
-  it("제출완료 는 정확히 하나 — 머리띠 오른쪽, 다섯 영역을 다 확인해야 눌린다", async () => {
+  it("영역 탭 끝에 제출 탭 — 제출완료 는 그 탭에 하나뿐이고 머리띠에는 없다, 확인 조건 없음", async () => {
     state.view = viewFor("application", false);
     const { unmount } = await renderPage("application");
+    const tabs = within(screen.getByRole("tablist", { name: "영역" })).getAllByRole("tab");
+    expect(tabs.map((t) => t.textContent)).toEqual([
+      "원서접수",
+      "합격자 발표",
+      "프로젝트·TF",
+      "휴가·외근",
+      "제출",
+    ]);
+    expect(
+      within(screen.getByTestId("week-header")).queryByRole("button", { name: "제출완료" }),
+    ).toBeNull();
+    expect(screen.queryByText(/남은 확인/)).toBeNull();
+    unmount();
+    setUrl("?week=2026-11-16&tab=submit");
+    state.view = viewFor("submit", false);
+    await renderPage("submit");
     const buttons = screen.getAllByRole("button", { name: "제출완료" });
     expect(buttons).toHaveLength(1);
-    expect(screen.getByTestId("week-header").contains(buttons[0])).toBe(true);
-    expect(buttons[0]).toBeDisabled();
-    expect(
-      screen.getByText("남은 확인: 원서접수, 합격자 발표, 프로젝트, TF, 휴가·외근"),
-    ).toBeInTheDocument();
-    unmount();
-    state.view = viewFor("application", false, {
-      report: {
-        id: "r1",
-        status: "draft",
-        checked_tabs: ["application", "pims", "project", "tf", "leave"],
-        snapshot: null,
-      },
-    });
-    await renderPage("application");
-    expect(screen.getByRole("button", { name: "제출완료" })).toBeEnabled();
+    expect(buttons[0]).toBeEnabled();
+    expect(screen.getByRole("tabpanel", { name: "제출" })).toContainElement(buttons[0]);
   });
 
   it("남의 보고서(op)에서는 제출완료 가 없다", async () => {
@@ -374,6 +374,22 @@ describe("주간업무보고 페이지 — 제출", () => {
     });
     await renderPage("application");
     expect(screen.queryByRole("button", { name: "제출완료" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "제출" })).toBeNull();
+  });
+
+  it("제출 탭이 없는 화면에서 tab=submit 이면 원서접수를 보인다", async () => {
+    setUrl("?week=2026-11-16&tab=submit");
+    state.view = viewFor("submit", true, {
+      statusAccess: "manage",
+      writers: [
+        { email: "a@example.com", name: "홍길동" },
+        { email: "b@example.com", name: "김철수" },
+      ],
+      viewed: { email: "b@example.com", name: "김철수" },
+    });
+    await renderPage("submit");
+    expect(screen.getByRole("tab", { name: "원서접수" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel", { name: "원서접수" })).not.toHaveAttribute("hidden");
   });
 });
 
@@ -426,7 +442,7 @@ describe("주간업무보고 페이지 — 머리띠", () => {
     expect(screen.queryByRole("link", { name: "‹ 제출 현황" })).toBeNull();
   });
 
-  it("관리자·당번이 op=me 로 본인 보고서를 열면 제목 없이 제출완료가 있다", async () => {
+  it("관리자·당번이 op=me 로 본인 보고서를 열면 제목 없이 제출 탭(제출완료)이 있다", async () => {
     state.view = viewFor("application", true, {
       roles: ["report", "status", "manage"],
       statusAccess: "manage",
@@ -434,8 +450,9 @@ describe("주간업무보고 페이지 — 머리띠", () => {
     });
     await renderPage("application");
     expect(screen.queryByRole("heading", { name: /의 보고서$/ })).toBeNull();
+    expect(screen.getByRole("tab", { name: "제출" })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "제출완료" }),
+      screen.getByRole("button", { name: "제출완료", hidden: true }),
     ).toBeInTheDocument();
   });
 

@@ -7,6 +7,7 @@ import {
   type AutoSnapshot,
 } from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
+import { areaCounts, countLabel } from "../_area-counts";
 import { APP_GROUP_TITLE, appSubStateOf } from "../_groups";
 import { defaultAppSub } from "../_params";
 import { AutoGroupSection } from "./AutoGroupSection";
@@ -49,20 +50,8 @@ export function ApplicationTab({
   const app = snapshot.application;
   // 숫자는 KPI 카드와 같은 식 하나(뺀 건 제외 + 직접)다 — 탭 숫자와 카드가 갈릴 수 없다.
   const kpis = computeKpis(snapshot, detail.overrides, detail.manual);
-  const shownLists = [
-    ...(app.devStatusCollected ? [app.dev, app.test, app.unknown] : []),
-    app.opening,
-    app.running,
-    app.closing,
-  ];
-  // 뺀 건은 세지 않는다 — 하위 탭·묶음 머리·KPI 와 같은 식(kept).
-  const autoCount = shownLists.reduce(
-    (n, l) => n + kept(l, detail.overrides),
-    0,
-  );
-  const directCount = detail.manual.filter(
-    (m) => m.area === "application",
-  ).length;
+  // 탭 제목 숫자는 제출 탭 요약과 같은 함수 하나다(뺀 건 제외, 구분 수집 전이면 개발·테스트·미확인 제외).
+  const counts = areaCounts(snapshot, detail).application;
   const { showUnknown } = appSubStateOf(app);
 
   const section = (key: string, title: string, list: AutoItem[]) => (
@@ -134,12 +123,7 @@ export function ApplicationTab({
       tabs={tabs}
       panels={panels}
       defaultKey={defaultAppSub(app.devStatusCollected)}
-      heading={
-        <TabHeading
-          title="원서접수"
-          summary={`자동 ${autoCount}건 · 직접 ${directCount}건`}
-        />
-      }
+      heading={<TabHeading title="원서접수" summary={countLabel(counts)} />}
       notice={freezeNotice ? <AutoFreezeNotice /> : null}
     />
   );

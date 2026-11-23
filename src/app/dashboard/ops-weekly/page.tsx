@@ -3,14 +3,12 @@ import { stageBreakdowns } from "@/features/ops-weekly/merge";
 import { PageTabs } from "@/components/common/PageTabs";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { OPS_WEEKLY_SLUG } from "@/features/ops-weekly/constants";
-import { uncheckedAreas } from "@/features/ops-weekly/permissions";
 import { dutyNameOf } from "@/features/ops-weekly/overview";
 import { shiftWeek, type WeekRef } from "@/features/ops-weekly/week";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
 import { ReportView } from "./_components/ReportView";
-import { SubmitBar } from "./_components/SubmitBar";
 import { ManageTab } from "./_components/ManageTab";
 import { StatusTab } from "./_components/StatusTab";
 import { PendingSavesProvider } from "./_components/pending-saves";
@@ -44,6 +42,7 @@ const TAB_TITLE: Record<OpsTab, string> = {
   project: "프로젝트",
   tf: "TF",
   leave: "휴가·외근",
+  submit: "제출",
   status: "제출 현황",
   settings: "관리",
 };
@@ -160,23 +159,6 @@ function WeekBody({ view }: { view: Week }) {
   );
 }
 
-/** 머리띠 제출 버튼 — 본인 보고서 화면(전체 보고·남의 보고서 아님)에서만. 다섯 영역을 다 확인해야 눌린다. */
-function submitOf(view: Week) {
-  const { report, viewed, actor } = view;
-  if (roleTabOf(view.tab) !== "report" || view.all !== null) return null;
-  if (report === null || viewed === null || viewed.email !== actor.email)
-    return null;
-  return (
-    <SubmitBar
-      reportId={report.id}
-      canSubmit={view.canSubmit}
-      unchecked={uncheckedAreas(report.checked_tabs).map(
-        (a) => AREA_TAB_LABEL[a],
-      )}
-    />
-  );
-}
-
 function WeekView({ view }: { view: Week }) {
   const { week, weekRef, tab, viewed, report } = view;
   const op = otherOpOf(view);
@@ -221,7 +203,6 @@ function WeekView({ view }: { view: Week }) {
         writerCount={view.writers.length}
         dutyName={dutyNameOf(week.duty_email, view.writers)}
         showReportState={roleTabOf(tab) === "report"}
-        checkedCount={new Set(report?.checked_tabs ?? []).size}
         scope={scope}
         reportStatus={report?.status ?? null}
         submittedAt={report?.submitted_at ?? null}
@@ -229,7 +210,6 @@ function WeekView({ view }: { view: Week }) {
         prevOpen={view.prevOpen}
         prevHref={opsWeeklyHref(shiftWeek(weekStart, -1), tab, op)}
         nextHref={opsWeeklyHref(shiftWeek(weekStart, 1), tab, op)}
-        submit={submitOf(view)}
       />
         {showKpi ? (
           <StickyKpiBar>

@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { AREAS, type ReportStatus } from "@/features/ops-weekly/constants";
+import type { ReportStatus } from "@/features/ops-weekly/constants";
 import type { WeekRef } from "@/features/ops-weekly/week";
 import { formatMdHm } from "../_format";
 import type { HeaderWeek } from "../_header-week";
@@ -15,13 +14,12 @@ type Props = {
   submittedCount: number;
   writerCount: number;
   dutyName: string | null;
-  /** 내 보고서 화면에서만 상태 배지·확인 수·제출 수·당번을 보인다(제출 현황·관리에는 없다). */
+  /** 내 보고서 화면에서만 상태 배지·제출 수·당번을 보인다(제출 현황·관리에는 없다). */
   showReportState: boolean;
-  checkedCount: number;
   /**
    * 내 보고서 | 전체 보고서 토글 — null 이면 없다. mine 은 작성자일 때만 누를 수 있다(아니면 비활성 칸).
    * mineOp 는 내 보고서 링크의 op — 관리자·당번은 기본이 전체 보고라 `me` 를 단다.
-   * active 는 지금 보는 것(남의 보고서를 보는 중이면 null — 둘 다 꺼진다). 전체 보고 중에는 내 상태 배지·확인 수가 없다.
+   * active 는 지금 보는 것(남의 보고서를 보는 중이면 null — 둘 다 꺼진다). 전체 보고 중에는 내 상태 배지가 없다.
    */
   scope: {
     mine: boolean;
@@ -35,8 +33,6 @@ type Props = {
   prevOpen: boolean;
   prevHref: string;
   nextHref: string;
-  /** 머리띠 오른쪽 끝 제출 버튼 — 내 보고서(전체 보고 아님)에서만 */
-  submit?: ReactNode;
 };
 
 // 높이는 오늘 할 일(WeeklyView)의 ‹ › 그대로 — py-1(8) + text-sm 줄높이(20) + 테두리(2) = 30px. 가로를 같게 해 정사각형. 호버는 버튼 표준(검정).
@@ -177,13 +173,10 @@ export function WeekHeader(props: Props) {
           {props.showReportState ? (
             <>
               {showOwnState ? (
-                <>
-                  <StatusBadge
-                    status={reportStatus}
-                    submittedAt={props.submittedAt}
-                  />
-                  <span className="tabular-nums">{`확인 ${props.checkedCount}/${AREAS.length}`}</span>
-                </>
+                <StatusBadge
+                  status={reportStatus}
+                  submittedAt={props.submittedAt}
+                />
               ) : null}
               <span className="flex items-center gap-2">
                 <span className="tabular-nums">{`제출 ${props.submittedCount}/${props.writerCount}`}</span>
@@ -192,7 +185,6 @@ export function WeekHeader(props: Props) {
                 </span>
                 <span>{`당번 ${props.dutyName ?? "미지정"}`}</span>
               </span>
-              {showOwnState ? (props.submit ?? null) : null}
             </>
           ) : null}
         </div>
