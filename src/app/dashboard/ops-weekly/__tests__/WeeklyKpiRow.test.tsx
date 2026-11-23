@@ -581,4 +581,38 @@ describe("WeeklyKpiRow", () => {
         .map((c) => c.textContent),
     ).toEqual(["4년제3건", "2년제4건", "대학원1건"]);
   });
+
+  it("대학구분 칸은 글자보다 좁아지지 않고, 모자라면 다음 줄로 넘긴다 — 세로선이 숫자와 겹치지 않게", () => {
+    render(
+      <WeeklyKpiRow
+        {...BASE}
+        ownerName="홍길동"
+        kpis={KPIS}
+        breakdowns={{
+          opening: [
+            { label: "4년제", count: 16 },
+            { label: "2년제", count: 1 },
+            { label: "대학원", count: 18 },
+            { label: "기타", count: 8 },
+          ],
+        }}
+      />,
+    );
+    const group = screen.getByRole("group", { name: "차주 오픈 / 마감" });
+    const cells = within(group).getAllByTestId("weekly-kpi-univ");
+    // 칸마다 왼쪽 세로선 + 좌우 여백 — 글자보다 좁아지지 않는다
+    cells.forEach((c) =>
+      expect(c.parentElement?.className.split(/\s+/)).toEqual(
+        expect.arrayContaining(["lg:min-w-fit", "lg:border-l", "lg:pl-2", "lg:pr-2"]),
+      ),
+    );
+    // 다음 줄로 넘어간 칸도 줄 맨 앞의 세로선은 잘려 안 보인다 — 줄을 왼쪽으로 선+여백만큼 당기고 바깥에서 자른다
+    const wrap = cells[0].parentElement?.parentElement as HTMLElement;
+    expect(wrap.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["lg:flex-wrap", "lg:gap-y-1", "lg:-ml-[calc(0.5rem+1px)]"]),
+    );
+    expect((wrap.parentElement as HTMLElement).className.split(/\s+/)).toContain(
+      "lg:overflow-hidden",
+    );
+  });
 });

@@ -59,28 +59,37 @@ const SEG_IDLE = "border-transparent hover:border-ink";
 /**
  * 대학구분 칸 — lg 이상은 차주 오픈/마감 카드의 두 칸과 같은 모양(작은 라벨 위·숫자 아래, 세로선, 균등 배열).
  * lg 미만은 카드가 좁아 칸으로 나누면 글자가 한 자씩 꺾인다 — `라벨 … 건수` 한 줄씩 세로로 쌓는다.
+ * lg 이상에서 칸은 글자보다 좁아지지 않고(`lg:min-w-fit`) 모자라면 다음 줄로 넘긴다 — 차주 오픈/마감은 카드 반쪽에
+ * 칸이 셋·넷 들어가 줄어든 칸의 숫자가 세로선을 덮었다.
+ * 세로선은 칸마다 왼쪽 테두리다. 줄을 선+여백(0.5rem+1px)만큼 왼쪽으로 당기고 바깥에서 잘라, 첫 줄이든 넘어간 줄이든
+ * **줄 맨 앞 칸의 선은 안 보이고** 글자는 카드 왼쪽 선에 맞는다(넘어간 줄 맨 앞에 선이 떠 있었다).
  */
 function UnivCells({ cells }: { cells: UnivBreakdown }) {
   if (cells.length === 0) return null;
   return (
-    <div className="mt-1 flex flex-col gap-0.5 lg:flex-row lg:gap-0">
-      {cells.map((c, i) => (
-        <div key={c.label} className="flex min-w-0 flex-1 lg:gap-2">
-          {i > 0 ? (
-            <div className="w-px shrink-0 self-stretch bg-line-soft max-lg:hidden" />
-          ) : null}
+    <div className="mt-1 lg:overflow-hidden">
+      {/* 일회성 임의 값: 칸 왼쪽 선(1px)+여백(pl-2) 만큼 당겨 줄 맨 앞의 선을 바깥 overflow 로 자른다 */}
+      <div className="flex flex-col gap-0.5 lg:-ml-[calc(0.5rem+1px)] lg:flex-row lg:flex-wrap lg:gap-y-1">
+        {cells.map((c) => (
           <div
-            data-testid="weekly-kpi-univ"
-            className="flex min-w-0 flex-1 items-baseline justify-between gap-1 whitespace-nowrap lg:flex-col lg:items-start lg:justify-start lg:gap-0"
+            key={c.label}
+            className="flex min-w-0 flex-1 lg:min-w-fit lg:border-l lg:border-line-soft lg:pl-2 lg:pr-2"
           >
-            <span className="text-2xs text-muted">{c.label}</span>
-            <span className="text-sm font-bold tabular-nums text-ink">
-              {c.count.toLocaleString("ko-KR")}
-              <span className="ml-0.5 text-2xs font-medium text-muted">건</span>
-            </span>
+            <div
+              data-testid="weekly-kpi-univ"
+              className="flex min-w-0 flex-1 items-baseline justify-between gap-1 whitespace-nowrap lg:flex-col lg:items-start lg:justify-start lg:gap-0"
+            >
+              <span className="text-2xs text-muted">{c.label}</span>
+              <span className="text-sm font-bold tabular-nums text-ink">
+                {c.count.toLocaleString("ko-KR")}
+                <span className="ml-0.5 text-2xs font-medium text-muted">
+                  건
+                </span>
+              </span>
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
