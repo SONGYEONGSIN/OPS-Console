@@ -272,7 +272,7 @@ describe("ApplicationTab", () => {
     expect(h.contains(count)).toBe(false);
   });
 
-  it("제목 원서접수와 건수가 하위 탭 줄 왼쪽 같은 줄에 있고(메일함 머리), 탭 줄과 패널 간격은 기본 gap-3", () => {
+  it("제목 원서접수와 건수가 하위 탭 줄 왼쪽 같은 줄에 있고(메일함 머리), 탭 줄과 패널 간격은 목록 표준(ListPattern 머리 mb-4)과 같은 gap-4", () => {
     render(<ApplicationTab {...PROPS} snapshot={snap()} />);
     const list = screen.getByRole("tablist", { name: "원서접수 묶음" });
     const row = list.parentElement as Element;
@@ -280,9 +280,9 @@ describe("ApplicationTab", () => {
       within(row as HTMLElement).getByRole("heading", { name: "원서접수" }),
     ).toBeInTheDocument();
     expect(row.textContent).toContain("자동 ");
-    expect((row.parentElement?.parentElement as Element).className).toContain(
-      "gap-3",
-    );
+    expect(
+      (row.parentElement?.parentElement as Element).className,
+    ).toContain("gap-4");
   });
 
   it("구분이 수집되지 않은 주에 직접 추가한 개발 건도 보이고 센다", () => {

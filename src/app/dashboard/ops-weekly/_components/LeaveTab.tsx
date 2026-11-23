@@ -123,9 +123,9 @@ export function LeaveTab({
   const showOwners =
     rows.some((r) => r.owners !== undefined) ||
     manual.some((m) => m.owner !== undefined);
-  // 제목 줄(오른쪽 끝 [특이사항]) → 표, 간격은 원서접수·합격자 발표 하위 탭과 같은 기본(gap-3).
+  // 제목 줄(오른쪽 끝 [특이사항]) → 표, 간격은 목록 표준(ListPattern 머리 mb-4)과 같은 gap-4.
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       {/* 제목 줄은 lg 이상에서 영역 탭 줄 아래에 붙는다(원서접수·합격자 발표 하위 탭 줄과 같다). */}
       <StickyTitle className="flex flex-wrap items-baseline gap-x-3">
         <TabHeading

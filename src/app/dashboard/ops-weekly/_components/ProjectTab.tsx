@@ -215,9 +215,9 @@ export function ProjectTab(props: Props) {
   const emptyText =
     kind === "tf" ? "맡은 TF가 없습니다" : "맡은 프로젝트가 없습니다";
   return (
-    // 제목 줄(오른쪽 끝 [특이사항]) → 목록, 간격은 다른 탭과 같은 기본(gap-3). 버튼은 맨 위 프로젝트 절에 한 번만 —
+    // 제목 줄(오른쪽 끝 [특이사항]) → 목록, 간격은 목록 표준과 같은 gap-4. 버튼은 맨 위 프로젝트 절에 한 번만 —
     // 프로젝트·TF 특이사항 둘 다 같은 쓸 것 칸에 있다.
-    <section data-tab={kind} className="flex flex-col gap-3">
+    <section data-tab={kind} className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline gap-x-3">
         <TabHeading title={AREA_TAB_LABEL[kind]} summary={`${mine.length}건`} />
         {kind === "project" ? <WritePanelToggle /> : null}

@@ -60,12 +60,12 @@ describe("ProjectTab", () => {
     expect(screen.getByText("t1")).toBeInTheDocument();
   });
 
-  it("바깥 여백은 영역 패널이 진다 — 자체 p-5 가 없고, 제목·목록 간격은 기본 gap-3", () => {
+  it("바깥 여백은 영역 패널이 진다 — 자체 p-5 가 없고, 제목·목록 간격은 목록 표준 gap-4", () => {
     const { container } = render(
       <ProjectTab kind="tf" entries={[]} reportId="r" editable />,
     );
     const tokens = (container.firstElementChild?.className ?? "").split(/\s+/);
-    expect(tokens).toContain("gap-3");
+    expect(tokens).toContain("gap-4");
     expect(tokens).not.toContain("p-5");
     expect(tokens).not.toContain("lg:p-7");
   });

@@ -96,9 +96,9 @@ export function SubTabs({
     refs.current.get(keys[next])?.focus();
   }
 
-  // 제목 줄(제목 · 하위 탭 · 오른쪽 끝 [특이사항]) → 표, 간격은 기본(gap-3) — 휴가·외근 탭도 같은 간격이다.
+  // 제목 줄(제목 · 하위 탭 · 오른쪽 끝 [특이사항]) → 표, 간격은 목록 표준(ListPattern 머리 mb-4)과 같은 gap-4 — 네 탭이 같다.
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       {/* 제목·하위 탭 줄은 lg 이상에서 영역 탭 줄 아래에 붙는다 — 표를 내려도 무엇을 보는지 남는다. */}
       <StickyTitle className="flex flex-col gap-1">
         <div
