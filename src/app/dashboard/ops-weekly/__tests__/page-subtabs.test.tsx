@@ -7,6 +7,7 @@ import {
   fireEvent,
 } from "@testing-library/react";
 import { weekRefFromStart } from "@/features/ops-weekly/week";
+import { HEADER_ACTION_CLASS } from "@/components/common/HeaderActionButton";
 import { EMPTY, snap } from "./tab-fixtures";
 
 const state = vi.hoisted(() => ({ view: {} as Record<string, unknown> }));
@@ -208,21 +209,26 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     expect(screen.queryByRole("button", { name: "이 영역 확인" })).toBeNull();
   });
 
-  it("[특이사항] 은 영역 탭 줄이 아니라 표 바로 위 오른쪽 — 기본 버튼 모양, 제목·버튼·표 간격은 기본(gap-3)", async () => {
-    for (const tab of ["application", "pims", "leave"]) {
+  it("[특이사항] 은 제목 줄 오른쪽 끝 — 헤더 액션 버튼(제출완료 와 같은 색·크기)", async () => {
+    const titles: Record<string, string> = {
+      application: "원서접수",
+      pims: "합격자 발표",
+      project: "프로젝트",
+      leave: "휴가·외근",
+    };
+    for (const tab of ["application", "pims", "project", "leave"]) {
       setUrl(`?week=2026-11-16&tab=${tab}`);
       state.view = viewFor(tab, false);
       const { unmount } = await renderPage(tab);
       const btn = screen.getByRole("button", { name: "특이사항" });
       const areaRow = screen.getByRole("tablist", { name: "영역" }).parentElement as HTMLElement;
       expect(areaRow.contains(btn)).toBe(false);
-      expect(screen.getByRole("tabpanel", { name: new RegExp(tab === "application" ? "원서접수" : tab === "pims" ? "합격자 발표" : "휴가·외근") }).contains(btn)).toBe(true);
-      expect(btn.className.split(/\s+/)).toEqual(
-        expect.arrayContaining(["border", "border-line-soft", "hover:bg-ink", "hover:text-cream"]),
-      );
+      // 제목(h2)과 같은 줄
+      const heading = screen.getByRole("heading", { level: 2, name: titles[tab] });
       const row = btn.parentElement as HTMLElement;
-      expect(row.className.split(/\s+/)).toEqual(expect.arrayContaining(["flex", "justify-end"]));
-      expect((row.parentElement as HTMLElement).className.split(/\s+/)).toContain("gap-3");
+      expect(row.contains(heading)).toBe(true);
+      expect(btn.className).toContain(HEADER_ACTION_CLASS);
+      expect(btn.className.split(/\s+/)).toContain("ml-auto");
       unmount();
     }
   });

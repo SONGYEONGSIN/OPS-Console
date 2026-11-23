@@ -117,19 +117,21 @@ export function LeaveTab({
   const showOwners =
     rows.some((r) => r.owners !== undefined) ||
     manual.some((m) => m.owner !== undefined);
-  // 제목 → [특이사항] → 표, 간격은 원서접수·합격자 발표 하위 탭과 같은 기본(gap-3).
+  // 제목 줄(오른쪽 끝 [특이사항]) → 표, 간격은 원서접수·합격자 발표 하위 탭과 같은 기본(gap-3).
   return (
     <div className="flex flex-col gap-3">
       {/* 제목 줄은 lg 이상에서 영역 탭 줄 아래에 붙는다(원서접수·합격자 발표 하위 탭 줄과 같다). */}
-      <div className={STICKY_TITLE_CLASS}>
+      <div
+        className={`flex flex-wrap items-baseline gap-x-3 ${STICKY_TITLE_CLASS}`}
+      >
         <TabHeading
           title="휴가·외근"
           summary={countLabel(areaCounts(snapshot, detail).leave)}
         >
           {freezeNotice ? <AutoFreezeNotice /> : null}
         </TabHeading>
+        <WritePanelToggle />
       </div>
-      <WritePanelToggle />
       <GroupShell
         title={LEAVE_GROUP_TITLE}
         count={rows.length + manual.length}

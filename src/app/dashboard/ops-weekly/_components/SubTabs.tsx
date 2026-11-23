@@ -96,7 +96,7 @@ export function SubTabs({
     refs.current.get(keys[next])?.focus();
   }
 
-  // 제목 줄 → [특이사항] → 표, 간격은 기본(gap-3) — 휴가·외근 탭도 같은 간격이다.
+  // 제목 줄(제목 · 하위 탭 · 오른쪽 끝 [특이사항]) → 표, 간격은 기본(gap-3) — 휴가·외근 탭도 같은 간격이다.
   return (
     <div className="flex flex-col gap-3">
       {/* 제목·하위 탭 줄은 lg 이상에서 영역 탭 줄 아래에 붙는다 — 표를 내려도 무엇을 보는지 남는다. */}
@@ -152,10 +152,10 @@ export function SubTabs({
               );
             })}
           </div>
+          <WritePanelToggle />
         </div>
         {notice}
       </div>
-      <WritePanelToggle />
       {tabs.map((t) => (
         <div
           key={t.key}
