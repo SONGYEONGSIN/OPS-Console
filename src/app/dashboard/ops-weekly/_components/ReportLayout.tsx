@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AREA_TABS, isPanelArea, visibleArea, type AreaTab } from "../_params";
 import { AreaTabs } from "./AreaTabs";
 import { useOpsArea } from "./use-ops-area";
@@ -19,6 +19,9 @@ type Props = {
 };
 
 // 7rem = 셸 상단바 52px + 하단바 27px + 여백 (InspectorPanel 의 md:top-[52px] md:bottom-[27px])
+/** 영역 탭 줄 높이 — 표 제목 줄 고정 자리(styles STICKY_TITLE_CLASS)가 읽는다. */
+const AREA_HEIGHT_VAR = "--ops-area-h";
+
 const ASIDE_STICKY =
   "lg:sticky lg:top-[calc(var(--ops-kpi-h,0px)+1rem)] lg:max-h-[calc(100dvh-var(--ops-kpi-h,0px)-7rem)] lg:overflow-y-auto lg:border-l lg:border-line-soft lg:pl-7";
 
@@ -37,6 +40,25 @@ export function ReportLayout({
   const [open, setOpen] = useState(false);
   const panelArea = isPanelArea(area) ? area : null;
   const shown = open && panelArea !== null;
+  const root = useRef<HTMLDivElement>(null);
+  const areaRow = useRef<HTMLDivElement>(null);
+  // 영역 탭 줄 높이를 알린다 — 그 아래에 붙는 표 제목 줄(STICKY_TITLE_CLASS)이 KPI + 이 높이 자리에 선다.
+  useEffect(() => {
+    const el = areaRow.current;
+    const host = root.current;
+    if (!el || !host || typeof ResizeObserver === "undefined") return;
+    const write = () => {
+      const h = el.getBoundingClientRect().height;
+      if (h > 0) host.style.setProperty(AREA_HEIGHT_VAR, `${Math.ceil(h)}px`);
+      else host.style.removeProperty(AREA_HEIGHT_VAR);
+    };
+    write();
+    const ro = new ResizeObserver(write);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+    };
+  }, []);
 
   return (
     <WritePanelToggleProvider
@@ -46,6 +68,7 @@ export function ReportLayout({
       }}
     >
       <div
+        ref={root}
         className={`flex flex-col gap-4 p-5 lg:gap-7 lg:p-7 ${
           shown
             ? "lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start"
@@ -65,7 +88,11 @@ export function ReportLayout({
               <h2 className="text-xl font-bold text-ink">{`${heading.name}님의 보고서`}</h2>
             </div>
           ) : null}
-          <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-line-soft">
+          {/* lg 이상에서 KPI 줄 바로 아래에 붙는다 — 일회성 임의 값: StickyKpiBar 가 재는 --ops-kpi-h */}
+          <div
+            ref={areaRow}
+            className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-line-soft bg-paper lg:sticky lg:top-[var(--ops-kpi-h,0px)] lg:z-10"
+          >
             <AreaTabs withSubmit={withSubmit} />
           </div>
           {AREA_TABS.map((k) => (

@@ -3,6 +3,7 @@
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { APP_SUBS, PIMS_SUBS, parseSub, type SubTabArea } from "../_params";
 import { useOpsSub } from "./use-ops-sub";
+import { STICKY_TITLE_CLASS } from "./styles";
 import { WritePanelToggle } from "./write-panel-toggle";
 
 export type SubTabItem = {
@@ -98,11 +99,12 @@ export function SubTabs({
   // 제목 줄 → [특이사항] → 표, 간격은 기본(gap-3) — 휴가·외근 탭도 같은 간격이다.
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1">
+      {/* 제목·하위 탭 줄은 lg 이상에서 영역 탭 줄 아래에 붙는다 — 표를 내려도 무엇을 보는지 남는다. */}
+      <div className={`flex flex-col gap-1 ${STICKY_TITLE_CLASS}`}>
         <div
           id={subTabsIdOf(tab)}
-          // 일회성 임의 값: 고정 KPI 바(StickyKpiBar 가 --ops-kpi-h 에 높이를 쓴다) 아래에 서도록. 미측정이면 12rem.
-          className="flex flex-wrap items-baseline gap-x-3 gap-y-2 lg:scroll-mt-[calc(var(--ops-kpi-h,12rem)_+_0.5rem)]"
+          // 일회성 임의 값: 고정 KPI 바(--ops-kpi-h)·영역 탭 줄(--ops-area-h) 아래에 서도록. 미측정이면 12rem.
+          className="flex flex-wrap items-baseline gap-x-3 gap-y-2 lg:scroll-mt-[calc(var(--ops-kpi-h,12rem)_+_var(--ops-area-h,0px)_+_0.5rem)]"
         >
           {heading}
           <div

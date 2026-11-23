@@ -441,4 +441,13 @@ describe("ApplicationTab — 숫자 규칙·기본 탭(리뷰 반영)", () => {
       "true",
     );
   });
+
+  it("lg 이상에서 제목·하위 탭 줄이 영역 탭 줄 아래에 붙는다(KPI → 영역 탭 → 제목 줄)", () => {
+    render(<ApplicationTab {...PROPS} snapshot={snap()} />);
+    const row = screen.getByRole("tablist", { name: "원서접수 묶음" }).parentElement as Element;
+    const sticky = row.parentElement as Element;
+    expect(sticky.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["lg:sticky", "lg:top-[calc(var(--ops-kpi-h,0px)+var(--ops-area-h,0px))]", "bg-paper"]),
+    );
+  });
 });

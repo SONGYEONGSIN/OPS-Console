@@ -134,4 +134,13 @@ describe("ReportLayout", () => {
     render(<ReportLayout areas={areas} panel={<p>쓸 칸</p>} />);
     expect(screen.queryByRole("group", { name: "보기 전환" })).toBeNull();
   });
+
+  it("lg 이상에서 영역 탭 줄이 KPI 줄 바로 아래에 붙는다", () => {
+    setUrl("?week=2026-11-16&tab=application");
+    render(<ReportLayout areas={areas} panel={<p>쓸 칸</p>} />);
+    const row = screen.getByRole("tablist", { name: "영역" }).parentElement as Element;
+    expect(row.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["lg:sticky", "lg:top-[var(--ops-kpi-h,0px)]", "bg-paper"]),
+    );
+  });
 });
