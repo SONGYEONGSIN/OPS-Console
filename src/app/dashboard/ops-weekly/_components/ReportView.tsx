@@ -178,7 +178,9 @@ function AllReportsBody(props: Props & { all: AllReportsView }) {
         ...areasOf(props, false),
         project: (
           <div className="flex flex-col gap-3">
-            <WritePanelToggle />
+            <div className="flex">
+              <WritePanelToggle />
+            </div>
             <ProjectOverview groups={groupEntriesByProject(detail.projects)} />
           </div>
         ),
