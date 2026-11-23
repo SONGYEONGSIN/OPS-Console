@@ -127,6 +127,8 @@ export function LeaveTab({
         title={LEAVE_GROUP_TITLE}
         count={rows.length + manual.length}
         underline={rows.length + manual.length === 0}
+        // 탭 제목 `휴가·외근 · 자동 n건` 이 이미 같은 말을 한다 — 표 바로 위에 한 번 더 적지 않는다.
+        headingHidden
       >
         {rows.length + manual.length === 0 ? (
           <p className="py-2 text-sm text-muted">
