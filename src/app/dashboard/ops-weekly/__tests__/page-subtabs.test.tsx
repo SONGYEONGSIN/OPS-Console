@@ -402,10 +402,10 @@ describe("주간업무보고 페이지 — 머리띠", () => {
     ]);
   });
 
-  it("남의 보고서면 영역 탭 위에 '{이름}의 보고서' 제목과 ‹ 제출 현황 — 머리띠에는 없다, 본인 보고서면 둘 다 없다", async () => {
+  it("남의 보고서면 영역 탭 위에 '{이름}님의 보고서' 제목과 ‹ 제출 현황(text-sm) — 머리띠에는 없다, 본인 보고서면 둘 다 없다", async () => {
     state.view = viewFor("application", false, OTHER);
     const { unmount } = await renderPage("application");
-    const title = screen.getByRole("heading", { name: "김철수의 보고서" });
+    const title = screen.getByRole("heading", { name: "김철수님의 보고서" });
     const tabs = screen.getAllByRole("tablist")[0];
     expect(
       title.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -414,6 +414,10 @@ describe("주간업무보고 페이지 — 머리띠", () => {
       "href",
       "/dashboard/ops-weekly?week=2026-11-16&tab=status",
     );
+    // 12px 는 제목 위에서 잘 안 보였다 — 본문 크기(14px)
+    expect(
+      screen.getByRole("link", { name: "‹ 제출 현황" }).className.split(/\s+/),
+    ).toContain("text-sm");
     expect(screen.getByTestId("week-header").dataset.other).toBeUndefined();
     unmount();
     state.view = viewFor("application", false);
