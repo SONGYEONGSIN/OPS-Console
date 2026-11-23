@@ -3,7 +3,7 @@
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { APP_SUBS, PIMS_SUBS, parseSub, type SubTabArea } from "../_params";
 import { useOpsSub } from "./use-ops-sub";
-import { STICKY_TITLE_CLASS } from "./styles";
+import { StickyTitle } from "./StickyTitle";
 import { WritePanelToggle } from "./write-panel-toggle";
 
 export type SubTabItem = {
@@ -100,7 +100,7 @@ export function SubTabs({
   return (
     <div className="flex flex-col gap-3">
       {/* 제목·하위 탭 줄은 lg 이상에서 영역 탭 줄 아래에 붙는다 — 표를 내려도 무엇을 보는지 남는다. */}
-      <div className={`flex flex-col gap-1 ${STICKY_TITLE_CLASS}`}>
+      <StickyTitle className="flex flex-col gap-1">
         <div
           id={subTabsIdOf(tab)}
           // 일회성 임의 값: 고정 KPI 바(--ops-kpi-h)·영역 탭 줄(--ops-area-h) 아래에 서도록. 미측정이면 12rem.
@@ -155,7 +155,7 @@ export function SubTabs({
           <WritePanelToggle />
         </div>
         {notice}
-      </div>
+      </StickyTitle>
       {tabs.map((t) => (
         <div
           key={t.key}

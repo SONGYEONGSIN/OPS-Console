@@ -15,7 +15,13 @@ import { AutoFreezeNotice } from "./AutoFreezeNotice";
 import { areaCounts, countLabel } from "../_area-counts";
 import { TabHeading } from "./TabHeading";
 import { WritePanelToggle } from "./write-panel-toggle";
-import { BADGE_CLASS, ROW_BTN_CLASS, STICKY_TITLE_CLASS } from "./styles";
+import { StickyTitle } from "./StickyTitle";
+import {
+  BADGE_CLASS,
+  ROW_BTN_CLASS,
+  STICKY_THEAD_CLASS,
+  TABLE_SCROLL_CLASS,
+} from "./styles";
 
 type Props = {
   snapshot: AutoSnapshot;
@@ -121,9 +127,7 @@ export function LeaveTab({
   return (
     <div className="flex flex-col gap-3">
       {/* 제목 줄은 lg 이상에서 영역 탭 줄 아래에 붙는다(원서접수·합격자 발표 하위 탭 줄과 같다). */}
-      <div
-        className={`flex flex-wrap items-baseline gap-x-3 ${STICKY_TITLE_CLASS}`}
-      >
+      <StickyTitle className="flex flex-wrap items-baseline gap-x-3">
         <TabHeading
           title="휴가·외근"
           summary={countLabel(areaCounts(snapshot, detail).leave)}
@@ -131,7 +135,7 @@ export function LeaveTab({
           {freezeNotice ? <AutoFreezeNotice /> : null}
         </TabHeading>
         <WritePanelToggle />
-      </div>
+      </StickyTitle>
       <GroupShell
         title={LEAVE_GROUP_TITLE}
         count={rows.length + manual.length}
@@ -145,12 +149,12 @@ export function LeaveTab({
           </p>
         ) : (
           // 일회성: 5열이 좁은 화면에서 찌그러지지 않는 최소 폭
-          <div className="overflow-x-auto">
+          <div className={TABLE_SCROLL_CLASS}>
             <table
               aria-label={LEAVE_GROUP_TITLE}
               className="w-full min-w-[40rem] text-sm"
             >
-              <thead>
+              <thead className={STICKY_THEAD_CLASS}>
                 <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
                   {showOwners ? <th className={TD}>담당자</th> : null}
                   <th className={TD}>구분</th>
