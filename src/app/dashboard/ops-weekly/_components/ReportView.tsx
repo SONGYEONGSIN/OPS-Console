@@ -1,8 +1,5 @@
 import type { ReactNode } from "react";
-import {
-  PROJECT_KINDS,
-  type ProjectKind,
-} from "@/features/ops-weekly/constants";
+import type { ProjectKind } from "@/features/ops-weekly/constants";
 import type { AllReportsView } from "@/features/ops-weekly/all-view";
 import {
   groupEntriesByProject,
@@ -11,6 +8,7 @@ import {
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
 import type { OpsWeeklyWeekView } from "../_load";
 import { appSubStateOf, directAddGroups } from "../_groups";
+import { shownProjectKinds } from "../_project-kinds";
 import {
   AREA_TAB_LABEL,
   PANEL_AREAS,
@@ -110,7 +108,7 @@ function directAddOf(
   ));
 }
 
-/** 프로젝트·TF 탭 본문 — 프로젝트 절 위, TF 절 아래. */
+/** 프로젝트·TF 탭 본문 — 프로젝트 절 위, TF 절 아래(TF 는 TF 담당자에게만). */
 function projectsOf({ view, detail }: Props, editable: boolean): ReactNode {
   const panel = (kind: ProjectKind) => (
     <ProjectTab
@@ -128,7 +126,9 @@ function projectsOf({ view, detail }: Props, editable: boolean): ReactNode {
     />
   );
   return (
-    <div className="flex flex-col gap-10">{PROJECT_KINDS.map(panel)}</div>
+    <div className="flex flex-col gap-10">
+      {shownProjectKinds(detail).map(panel)}
+    </div>
   );
 }
 
