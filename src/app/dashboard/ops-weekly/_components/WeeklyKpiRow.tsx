@@ -59,13 +59,15 @@ const SEG_IDLE = "border-transparent hover:border-ink";
 /**
  * 대학구분 칸 — lg 이상은 차주 오픈/마감 카드의 두 칸과 같은 모양(작은 라벨 위·숫자 아래, 세로선, 균등 배열).
  * lg 미만은 카드가 좁아 칸으로 나누면 글자가 한 자씩 꺾인다 — `라벨 … 건수` 한 줄씩 세로로 쌓는다.
+ * lg 이상에서도 칸은 글자보다 좁아지지 않는다(`lg:min-w-fit`) — 차주 오픈/마감은 카드 반쪽에 칸 넷이 들어가
+ * 줄어든 칸의 숫자가 다음 세로선을 덮었다. 모자라면 다음 줄로 넘긴다.
  */
 function UnivCells({ cells }: { cells: UnivBreakdown }) {
   if (cells.length === 0) return null;
   return (
-    <div className="mt-1 flex flex-col gap-0.5 lg:flex-row lg:gap-0">
+    <div className="mt-1 flex flex-col gap-0.5 lg:flex-row lg:flex-wrap lg:gap-x-0 lg:gap-y-1">
       {cells.map((c, i) => (
-        <div key={c.label} className="flex min-w-0 flex-1 lg:gap-2">
+        <div key={c.label} className="flex min-w-0 flex-1 lg:min-w-fit lg:gap-2">
           {i > 0 ? (
             <div className="w-px shrink-0 self-stretch bg-line-soft max-lg:hidden" />
           ) : null}
