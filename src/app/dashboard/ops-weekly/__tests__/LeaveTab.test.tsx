@@ -13,7 +13,6 @@ vi.mock("@/features/ops-weekly/actions", () => ({
   removeManualItem: vi.fn(),
   addManualItem: vi.fn(),
   saveAreaNote: vi.fn(),
-  markTabChecked: vi.fn(),
 }));
 
 import { LeaveTab } from "../_components/LeaveTab";

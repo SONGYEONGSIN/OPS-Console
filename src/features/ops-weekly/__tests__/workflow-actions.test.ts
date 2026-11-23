@@ -108,17 +108,16 @@ describe("submitReport", () => {
     );
   });
 
-  it("다섯 영역을 다 확인하지 않으면 거절한다 — 남은 영역을 알려 준다", async () => {
+  it("영역 확인 기록이 없어도 제출된다 — 확인은 제출 조건이 아니다", async () => {
     me("a@x");
     setup({
       writers: [op("a@x", "운영자A")],
-      report: { checked_tabs: ["application", "pims", "leave"] },
+      report: { checked_tabs: [] },
     });
-    expect(await submitReport({ reportId: R })).toEqual({
-      ok: false,
-      error: "모든 영역을 확인해야 제출할 수 있습니다 — 남은 확인: 프로젝트, TF",
-    });
-    expect(updates("ops_weekly_reports")).toHaveLength(0);
+    expect(await submitReport({ reportId: R })).toEqual({ ok: true });
+    expect(updates("ops_weekly_reports")[0][1]).toEqual(
+      expect.objectContaining({ status: "submitted" }),
+    );
   });
 
   it("아직 미제출자가 있으면 all-submitted 는 없다", async () => {

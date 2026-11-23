@@ -10,7 +10,6 @@ import {
 const saveAreaNote = vi.fn();
 vi.mock("@/features/ops-weekly/actions", () => ({
   saveAreaNote: (...a: unknown[]) => saveAreaNote(...a),
-  markTabChecked: vi.fn(),
 }));
 
 import { AreaNotes } from "../_components/AreaNotes";
@@ -76,12 +75,10 @@ describe("AreaNotes 자동 저장 표시", () => {
     );
   });
 
-  it("버튼 이름은 '이 영역 확인'", () => {
+  it("확인 버튼이 없다 — 영역 확인 절차는 없앴다(제출 탭에서 검토)", () => {
     mount();
-    expect(
-      screen.getByRole("button", { name: "이 영역 확인" }),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "이 탭 확인" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "이 영역 확인" })).toBeNull();
+    expect(screen.queryByText("확인하면 탭 옆에 확인 표시가 남습니다")).toBeNull();
   });
 
   it("금주·차주는 컨테이너가 넓을 때만 두 칸", () => {
@@ -111,31 +108,13 @@ describe("AreaNotes 자동 저장 표시", () => {
     expect(tokens(grid)).not.toContain("md:grid-cols-2");
   });
 
-  it("큰 절 구분선과 [이 영역 확인] 설명", () => {
+  it("큰 절 구분선", () => {
     mount();
     const section = screen
       .getByRole("heading", { name: "영역 특이사항" })
       .closest("section") as Element;
     expect(tokens(section)).toContain("border-line");
     expect(tokens(section)).toContain("pt-6");
-    expect(
-      screen.getByText("확인하면 탭 옆에 확인 표시가 남습니다"),
-    ).toBeInTheDocument();
   });
 
-  it("showCheck={false} — 쓸 것 칸에서는 확인 버튼 없이 특이사항만(확인은 영역 탭 줄 버튼)", () => {
-    cleanup();
-    render(
-      <AreaNotes
-        reportId="r"
-        area="application"
-        thisWeek=""
-        nextWeek=""
-        editable
-        showCheck={false}
-      />,
-    );
-    expect(screen.queryByRole("button", { name: "이 영역 확인" })).toBeNull();
-    expect(screen.getByLabelText("금주")).toBeInTheDocument();
-  });
 });

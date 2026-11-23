@@ -12,7 +12,7 @@ import { canViewMenu } from "@/features/auth/permission";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult } from "./actions";
-import { AREA_LABEL, OPS_WEEKLY_PATH, OPS_WEEKLY_SLUG } from "./constants";
+import { OPS_WEEKLY_PATH, OPS_WEEKLY_SLUG } from "./constants";
 import { normEmail } from "./email";
 import { emitOpsWeeklyEvent } from "./events";
 import { freezeWeekSnapshots } from "./freeze";
@@ -23,7 +23,6 @@ import {
   canSubmitReport,
   checkFinalize,
   isDuty,
-  uncheckedAreas,
   type Actor,
   type FinalizeCheck,
 } from "./permissions";
@@ -166,14 +165,6 @@ export async function submitReport(input: {
   );
   if (!allowed || self === undefined) {
     return failOf(submitRejection(ctx, self !== undefined));
-  }
-  const left = uncheckedAreas(report.checked_tabs);
-  if (left.length > 0) {
-    // 화면 이름으로 — 도메인 라벨의 PIMS 는 화면에서 '합격자 발표' 다.
-    const label = { ...AREA_LABEL, pims: "합격자 발표" };
-    return failOf(
-      `모든 영역을 확인해야 제출할 수 있습니다 — 남은 확인: ${left.map((a) => label[a]).join(", ")}`,
-    );
   }
   // 자동 항목은 여기서 굳히지 않는다 — 당번의 [최종 보고] 때 전원 것을 한꺼번에 굳힌다(freeze.ts).
   const res = await createAdminClient()

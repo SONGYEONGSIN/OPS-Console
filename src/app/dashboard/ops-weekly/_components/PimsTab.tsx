@@ -5,6 +5,7 @@ import {
   type AutoSnapshot,
 } from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
+import { areaCounts, countLabel } from "../_area-counts";
 import { PIMS_GROUP_TITLE } from "../_groups";
 import { AREA_TAB_LABEL } from "../_params";
 import { AutoGroupSection } from "./AutoGroupSection";
@@ -43,10 +44,6 @@ export function PimsTab({
       kept(snapshot.pims[g.key], detail.overrides) +
       manualCount(detail.manual, "pims", [g.key]),
   }));
-  const autoCount = GROUPS.reduce(
-    (n, g) => n + kept(snapshot.pims[g.key], detail.overrides),
-    0,
-  );
   const panels = Object.fromEntries(
     GROUPS.map((g) => [
       g.key,
@@ -72,9 +69,7 @@ export function PimsTab({
       heading={
         <TabHeading
           title={AREA_TAB_LABEL.pims}
-          summary={`자동 ${autoCount}건 · 직접 ${
-            detail.manual.filter((m) => m.area === "pims").length
-          }건`}
+          summary={countLabel(areaCounts(snapshot, detail).pims)}
         />
       }
       notice={freezeNotice ? <AutoFreezeNotice /> : null}

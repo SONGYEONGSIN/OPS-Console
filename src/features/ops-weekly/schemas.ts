@@ -151,11 +151,6 @@ export const manualItemRefInputSchema = z.object({
   itemId: z.uuid("항목 id 가 올바르지 않습니다."),
 });
 
-export const tabCheckInputSchema = z.object({
-  reportId: reportIdSchema,
-  area: z.enum(AREAS, "영역이 올바르지 않습니다."),
-});
-
 export const imageUploadInputSchema = z.object({
   reportId: reportIdSchema,
   dataUrl: z.string(),

@@ -2,26 +2,18 @@
 
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
-import type { Area } from "@/features/ops-weekly/constants";
-import {
-  AREA_TABS,
-  isPanelArea,
-  type AreaTab,
-  type PanelArea,
-} from "../_params";
+import { AREA_TABS, isPanelArea, visibleArea, type AreaTab } from "../_params";
 import { ROW_BTN_CLASS } from "./styles";
 import { AreaTabs } from "./AreaTabs";
 import { useOpsArea } from "./use-ops-area";
 
 type Props = {
-  /** 확인한 영역 — 영역 탭 라벨 뒤에 ✓ */
-  checked: readonly Area[];
   /** 영역별 본문 — 넷 다 마운트하고 지금 영역만 보인다 */
   areas: Record<AreaTab, ReactNode>;
   /** 오른쪽 쓸 것 칸(특이사항·직접 추가) — [특이사항] 으로 연다 */
   panel: ReactNode;
-  /** 영역 탭 줄 오른쪽, [특이사항] 옆에 놓을 지금 영역의 버튼([이 영역 확인]) */
-  actions?: Partial<Record<PanelArea, ReactNode>> | null;
+  /** 맨 끝 `제출` 탭의 본문 — 본인 보고서에서만 준다. 없으면 탭도 없다 */
+  submit?: ReactNode;
   /** 남의 보고서를 보는 중이면 영역 탭 위 제목 `{이름}님의 보고서` 와 제출 현황으로 돌아가는 링크 */
   heading?: { name: string; backHref: string } | null;
 };
@@ -38,13 +30,13 @@ const TOGGLE_ON = "border-ink bg-ink text-cream";
  * 쓸 것 칸은 닫혀도 언마운트하지 않는다(쓰던 글 보존). 프로젝트·TF 탭은 특이사항이 본문 안이라 버튼·칸이 없다.
  */
 export function ReportLayout({
-  checked,
   areas,
   panel,
-  actions = null,
+  submit = null,
   heading = null,
 }: Props) {
-  const { area } = useOpsArea();
+  const withSubmit = submit !== null;
+  const area = visibleArea(useOpsArea().area, withSubmit);
   const [open, setOpen] = useState(false);
   const panelArea = isPanelArea(area) ? area : null;
   const shown = open && panelArea !== null;
@@ -52,9 +44,7 @@ export function ReportLayout({
   return (
     <div
       className={`flex flex-col gap-4 p-5 lg:gap-7 lg:p-7 ${
-        shown
-          ? "lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start"
-          : ""
+        shown ? "lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start" : ""
       }`}
     >
       <div className="min-w-0">
@@ -71,9 +61,9 @@ export function ReportLayout({
           </div>
         ) : null}
         <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-line-soft">
-          <AreaTabs checked={checked} />
+          <AreaTabs withSubmit={withSubmit} />
           {panelArea !== null ? (
-            <div className="flex flex-wrap items-center gap-2 pb-1.5">
+            <div className="pb-1.5">
               <button
                 type="button"
                 aria-expanded={shown}
@@ -85,7 +75,6 @@ export function ReportLayout({
               >
                 특이사항
               </button>
-              {actions?.[panelArea] ?? null}
             </div>
           ) : null}
         </div>
@@ -101,6 +90,17 @@ export function ReportLayout({
             {areas[k]}
           </div>
         ))}
+        {withSubmit ? (
+          <div
+            role="tabpanel"
+            id="area-panel-submit"
+            aria-labelledby="area-tab-submit"
+            hidden={area !== "submit"}
+            className="pt-5"
+          >
+            {submit}
+          </div>
+        ) : null}
       </div>
       <aside
         id="ops-write-panel"

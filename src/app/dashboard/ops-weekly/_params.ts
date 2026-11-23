@@ -13,6 +13,7 @@ export const OPS_TABS = [
   "project",
   "tf",
   "leave",
+  "submit",
   "status",
   "settings",
 ] as const;
@@ -31,7 +32,8 @@ export type AreaTab = (typeof AREA_TABS)[number];
 /** 특이사항·직접 추가를 쓸 것 칸에 두는 영역 — 프로젝트·TF 는 본문 안에 특이사항이 있다. */
 export const PANEL_AREAS = ["application", "pims", "leave"] as const;
 export type PanelArea = (typeof PANEL_AREAS)[number];
-export const isPanelArea = (a: AreaTab): a is PanelArea => a !== "project";
+export const isPanelArea = (a: ReportTab): a is PanelArea =>
+  a !== "project" && a !== "submit";
 
 /** 영역 탭 라벨 — `project` 탭은 TF 까지 담는다. */
 export const AREA_TAB_TITLE: Record<AreaTab, string> = {
@@ -41,10 +43,20 @@ export const AREA_TAB_TITLE: Record<AreaTab, string> = {
   leave: AREA_TAB_LABEL.leave,
 };
 
-/** 주소의 `tab` 을 영역 탭으로 — `tf` 는 프로젝트·TF 탭, 역할 탭 값이나 없는 값은 원서접수. */
-export function resolveArea(raw: string | null): AreaTab {
+/** 보고서 화면의 탭 — 영역 넷 + 맨 끝 `제출`(본인 보고서에서만, 요약을 보고 제출하는 자리). */
+export const REPORT_TABS = [...AREA_TABS, "submit"] as const;
+export type ReportTab = (typeof REPORT_TABS)[number];
+export const SUBMIT_TAB_TITLE = "제출";
+
+/** 주소의 `tab` 을 보고서 탭으로 — `tf` 는 프로젝트·TF 탭, 역할 탭 값이나 없는 값은 원서접수. */
+export function resolveArea(raw: string | null): ReportTab {
   if (raw === "tf") return "project";
-  return AREA_TABS.find((a) => a === raw) ?? "application";
+  return REPORT_TABS.find((a) => a === raw) ?? "application";
+}
+
+/** 제출 탭이 없는 화면(전체 보고·남의 보고서)에서 `tab=submit` 이면 원서접수를 보인다. */
+export function visibleArea(area: ReportTab, withSubmit: boolean): ReportTab {
+  return area === "submit" && !withSubmit ? "application" : area;
 }
 
 /** 월요일 `YYYY-MM-DD` 만 통과한다. */

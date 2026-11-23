@@ -12,7 +12,6 @@ vi.mock(
 );
 
 import {
-  markTabChecked,
   saveProjectEntry,
   uploadWeeklyImage,
 } from "../actions";
@@ -206,27 +205,5 @@ describe("uploadWeeklyImage", () => {
     const r = await uploadWeeklyImage({ reportId: R, dataUrl: pngOf(10) });
     expect(r.ok).toBe(false);
     expect(createSignedUrlSpy).not.toHaveBeenCalled();
-  });
-});
-
-describe("markTabChecked", () => {
-  it("없으면 더하고, 있으면 그대로 둔다", async () => {
-    seed({ checked_tabs: ["pims"] });
-    expect(await markTabChecked({ reportId: R, area: "application" })).toEqual({
-      ok: true,
-    });
-    expect(state.db.rows("ops_weekly_reports")[0].checked_tabs).toEqual([
-      "pims",
-      "application",
-    ]);
-    expect(state.db.spies.update).toHaveBeenCalledWith("ops_weekly_reports", {
-      checked_tabs: ["pims", "application"],
-      updated_by: "a@x",
-    });
-    vi.clearAllMocks();
-    expect(await markTabChecked({ reportId: R, area: "pims" })).toEqual({
-      ok: true,
-    });
-    expect(state.db.spies.update).not.toHaveBeenCalled();
   });
 });

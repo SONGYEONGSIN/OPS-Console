@@ -20,7 +20,6 @@ import {
 } from "../_params";
 import { AllAreaNotes } from "./AllAreaNotes";
 import { ApplicationTab } from "./ApplicationTab";
-import { AreaCheckButton } from "./AreaCheckButton";
 import { AreaNotes } from "./AreaNotes";
 import { DirectAddPanel } from "./DirectAddPanel";
 import { LeaveTab } from "./LeaveTab";
@@ -28,6 +27,7 @@ import { PimsTab } from "./PimsTab";
 import { ProjectOverview } from "./ProjectOverview";
 import { ProjectTab } from "./ProjectTab";
 import { ReportLayout } from "./ReportLayout";
+import { SubmitTab } from "./SubmitTab";
 import { WritePanel } from "./WritePanel";
 
 type Props = {
@@ -44,7 +44,7 @@ type PanelSlots = Record<PanelArea, ReactNode>;
 const panelSlots = (make: (area: PanelArea) => ReactNode): PanelSlots =>
   Object.fromEntries(PANEL_AREAS.map((k) => [k, make(k)])) as PanelSlots;
 
-/** 영역 본문 넷 — 프로젝트·TF 탭은 프로젝트 절과 TF 절을 위아래로(각자 특이사항·확인). */
+/** 영역 본문 넷 — 프로젝트·TF 탭은 프로젝트 절과 TF 절을 위아래로(각자 특이사항). */
 function areasOf(props: Props, editable: boolean): Slots {
   const { view, snapshot, detail } = props;
   const tabProps = {
@@ -62,7 +62,7 @@ function areasOf(props: Props, editable: boolean): Slots {
   };
 }
 
-/** 영역 특이사항 셋 — 쓸 것 칸에 놓인다. 확인 버튼은 영역 탭 줄(actionsOf)에 있다. */
+/** 영역 특이사항 셋 — 쓸 것 칸에 놓인다. */
 function notesOf({ view, detail }: Props, editable: boolean): PanelSlots {
   return panelSlots((area) => (
     <AreaNotes
@@ -71,22 +71,25 @@ function notesOf({ view, detail }: Props, editable: boolean): PanelSlots {
       thisWeek={detail.notes[area].thisWeek}
       nextWeek={detail.notes[area].nextWeek}
       editable={editable}
-      showCheck={false}
     />
   ));
 }
 
-/** 영역 탭 줄 [이 영역 확인] — 쓸 수 있는 본인 보고서에서만. */
-function actionsOf({ view }: Props, editable: boolean): PanelSlots | null {
+/** 제출 탭 — 본인 보고서(남의 보고서·전체 보고 아님)에서만. 요약을 보고 여기서 제출한다. */
+function submitOf(props: Props): ReactNode {
+  const { view, snapshot, detail, viewingOther } = props;
   const report = view.report;
-  if (!editable || report === null) return null;
-  return panelSlots((area) => (
-    <AreaCheckButton
+  if (report === null || viewingOther !== null) return null;
+  return (
+    <SubmitTab
+      snapshot={snapshot}
+      detail={detail}
       reportId={report.id}
-      area={area}
-      checked={report.checked_tabs.includes(area)}
+      canSubmit={view.canSubmit}
+      status={report.status}
+      submittedAt={report.submitted_at}
     />
-  ));
+  );
 }
 
 /** 직접 추가 셋 — 영역마다 하나, 셋 다 마운트한다. 쓸 수 없는 보고서(보고서 없음·읽기 전용)면 null. */
@@ -131,7 +134,7 @@ function projectsOf({ view, detail }: Props, editable: boolean): ReactNode {
 
 /**
  * 전체 보고 — 볼 것은 같은 영역 본문(담당자가 실린 합친 목록, 읽기 전용), 프로젝트·TF 탭은 모아보기,
- * 쓸 것 칸 자리에 사람별 특이사항. 직접 추가·확인·제출은 없다(누구의 보고서도 아니다).
+ * 쓸 것 칸 자리에 사람별 특이사항. 직접 추가·제출은 없다(누구의 보고서도 아니다).
  */
 function AllReportsBody(props: Props & { all: AllReportsView }) {
   const { all, detail } = props;
@@ -140,7 +143,6 @@ function AllReportsBody(props: Props & { all: AllReportsView }) {
   ));
   return (
     <ReportLayout
-      checked={[]}
       areas={{
         ...areasOf(props, false),
         project: (
@@ -152,17 +154,16 @@ function AllReportsBody(props: Props & { all: AllReportsView }) {
   );
 }
 
-/** 내 보고서 — 영역 본문 넷, [특이사항] 으로 여는 쓸 것 칸. 제출은 머리띠(page). snapshot·detail 이 있을 때만 page 가 부른다. */
+/** 내 보고서 — 영역 본문 넷 + 제출 탭, [특이사항] 으로 여는 쓸 것 칸. snapshot·detail 이 있을 때만 page 가 부른다. */
 export function ReportView(props: Props) {
   const { view } = props;
   if (view.all !== null) return <AllReportsBody {...props} all={view.all} />;
   const editable = view.canEdit && view.report !== null;
   return (
     <ReportLayout
-      checked={view.report?.checked_tabs ?? []}
       heading={props.viewingOther}
       areas={areasOf(props, editable)}
-      actions={actionsOf(props, editable)}
+      submit={submitOf(props)}
       panel={
         <WritePanel
           notes={notesOf(props, editable)}

@@ -112,6 +112,7 @@ describe("전체 보고 화면", () => {
     })[0];
     expect(within(notes).getByText("연장 접수")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "제출완료" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "제출" })).toBeNull();
     expect(screen.queryByRole("textbox")).toBeNull();
     // 모아보기는 프로젝트·TF 영역 탭 본문(지금은 원서접수 탭이라 숨어 있다)
     const overview = screen.getByRole("heading", {

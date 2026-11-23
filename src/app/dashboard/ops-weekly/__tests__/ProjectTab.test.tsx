@@ -14,7 +14,6 @@ vi.mock("@/features/ops-weekly/actions", () => ({
   saveProjectEntry: (...a: unknown[]) => saveProjectEntry(...a),
   uploadWeeklyImage: (...a: unknown[]) => uploadWeeklyImage(...a),
   saveAreaNote: vi.fn(),
-  markTabChecked: vi.fn(),
 }));
 
 import { ProjectTab } from "../_components/ProjectTab";

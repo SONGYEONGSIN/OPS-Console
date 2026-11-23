@@ -16,16 +16,13 @@ function Notice({ message }: { message: string }) {
 }
 
 /**
- * 제출 한 곳 — 머리띠 오른쪽. 버튼은 canSubmit 일 때만이고, 다섯 영역을 다 확인해야 눌린다(서버도 같은 조건).
+ * 제출 한 곳 — 제출 탭 맨 아래. 버튼은 canSubmit 일 때만이다.
  * 대기·결과 문구는 남는다(제출 뒤 새로고침으로 canSubmit=false 가 와도 '제출은 끝났지만…' 이 사라지면 안 된다).
  */
 export function SubmitBar(props: {
   reportId: string | null;
   canSubmit: boolean;
-  /** 아직 확인 안 한 영역 이름 — 비어 있어야 버튼이 눌린다 */
-  unchecked?: readonly string[];
 }) {
-  const unchecked = props.unchecked ?? [];
   const submit = useSubmit(props.reportId);
   // 보일 것이 없으면 빈 구분선 상자를 남기지 않는다 — 컴포넌트는 마운트된 채라 useSubmit 상태는 산다.
   if (!props.canSubmit && !submit.waiting && submit.message === null) {
@@ -34,17 +31,11 @@ export function SubmitBar(props: {
   return (
     <div className="flex flex-col items-end gap-1">
       {props.canSubmit ? (
-        <HeaderActionButton
-          onClick={submit.submit}
-          disabled={submit.pending || unchecked.length > 0}
-        >
+        <HeaderActionButton onClick={submit.submit} disabled={submit.pending}>
           제출완료
         </HeaderActionButton>
       ) : null}
       <div className="flex flex-col items-end gap-1 text-right text-xs">
-        {props.canSubmit && unchecked.length > 0 ? (
-          <p className="text-muted">{`남은 확인: ${unchecked.join(", ")}`}</p>
-        ) : null}
         {submit.waiting ? (
           <p role="status" className="text-ink-soft">
             {SAVE_WAITING}

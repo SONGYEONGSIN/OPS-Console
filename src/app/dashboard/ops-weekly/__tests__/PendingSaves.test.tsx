@@ -25,7 +25,6 @@ vi.mock("@/features/ops-weekly/actions", () => ({
   saveItemOverride: (...a: unknown[]) => saveItemOverride(...a),
   saveProjectEntry: (...a: unknown[]) => saveProjectEntry(...a),
   uploadWeeklyImage: (...a: unknown[]) => uploadWeeklyImage(...a),
-  markTabChecked: vi.fn(),
 }));
 
 import { AreaNotes } from "../_components/AreaNotes";

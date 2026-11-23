@@ -15,7 +15,6 @@ import {
   OPS_WEEKLY_IMAGE_RE,
   OPS_WEEKLY_PATH,
   OPS_WEEKLY_SIGNED_URL_TTL_SEC,
-  type Area,
 } from "./constants";
 import { normEmail } from "./email";
 import { authorizeReportEdit, type EditContext } from "./guard";
@@ -29,7 +28,6 @@ import {
   manualItemRefInputSchema,
   projectEntryInputSchema,
   storedProjectHtmlSchema,
-  tabCheckInputSchema,
 } from "./schemas";
 import { rowOf } from "./week-queries";
 
@@ -261,20 +259,3 @@ export async function uploadWeeklyImage(input: {
   return { ok: true, url: signed.data.signedUrl };
 }
 
-export async function markTabChecked(input: {
-  reportId: string;
-  area: Area;
-}): Promise<ActionResult> {
-  const g = await parseAndAuthorize(tabCheckInputSchema, input);
-  if (isFail(g)) return g;
-  const { data, ctx } = g;
-  if (ctx.report.checked_tabs.includes(data.area)) return OK;
-  const { error } = await createAdminClient()
-    .from("ops_weekly_reports")
-    .update({
-      checked_tabs: [...ctx.report.checked_tabs, data.area],
-      updated_by: ctx.actor.email,
-    })
-    .eq("id", ctx.report.id);
-  return writeFailed("확인 표시", error) ?? done();
-}

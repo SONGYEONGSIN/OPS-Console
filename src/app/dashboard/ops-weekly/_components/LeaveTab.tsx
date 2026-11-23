@@ -12,6 +12,7 @@ import { GroupShell } from "./GroupShell";
 import { ManualRow } from "./ManualRow";
 import { OverrideControls } from "./OverrideControls";
 import { AutoFreezeNotice } from "./AutoFreezeNotice";
+import { areaCounts, countLabel } from "../_area-counts";
 import { TabHeading } from "./TabHeading";
 import { BADGE_CLASS, ROW_BTN_CLASS } from "./styles";
 
@@ -119,7 +120,7 @@ export function LeaveTab({
     <div className="flex flex-col gap-7">
       <TabHeading
         title="휴가·외근"
-        summary={`자동 ${rows.length}건 · 직접 ${manual.length}건`}
+        summary={countLabel(areaCounts(snapshot, detail).leave)}
       >
         {freezeNotice ? <AutoFreezeNotice /> : null}
       </TabHeading>
