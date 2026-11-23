@@ -7,12 +7,19 @@ vi.mock(
 );
 
 import { ReportLayout } from "../_components/ReportLayout";
+import { WritePanelToggle } from "../_components/write-panel-toggle";
 import { setUrl } from "./search-params-mock";
 
 afterEach(cleanup);
 
+// [특이사항] 은 각 영역 본문(표 바로 위)이 그린다 — 실제 탭처럼 본문 안에 둔다.
 const areas = {
-  application: <p>원서 본문</p>,
+  application: (
+    <>
+      <WritePanelToggle />
+      <p>원서 본문</p>
+    </>
+  ),
   pims: <p>발표 본문</p>,
   project: <p>프로젝트 본문</p>,
   leave: <p>휴가 본문</p>,

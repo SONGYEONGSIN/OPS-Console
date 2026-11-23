@@ -14,6 +14,7 @@ import { OverrideControls } from "./OverrideControls";
 import { AutoFreezeNotice } from "./AutoFreezeNotice";
 import { areaCounts, countLabel } from "../_area-counts";
 import { TabHeading } from "./TabHeading";
+import { WritePanelToggle } from "./write-panel-toggle";
 import { BADGE_CLASS, ROW_BTN_CLASS } from "./styles";
 
 type Props = {
@@ -116,14 +117,16 @@ export function LeaveTab({
   const showOwners =
     rows.some((r) => r.owners !== undefined) ||
     manual.some((m) => m.owner !== undefined);
+  // 제목 → [특이사항] → 표, 간격은 원서접수·합격자 발표 하위 탭과 같은 기본(gap-3).
   return (
-    <div className="flex flex-col gap-7">
+    <div className="flex flex-col gap-3">
       <TabHeading
         title="휴가·외근"
         summary={countLabel(areaCounts(snapshot, detail).leave)}
       >
         {freezeNotice ? <AutoFreezeNotice /> : null}
       </TabHeading>
+      <WritePanelToggle />
       <GroupShell
         title={LEAVE_GROUP_TITLE}
         count={rows.length + manual.length}
