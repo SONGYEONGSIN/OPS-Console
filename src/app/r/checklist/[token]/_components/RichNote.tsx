@@ -1,11 +1,14 @@
 "use client";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 /**
  * 메모 리치 에디터 — contentEditable. 텍스트 입력 + 이미지 붙여넣기(커서 위치에 인라인 삽입).
  * 이미지 위에서 좌우 드래그하면 폭 조절(width 속성 저장). uncontrolled: 초기 HTML만 주입하고
  * 편집 중엔 React가 관여하지 않는다(커서 튐 방지). 저장은 blur/리사이즈 종료 시 innerHTML을 onSave로.
  * 서버(fillUpdateItem)에서 반드시 sanitize된다.
+ *
+ * initialHtml 은 마운트 때 한 번만 쓴다 — 저장 뒤 서버가 다시 그리면 그림 주소(서명 토큰)가 바뀐 HTML 이 내려오는데,
+ * 그걸 그대로 넣으면 React 가 innerHTML 을 갈아끼워 방금 지운 그림·쓰던 글이 되살아난다.
  */
 export function RichNote({
   initialHtml,
@@ -19,6 +22,8 @@ export function RichNote({
   placeholder?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // 객체째 고정한다 — 렌더마다 새 객체를 넘기면 React 가 같은 문자열이라도 innerHTML 을 다시 넣는다.
+  const [markup] = useState(() => ({ __html: initialHtml }));
 
   const save = () => {
     if (!ref.current) return;
@@ -62,7 +67,18 @@ export function RichNote({
     reader.readAsDataURL(file);
   };
 
-  // 이미지 위 좌우 드래그 → 폭 조절
+  // 끌지 않고 누른 그림은 선택한다 — mousedown 을 막아 두어서 그대로면 그림에 커서를 못 둬 지울 수 없다.
+  const selectImage = (img: HTMLImageElement) => {
+    ref.current?.focus();
+    const sel = window.getSelection();
+    if (!sel) return;
+    const range = document.createRange();
+    range.selectNode(img);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+
+  // 이미지 위 좌우 드래그 → 폭 조절, 끌지 않고 떼면 선택
   const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     if (target.tagName !== "IMG") return;
@@ -71,14 +87,18 @@ export function RichNote({
     const startX = e.clientX;
     const startW = img.getBoundingClientRect().width;
     const maxW = ref.current ? ref.current.clientWidth - 8 : 800;
+    let moved = false;
     const onMove = (ev: MouseEvent) => {
+      if (Math.abs(ev.clientX - startX) >= 3) moved = true;
+      if (!moved) return;
       const w = Math.min(Math.max(startW + (ev.clientX - startX), 40), maxW);
       img.setAttribute("width", String(Math.round(w)));
     };
     const onUp = () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
-      save();
+      if (moved) save();
+      else selectImage(img);
     };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
@@ -95,7 +115,7 @@ export function RichNote({
       onBlur={save}
       onPaste={onPaste}
       onMouseDown={onMouseDown}
-      dangerouslySetInnerHTML={{ __html: initialHtml }}
+      dangerouslySetInnerHTML={markup}
       className="mt-2 min-h-32 w-full min-w-0 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] border border-line-soft bg-field-bg px-2 py-1.5 text-sm transition-colors focus:border-ink focus:bg-white focus:outline-none [&:empty]:before:text-muted [&:empty]:before:content-[attr(data-placeholder)] [&_img]:my-1 [&_img]:max-w-full [&_img]:cursor-[ew-resize] [&_img]:rounded [&_img]:border [&_img]:border-line-soft [&_table]:my-2 [&_table]:border-collapse [&_th]:border [&_th]:border-line [&_th]:bg-line-soft [&_th]:px-2 [&_th]:py-1 [&_th]:font-semibold [&_td]:border [&_td]:border-line [&_td]:px-2 [&_td]:py-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5"
     />
   );
