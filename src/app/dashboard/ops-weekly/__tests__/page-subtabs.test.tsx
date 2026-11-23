@@ -279,9 +279,39 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
         .getByRole("heading", { name: "프로젝트" })
         .closest('[role="tabpanel"]');
       expect(panel).toHaveAttribute("id", "area-panel-project");
-      expect(screen.queryByRole("button", { name: "특이사항" })).toBeNull();
       unmount();
     }
+  });
+
+  it("프로젝트·TF 탭: 특이사항은 본문이 아니라 [특이사항] 으로 여는 쓸 것 칸에 — TF 담당이면 TF 특이사항도", async () => {
+    setUrl("?week=2026-11-16&tab=project");
+    state.view = viewFor("project", false, {
+      detail: {
+        ...EMPTY,
+        projects: [
+          {
+            projectId: "t1",
+            projectName: "인증 TF",
+            kind: "tf",
+            sortOrder: 1,
+            operatorEmail: "a@example.com",
+            operatorName: "홍길동",
+            stage: null,
+            thisWeek: "",
+            nextWeek: "",
+          },
+        ],
+      },
+    });
+    const { container } = await renderPage("project");
+    const areaPanel = screen.getByRole("tabpanel", { name: "프로젝트·TF" });
+    expect(within(areaPanel).queryByRole("heading", { name: /특이사항$/ })).toBeNull();
+    const aside = container.querySelector('aside[aria-label="쓸 것"]') as HTMLElement;
+    expect(aside).toHaveAttribute("hidden");
+    fireEvent.click(within(areaPanel).getByRole("button", { name: "특이사항" }));
+    expect(aside).not.toHaveAttribute("hidden");
+    expect(within(aside).getByRole("heading", { name: "프로젝트 특이사항" })).toBeVisible();
+    expect(within(aside).getByRole("heading", { name: "TF 특이사항" })).toBeVisible();
   });
 
   it("TF 절은 TF 담당자에게만 — 맡은 TF 가 없으면 TF 절이 없다", async () => {

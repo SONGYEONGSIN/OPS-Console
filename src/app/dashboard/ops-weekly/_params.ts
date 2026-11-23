@@ -29,11 +29,12 @@ export const AREA_TAB_LABEL: Record<Area, string> = {
 export const AREA_TABS = ["application", "pims", "project", "leave"] as const;
 export type AreaTab = (typeof AREA_TABS)[number];
 
-/** 특이사항·직접 추가를 쓸 것 칸에 두는 영역 — 프로젝트·TF 는 본문 안에 특이사항이 있다. */
+/** 자동 목록이 있어 직접 추가가 붙는 영역 — 프로젝트·TF 는 특이사항만 쓸 것 칸에 둔다. */
 export const PANEL_AREAS = ["application", "pims", "leave"] as const;
 export type PanelArea = (typeof PANEL_AREAS)[number];
-export const isPanelArea = (a: ReportTab): a is PanelArea =>
-  a !== "project" && a !== "submit";
+
+/** 쓸 것 칸(특이사항)이 있는 탭 — 제출 탭만 없다. 직접 추가는 PANEL_AREAS 셋에만 있다. */
+export const hasWritePanel = (a: ReportTab): a is AreaTab => a !== "submit";
 
 /** 영역 탭 라벨 — `project` 탭은 TF 까지 담는다. */
 export const AREA_TAB_TITLE: Record<AreaTab, string> = {
@@ -162,7 +163,10 @@ export type TabAccess = {
 };
 
 /** 주소의 `tab` 을 권한으로 거른다 — 허용된 값은 그대로, 아니면 처음 화면(없으면 null). */
-export function resolveTab(raw: string | undefined, access: TabAccess): OpsTab | null {
+export function resolveTab(
+  raw: string | undefined,
+  access: TabAccess,
+): OpsTab | null {
   const tab = OPS_TABS.find((t) => t === raw);
   if (tab !== undefined) {
     const role = roleTabOf(tab);

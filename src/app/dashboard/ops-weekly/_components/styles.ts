@@ -10,3 +10,7 @@ export const ROW_REVEAL_CLASS =
 export const BADGE_CLASS =
   "border border-line-soft px-1.5 py-0.5 text-xs text-muted";
 export const ERROR_CLASS = "text-xs text-vermilion";
+// 표 제목 줄 고정 — lg 이상에서 KPI 바(--ops-kpi-h) + 영역 탭 줄(--ops-area-h) 바로 아래에 붙는다.
+// 일회성 임의 값: 두 높이는 각 막대가 ResizeObserver 로 재서 CSS 변수로 알린다.
+export const STICKY_TITLE_CLASS =
+  "bg-paper lg:sticky lg:top-[calc(var(--ops-kpi-h,0px)+var(--ops-area-h,0px))] lg:z-10";

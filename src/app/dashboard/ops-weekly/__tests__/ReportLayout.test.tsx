@@ -84,18 +84,16 @@ describe("ReportLayout", () => {
       screen.getByText("원서 본문").closest('[role="tabpanel"]'),
     ).not.toHaveAttribute("hidden");
   });
-  it("프로젝트·TF 탭에는 [특이사항] 과 쓸 것 칸이 없다 — 그 탭의 특이사항은 본문 안이다", () => {
+  it("프로젝트·TF 탭도 [특이사항] 으로 쓸 것 칸을 연다 — 제출 탭에는 없다", () => {
     setUrl("?week=2026-11-16&tab=project");
     const { container } = render(
-      <ReportLayout areas={areas} panel={<p>쓸 칸</p>} />,
+      <ReportLayout
+        areas={{ ...areas, project: <><WritePanelToggle /><p>프로젝트 본문</p></> }}
+        panel={<p>쓸 칸</p>}
+      />,
     );
-    expect(screen.queryByRole("button", { name: "특이사항" })).toBeNull();
-    expect(container.querySelector('aside[aria-label="쓸 것"]')).toHaveAttribute(
-      "hidden",
-    );
-    expect(
-      screen.getByText("프로젝트 본문").closest('[role="tabpanel"]'),
-    ).not.toHaveAttribute("hidden");
+    fireEvent.click(screen.getByRole("button", { name: "특이사항" }));
+    expect(container.querySelector('aside[aria-label="쓸 것"]')).not.toHaveAttribute("hidden");
   });
   it("영역 본문 넷을 모두 마운트하고 지금 영역만 보인다", () => {
     setUrl("?week=2026-11-16&tab=pims");
@@ -133,5 +131,14 @@ describe("ReportLayout", () => {
     setUrl("?week=2026-11-16&tab=application");
     render(<ReportLayout areas={areas} panel={<p>쓸 칸</p>} />);
     expect(screen.queryByRole("group", { name: "보기 전환" })).toBeNull();
+  });
+
+  it("lg 이상에서 영역 탭 줄이 KPI 줄 바로 아래에 붙는다", () => {
+    setUrl("?week=2026-11-16&tab=application");
+    render(<ReportLayout areas={areas} panel={<p>쓸 칸</p>} />);
+    const row = screen.getByRole("tablist", { name: "영역" }).parentElement as Element;
+    expect(row.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["lg:sticky", "lg:top-[var(--ops-kpi-h,0px)]", "bg-paper"]),
+    );
   });
 });

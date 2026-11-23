@@ -297,4 +297,22 @@ describe("LeaveTab — 전체 보고", () => {
     expect(screen.getByText("김슬기")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "백업요청 만들기" })).toBeNull();
   });
+
+  it("lg 이상에서 제목 줄이 영역 탭 줄 아래에 붙는다", () => {
+    render(
+      <LeaveTab
+        snapshot={snap()}
+        detail={EMPTY}
+        reportId="r"
+        editable
+        freezeNotice={false}
+      />,
+    );
+    const heading = screen.getByRole("heading", { name: "휴가·외근" });
+    const sticky = heading.closest(".lg\\:sticky") as Element;
+    expect(sticky).not.toBeNull();
+    expect(sticky.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["lg:top-[calc(var(--ops-kpi-h,0px)+var(--ops-area-h,0px))]", "bg-paper"]),
+    );
+  });
 });

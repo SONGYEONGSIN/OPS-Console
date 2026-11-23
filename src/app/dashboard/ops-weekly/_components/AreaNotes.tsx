@@ -14,6 +14,8 @@ type Props = {
   thisWeek: string;
   nextWeek: string;
   editable: boolean;
+  /** 칸 제목 — 프로젝트·TF 탭은 한 칸에 둘이 놓여 `프로젝트 특이사항`·`TF 특이사항` 으로 가른다 */
+  title?: string;
 };
 
 function ReadOnlyNote({ label, text }: { label: string; text: string }) {
@@ -57,7 +59,9 @@ export function AreaNotes(props: Props) {
   return (
     <section className="@container flex flex-col gap-3 border-t border-line pt-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-bold text-ink">영역 특이사항</h3>
+        <h3 className="text-sm font-bold text-ink">
+          {props.title ?? "영역 특이사항"}
+        </h3>
         {editable && reportId !== null ? (
           <SaveStatus
             pending={note.pending}

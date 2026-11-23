@@ -266,7 +266,6 @@ describe("제출완료 x 자동 저장", () => {
             entries={[entry]}
             reportId="r1"
             editable
-            notes={{ thisWeek: "", nextWeek: "" }}
           />
         </PendingSavesProvider>,
       );

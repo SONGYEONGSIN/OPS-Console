@@ -20,8 +20,6 @@ import { ProjectTab } from "../_components/ProjectTab";
 import type { ProjectEntryView } from "@/features/ops-weekly/merge";
 import { inOrder } from "./heading-order";
 
-const N = { thisWeek: "", nextWeek: "" };
-
 function entry(
   id: string,
   kind: "project" | "tf",
@@ -56,19 +54,18 @@ describe("ProjectTab", () => {
         entries={[entry("t1", "tf", 10)]}
         reportId="r"
         editable
-        notes={N}
       />,
     );
     expect(screen.getByRole("heading", { name: "TF" })).toBeInTheDocument();
     expect(screen.getByText("t1")).toBeInTheDocument();
   });
 
-  it("바깥 여백은 영역 패널이 진다 — 자체 p-5 가 없다", () => {
+  it("바깥 여백은 영역 패널이 진다 — 자체 p-5 가 없고, 제목·목록 간격은 기본 gap-3", () => {
     const { container } = render(
-      <ProjectTab kind="tf" entries={[]} reportId="r" editable notes={N} />,
+      <ProjectTab kind="tf" entries={[]} reportId="r" editable />,
     );
     const tokens = (container.firstElementChild?.className ?? "").split(/\s+/);
-    expect(tokens).toContain("gap-7");
+    expect(tokens).toContain("gap-3");
     expect(tokens).not.toContain("p-5");
     expect(tokens).not.toContain("lg:p-7");
   });
@@ -84,7 +81,6 @@ describe("ProjectTab", () => {
         ]}
         reportId="r"
         editable
-        notes={N}
       />,
     );
     inOrder(["t1", "t2"]);
@@ -98,7 +94,6 @@ describe("ProjectTab", () => {
         entries={[entry("p", "project", 10)]}
         reportId="r"
         editable
-        notes={N}
       />,
     );
     expect(
@@ -125,7 +120,6 @@ describe("ProjectTab", () => {
         entries={[entry("p", "project", 10, { thisWeek: "<p>a</p>" })]}
         reportId="r"
         editable
-        notes={N}
       />,
     );
     fireEvent.change(screen.getByLabelText("진행 단계"), {
@@ -143,9 +137,7 @@ describe("ProjectTab", () => {
   });
 
   it("맡은 TF 가 없으면 안내", () => {
-    render(
-      <ProjectTab kind="tf" entries={[]} reportId="r" editable notes={N} />,
-    );
+    render(<ProjectTab kind="tf" entries={[]} reportId="r" editable />);
     expect(screen.getByText("맡은 TF가 없습니다")).toBeInTheDocument();
     expect(
       screen.getByText("관리자 설정에서 담당자를 지정합니다"),
@@ -159,7 +151,6 @@ describe("ProjectTab", () => {
         entries={[entry("p", "project", 10, { stage: "배포" })]}
         reportId="r"
         editable={false}
-        notes={N}
       />,
     );
     expect(screen.queryByLabelText("진행 단계")).toBeNull();
@@ -172,7 +163,7 @@ describe("ProjectTab", () => {
         kind="project"
         reportId="r"
         editable={false}
-        notes={N}
+
         entries={[
           entry("p", "project", 10, {
             thisWeek:
@@ -209,7 +200,6 @@ describe("ProjectTab", () => {
         entries={[entry("p", "project", 10)]}
         reportId="r"
         editable
-        notes={N}
       />,
     );
     pasteImage();
@@ -234,7 +224,6 @@ describe("ProjectTab", () => {
         entries={[entry("p", "project", 10)]}
         reportId="r"
         editable
-        notes={N}
       />,
     );
     pasteImage();
@@ -251,14 +240,17 @@ describe("ProjectTab", () => {
           entries={[entry("p1", "project", 1), entry("p2", "project", 2)]}
           reportId="r"
           editable
-          notes={N}
         />,
       );
       const h = screen.getByRole("heading", { name: "프로젝트" });
       expect(tokens(h)).toContain("text-xl");
       expect(tokens(h)).toContain("font-bold");
       expect(screen.getByText("2건")).toBeInTheDocument();
-      inOrder(["프로젝트", "p1", "p2", "영역 특이사항"]);
+      inOrder(["프로젝트", "p1", "p2"]);
+      // 특이사항은 본문이 아니라 쓸 것 칸이다
+      expect(
+        screen.queryByRole("heading", { name: "영역 특이사항" }),
+      ).toBeNull();
     });
 
     it("카드는 표면 표준(bg-situation-bg)이다", () => {
@@ -268,7 +260,6 @@ describe("ProjectTab", () => {
           entries={[entry("p1", "project", 1)]}
           reportId="r"
           editable
-          notes={N}
         />,
       );
       expect(tokens(container.querySelector("article") as Element)).toContain(
@@ -278,7 +269,7 @@ describe("ProjectTab", () => {
 
     it("비었을 때는 상자 + admin 에게만 설정 링크", () => {
       const { rerender } = render(
-        <ProjectTab kind="tf" entries={[]} reportId="r" editable notes={N} />,
+        <ProjectTab kind="tf" entries={[]} reportId="r" editable />,
       );
       const box = screen.getByText("맡은 TF가 없습니다")
         .parentElement as Element;
@@ -291,7 +282,7 @@ describe("ProjectTab", () => {
           entries={[]}
           reportId="r"
           editable
-          notes={N}
+
           settingsHref="/dashboard/ops-weekly?tab=settings"
         />,
       );
@@ -308,7 +299,6 @@ describe("ProjectTab", () => {
           entries={[entry("p1", "project", 1)]}
           reportId="r"
           editable
-          notes={N}
         />,
       );
       fireEvent.change(screen.getByLabelText("진행 단계"), {

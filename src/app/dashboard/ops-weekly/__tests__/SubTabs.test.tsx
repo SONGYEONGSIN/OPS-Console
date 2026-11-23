@@ -210,7 +210,7 @@ describe("SubTabs", () => {
       "ops-subtabs-application",
     ) as HTMLElement;
     expect(target.className.split(/\s+/)).toContain(
-      "lg:scroll-mt-[calc(var(--ops-kpi-h,12rem)_+_0.5rem)]",
+      "lg:scroll-mt-[calc(var(--ops-kpi-h,12rem)_+_var(--ops-area-h,0px)_+_0.5rem)]",
     );
   });
 
