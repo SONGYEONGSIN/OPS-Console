@@ -22,7 +22,7 @@ type Props = {
   panel: ReactNode;
   /** 영역 탭 줄 오른쪽, [특이사항] 옆에 놓을 지금 영역의 버튼([이 영역 확인]) */
   actions?: Partial<Record<PanelArea, ReactNode>> | null;
-  /** 남의 보고서를 보는 중이면 영역 탭 위 제목 `{이름}의 보고서` 와 제출 현황으로 돌아가는 링크 */
+  /** 남의 보고서를 보는 중이면 영역 탭 위 제목 `{이름}님의 보고서` 와 제출 현황으로 돌아가는 링크 */
   heading?: { name: string; backHref: string } | null;
 };
 
@@ -63,11 +63,11 @@ export function ReportLayout({
           <div className="mb-4 flex flex-col gap-1">
             <Link
               href={heading.backHref}
-              className="self-start text-xs text-ink-soft underline hover:text-vermilion"
+              className="self-start text-sm text-ink-soft underline hover:text-vermilion"
             >
               ‹ 제출 현황
             </Link>
-            <h2 className="text-xl font-bold text-ink">{`${heading.name}의 보고서`}</h2>
+            <h2 className="text-xl font-bold text-ink">{`${heading.name}님의 보고서`}</h2>
           </div>
         ) : null}
         <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-line-soft">
