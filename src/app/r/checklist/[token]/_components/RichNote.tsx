@@ -10,6 +10,13 @@ import { useRef, useState } from "react";
  * initialHtml 은 마운트 때 한 번만 쓴다 — 저장 뒤 서버가 다시 그리면 그림 주소(서명 토큰)가 바뀐 HTML 이 내려오는데,
  * 그걸 그대로 넣으면 React 가 innerHTML 을 갈아끼워 방금 지운 그림·쓰던 글이 되살아난다.
  */
+const SIZES: readonly (readonly [string, number | null])[] = [
+  ["작게", 0.25],
+  ["중간", 0.5],
+  ["크게", 0.75],
+  ["원래대로", null],
+];
+
 export function RichNote({
   initialHtml,
   onSave,
@@ -24,6 +31,8 @@ export function RichNote({
   const ref = useRef<HTMLDivElement>(null);
   // 객체째 고정한다 — 렌더마다 새 객체를 넘기면 React 가 같은 문자열이라도 innerHTML 을 다시 넣는다.
   const [markup] = useState(() => ({ __html: initialHtml }));
+  // 눌러서 고른 그림 — 크기 버튼 줄을 띄운다(끌어서 폭 조절은 커서 모양 말고는 알 길이 없었다).
+  const [picked, setPicked] = useState<HTMLImageElement | null>(null);
 
   const save = () => {
     if (!ref.current) return;
@@ -76,12 +85,30 @@ export function RichNote({
     range.selectNode(img);
     sel.removeAllRanges();
     sel.addRange(range);
+    setPicked(img);
+  };
+
+  // 크기 버튼 — 편집 칸 폭(여백 8px 뺀)의 비율로 width 를 정한다. 원래대로는 width 를 지운다.
+  const resizePicked = (ratio: number | null) => {
+    if (!picked || !ref.current?.contains(picked)) return;
+    if (ratio === null) picked.removeAttribute("width");
+    else {
+      const maxW = ref.current.clientWidth - 8;
+      picked.setAttribute(
+        "width",
+        String(Math.max(Math.round((maxW > 0 ? maxW : 800) * ratio), 40)),
+      );
+    }
+    save();
   };
 
   // 이미지 위 좌우 드래그 → 폭 조절, 끌지 않고 떼면 선택
   const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
-    if (target.tagName !== "IMG") return;
+    if (target.tagName !== "IMG") {
+      setPicked(null);
+      return;
+    }
     const img = target as HTMLImageElement;
     e.preventDefault();
     const startX = e.clientX;
@@ -105,18 +132,51 @@ export function RichNote({
   };
 
   return (
-    <div
-      ref={ref}
-      contentEditable
-      suppressContentEditableWarning
-      role="textbox"
-      aria-multiline="true"
-      data-placeholder={placeholder ?? "메모 (여러 줄 · 이미지 붙여넣기 가능)"}
-      onBlur={save}
-      onPaste={onPaste}
-      onMouseDown={onMouseDown}
-      dangerouslySetInnerHTML={markup}
-      className="mt-2 min-h-32 w-full min-w-0 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] border border-line-soft bg-field-bg px-2 py-1.5 text-sm transition-colors focus:border-ink focus:bg-white focus:outline-none [&:empty]:before:text-muted [&:empty]:before:content-[attr(data-placeholder)] [&_img]:my-1 [&_img]:max-w-full [&_img]:cursor-[ew-resize] [&_img]:rounded [&_img]:border [&_img]:border-line-soft [&_table]:my-2 [&_table]:border-collapse [&_th]:border [&_th]:border-line [&_th]:bg-line-soft [&_th]:px-2 [&_th]:py-1 [&_th]:font-semibold [&_td]:border [&_td]:border-line [&_td]:px-2 [&_td]:py-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5"
-    />
+    <div className="min-w-0">
+      {picked ? (
+        <div
+          role="group"
+          aria-label="그림 크기"
+          className="mt-2 flex flex-wrap items-center gap-1 text-xs text-muted"
+        >
+          <span className="mr-1">그림 크기</span>
+          {SIZES.map(([label, ratio]) => (
+            <button
+              key={label}
+              type="button"
+              // 편집 칸의 포커스·선택을 잃지 않게 — 누르는 순간 blur 가 나면 버튼 줄이 사라진다.
+              onMouseDown={(e) => {
+                e.preventDefault();
+              }}
+              onClick={() => {
+                resizePicked(ratio);
+              }}
+              className="border border-line-soft px-2 py-0.5 text-ink hover:border-ink hover:bg-ink hover:text-cream"
+            >
+              {label}
+            </button>
+          ))}
+          <span className="ml-1">· 그림을 좌우로 끌어도 됩니다</span>
+        </div>
+      ) : null}
+      <div
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        role="textbox"
+        aria-multiline="true"
+        data-placeholder={
+          placeholder ?? "메모 (여러 줄 · 이미지 붙여넣기 가능)"
+        }
+        onBlur={() => {
+          setPicked(null);
+          save();
+        }}
+        onPaste={onPaste}
+        onMouseDown={onMouseDown}
+        dangerouslySetInnerHTML={markup}
+        className="mt-2 min-h-32 w-full min-w-0 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] border border-line-soft bg-field-bg px-2 py-1.5 text-sm transition-colors focus:border-ink focus:bg-white focus:outline-none [&:empty]:before:text-muted [&:empty]:before:content-[attr(data-placeholder)] [&_img]:my-1 [&_img]:max-w-full [&_img]:cursor-[ew-resize] [&_img]:rounded [&_img]:border [&_img]:border-line-soft [&_table]:my-2 [&_table]:border-collapse [&_th]:border [&_th]:border-line [&_th]:bg-line-soft [&_th]:px-2 [&_th]:py-1 [&_th]:font-semibold [&_td]:border [&_td]:border-line [&_td]:px-2 [&_td]:py-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5"
+      />
+    </div>
   );
 }

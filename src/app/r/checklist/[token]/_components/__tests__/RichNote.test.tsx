@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { RichNote } from "../RichNote";
 
 describe("RichNote (메모 리치 에디터)", () => {
@@ -73,5 +73,44 @@ describe("RichNote (메모 리치 에디터)", () => {
     const range = window.getSelection()?.getRangeAt(0);
     expect(range?.startContainer).toBe(img.parentNode);
     expect(range?.cloneContents().querySelector("img")).not.toBeNull();
+  });
+
+  it("그림을 누르면 크기 버튼이 뜨고, 고르면 편집 칸 폭 기준으로 줄여 저장한다", () => {
+    const onSave = vi.fn();
+    render(
+      <RichNote
+        initialHtml='<img src="https://x/a.png" alt="첨부 이미지">'
+        onSave={onSave}
+        onPasteImage={async () => null}
+      />,
+    );
+    const box = screen.getByRole("textbox");
+    Object.defineProperty(box, "clientWidth", { value: 808, configurable: true });
+    expect(screen.queryByRole("group", { name: "그림 크기" })).toBeNull();
+    const img = screen.getByAltText("첨부 이미지");
+    fireEvent.mouseDown(img, { clientX: 10 });
+    fireEvent.mouseUp(window, { clientX: 10 });
+    const bar = screen.getByRole("group", { name: "그림 크기" });
+    fireEvent.click(within(bar).getByRole("button", { name: "중간" }));
+    expect(img.getAttribute("width")).toBe("400");
+    expect(onSave).toHaveBeenLastCalledWith(expect.stringContaining('width="400"'));
+    fireEvent.click(within(bar).getByRole("button", { name: "원래대로" }));
+    expect(img.hasAttribute("width")).toBe(false);
+  });
+
+  it("그림 밖을 누르면 크기 버튼이 사라진다", () => {
+    render(
+      <RichNote
+        initialHtml='<p>글</p><img src="https://x/a.png" alt="첨부 이미지">'
+        onSave={() => {}}
+        onPasteImage={async () => null}
+      />,
+    );
+    const img = screen.getByAltText("첨부 이미지");
+    fireEvent.mouseDown(img, { clientX: 10 });
+    fireEvent.mouseUp(window, { clientX: 10 });
+    expect(screen.getByRole("group", { name: "그림 크기" })).toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByText("글"));
+    expect(screen.queryByRole("group", { name: "그림 크기" })).toBeNull();
   });
 });
