@@ -60,7 +60,8 @@ const SEG_IDLE = "border-transparent hover:border-ink";
  * 대학구분 칸 — lg 이상은 차주 오픈/마감 카드의 두 칸과 같은 모양(작은 라벨 위·숫자 아래, 세로선, 균등 배열).
  * lg 미만은 카드가 좁아 칸으로 나누면 글자가 한 자씩 꺾인다 — `라벨 … 건수` 한 줄씩 세로로 쌓는다.
  * lg 이상에서도 칸은 글자보다 좁아지지 않는다(`lg:min-w-fit`) — 차주 오픈/마감은 카드 반쪽에 칸 넷이 들어가
- * 줄어든 칸의 숫자가 다음 세로선을 덮었다. 모자라면 다음 줄로 넘긴다.
+ * 줄어든 칸의 숫자가 다음 세로선을 덮었다. 모자라면 다음 줄로 넘기고, 숫자 오른쪽에도 여백(`lg:pr-2`)을 둬
+ * 빠듯한 칸에서도 `129 건` 이 선에 붙지 않게 한다.
  */
 function UnivCells({ cells }: { cells: UnivBreakdown }) {
   if (cells.length === 0) return null;
@@ -73,7 +74,7 @@ function UnivCells({ cells }: { cells: UnivBreakdown }) {
           ) : null}
           <div
             data-testid="weekly-kpi-univ"
-            className="flex min-w-0 flex-1 items-baseline justify-between gap-1 whitespace-nowrap lg:flex-col lg:items-start lg:justify-start lg:gap-0"
+            className="flex min-w-0 flex-1 items-baseline justify-between gap-1 whitespace-nowrap lg:flex-col lg:items-start lg:justify-start lg:gap-0 lg:pr-2"
           >
             <span className="text-2xs text-muted">{c.label}</span>
             <span className="text-sm font-bold tabular-nums text-ink">

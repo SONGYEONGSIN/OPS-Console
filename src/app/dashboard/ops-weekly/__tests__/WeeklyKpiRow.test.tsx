@@ -603,6 +603,8 @@ describe("WeeklyKpiRow", () => {
     cells.forEach((c) =>
       expect(c.parentElement?.className.split(/\s+/)).toContain("lg:min-w-fit"),
     );
+    // 숫자 오른쪽에도 여백 — 칸이 빠듯해도 `129 건` 이 다음 세로선에 붙지 않는다
+    cells.forEach((c) => expect(c.className.split(/\s+/)).toContain("lg:pr-2"));
     const wrap = cells[0].parentElement?.parentElement as HTMLElement;
     expect(wrap.className.split(/\s+/)).toEqual(
       expect.arrayContaining(["lg:flex-wrap", "lg:gap-y-1"]),
