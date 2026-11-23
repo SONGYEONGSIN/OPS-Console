@@ -260,10 +260,38 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
         .getByRole("heading", { name: "프로젝트" })
         .closest('[role="tabpanel"]');
       expect(panel).toHaveAttribute("id", "area-panel-project");
-      expect(screen.getByRole("heading", { name: "TF" })).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "특이사항" })).toBeNull();
       unmount();
     }
+  });
+
+  it("TF 절은 TF 담당자에게만 — 맡은 TF 가 없으면 TF 절이 없다", async () => {
+    setUrl("?week=2026-11-16&tab=project");
+    state.view = viewFor("project", false);
+    const first = await renderPage("project");
+    expect(screen.getByRole("heading", { name: "프로젝트" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "TF" })).toBeNull();
+    first.unmount();
+    state.view = viewFor("project", false, {
+      detail: {
+        ...EMPTY,
+        projects: [
+          {
+            projectId: "t1",
+            projectName: "인증 TF",
+            kind: "tf",
+            sortOrder: 1,
+            operatorEmail: "a@example.com",
+            operatorName: "홍길동",
+            stage: null,
+            thisWeek: "",
+            nextWeek: "",
+          },
+        ],
+      },
+    });
+    await renderPage("project");
+    expect(screen.getByRole("heading", { name: "TF" })).toBeInTheDocument();
   });
 
   it("구분 수집 전 주: KPI 카드와 하위 탭이 같은 기본(운영 중)을 가리킨다", async () => {
