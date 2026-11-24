@@ -6,6 +6,7 @@ const {
   mockUpdateResult,
   mockDeleteResult,
   mockSendIncidentMail,
+  mockLogActivity,
   insertPayloads,
   updatePatches,
   deleteEqIds,
@@ -15,6 +16,7 @@ const {
   mockUpdateResult: vi.fn(),
   mockDeleteResult: vi.fn(),
   mockSendIncidentMail: vi.fn(),
+  mockLogActivity: vi.fn(),
   insertPayloads: [] as unknown[],
   updatePatches: [] as unknown[],
   deleteEqIds: [] as string[],
@@ -23,6 +25,9 @@ const {
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/features/auth/queries", () => ({
   getCurrentOperator: mockGetCurrentOperator,
+}));
+vi.mock("@/features/worklog/log", () => ({
+  logActivity: mockLogActivity,
 }));
 vi.mock("../mail-actions", () => ({
   sendIncidentMail: mockSendIncidentMail,
@@ -106,12 +111,31 @@ beforeEach(() => {
   mockDeleteResult.mockReset();
   mockSendIncidentMail.mockReset();
   mockSendIncidentMail.mockResolvedValue({ ok: true, status: "sent" });
+  mockLogActivity.mockReset();
   insertPayloads.length = 0;
   updatePatches.length = 0;
   deleteEqIds.length = 0;
 });
 
 describe("createIncident", () => {
+  it("메일 참조(이사님·영업자)와 못 채운 사정을 활동 로그에 남긴다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockInsertResult.mockReturnValue({ data: baseRow, error: null });
+    mockSendIncidentMail.mockResolvedValue({
+      ok: true,
+      status: "sent",
+      cc: ["llh@jinhak.com"],
+      ccNote: "영업자 김은호 — 조직권한 영업팀에 없음",
+    });
+
+    await createIncident(validInput);
+
+    const arg = mockLogActivity.mock.calls[0][0];
+    expect(arg.msg).toContain("참조 1명");
+    expect(arg.msg).toContain("영업자 김은호 — 조직권한 영업팀에 없음");
+    expect(arg.metadata).toMatchObject({ mail_cc: ["llh@jinhak.com"] });
+  });
+
   it("정상 입력 → 부모 insert + 본인 자동 + 운영1팀 → 허승철 자동", async () => {
     mockGetCurrentOperator.mockResolvedValue(meOperator);
     mockInsertResult.mockReturnValue({ data: baseRow, error: null });

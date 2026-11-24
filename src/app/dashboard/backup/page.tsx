@@ -7,6 +7,7 @@ import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listOperators } from "@/features/operators/queries";
+import { pickableOperators } from "@/features/operators/pickable";
 import { listBackupRequests } from "@/features/backup-requests/queries";
 import {
   createBackupRequest,
@@ -54,8 +55,8 @@ export default async function BackupPage({
   const canEdit = me?.permission === "admin" || me?.permission === "member";
 
   const allOperators = await listOperators();
-  const backupOperators = allOperators
-    .filter((op) => op.status === "active" && op.email !== me?.email)
+  const backupOperators = pickableOperators(allOperators)
+    .filter((op) => op.email !== me?.email)
     .map((op) => ({ email: op.email, name: op.name }));
 
   // closing(서비스 마감) 카탈로그 light projection — EditForm multi-select 후보용.

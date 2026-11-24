@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentOperator, type CurrentOperator } from "@/features/auth/queries";
 import { canEditOperators } from "@/features/auth/permission";
+import { departmentOfTeam } from "@/features/auth/operators";
 import {
   operatorCreateSchema,
   operatorUpdateSchema,
@@ -47,11 +48,15 @@ export async function createOperator(
 
   // member 신규 등록 시 allowed_menus 미제공이면 default 정책 적용
   // (admin은 bypass / viewer는 명시적 비어 있음)
-  const payload =
+  const withMenus =
     parsed.data.permission === "member" &&
     (!parsed.data.allowed_menus || parsed.data.allowed_menus.length === 0)
       ? { ...parsed.data, allowed_menus: getDefaultMemberMenus() }
       : parsed.data;
+  const payload = {
+    ...withMenus,
+    department: departmentOfTeam(parsed.data.team),
+  };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -114,9 +119,13 @@ export async function updateOperator(
     }
   }
 
+  // 팀이 바뀌면 부서도 따라간다 — 영업팀은 영업부(운영부 뉴스레터에서 빠진다).
+  const patch = parsed.data.team
+    ? { ...parsed.data, department: departmentOfTeam(parsed.data.team) }
+    : parsed.data;
   const { data, error } = await supabase
     .from("operators")
-    .update(parsed.data)
+    .update(patch)
     .eq("id", id)
     .select()
     .single();

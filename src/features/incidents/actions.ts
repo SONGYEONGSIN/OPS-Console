@@ -61,8 +61,14 @@ export async function createIncident(
   if (error) return { ok: false, error: error.message };
 
   // 보고자 메일 알림 — 비차단 (실패해도 사고 저장 결과는 ok)
+  let mailCc: string[] = [];
+  let mailNote = "";
   try {
-    await sendIncidentMail({ incidentId: data.id });
+    const mail = await sendIncidentMail({ incidentId: data.id });
+    if (mail.ok) {
+      mailCc = mail.cc ?? [];
+      mailNote = mail.ccNote ? ` [${mail.ccNote}]` : "";
+    }
   } catch (e) {
     console.error("[createIncident] mail send failed:", e);
   }
@@ -73,10 +79,11 @@ export async function createIncident(
     target_type: "incidents",
     target_id: data.id,
     target_name: parsed.data.title,
-    msg: `사고 보고 생성 — ${parsed.data.category}`,
+    msg: `사고 보고 생성 — ${parsed.data.category}${mailCc.length ? ` (참조 ${mailCc.length}명)` : ""}${mailNote}`,
     metadata: {
       university: parsed.data.university_name,
       year: parsed.data.year,
+      mail_cc: mailCc,
     },
   });
 

@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { isSalesTeam } from "@/features/auth/operators";
 import type { IncidentReportRow, ReportStatus } from "./schemas";
 
 export type OperatorLite = {
@@ -17,7 +18,9 @@ export type ApprovalChain = {
   ceo: { name: string; role: string } | null;
 };
 
-export function pickApprovalChain(author: OperatorLite, all: OperatorLite[]): ApprovalChain {
+export function pickApprovalChain(author: OperatorLite, everyone: OperatorLite[]): ApprovalChain {
+  // 영업팀은 사고보고 메일 참조용으로만 등재돼 결재선에 들지 않는다.
+  const all = everyone.filter((o) => !isSalesTeam(o.team));
   const byLeaderName = author.leader ? (all.find((o) => o.name === author.leader) ?? null) : null;
   const teamLead =
     byLeaderName ?? all.find((o) => o.team === author.team && o.role === "팀장") ?? null;

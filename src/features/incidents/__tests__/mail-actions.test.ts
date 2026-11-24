@@ -7,7 +7,9 @@ const {
   mockGetById,
   mockAdminInsert,
   mockAdminOpsSelect,
+  mockLoadIncidentCc,
 } = vi.hoisted(() => ({
+  mockLoadIncidentCc: vi.fn(),
   mockGetCurrentOperator: vi.fn(),
   mockSendGraphMail: vi.fn(),
   mockRenderPdf: vi.fn(),
@@ -30,6 +32,10 @@ vi.mock("@/lib/pdf/incident-pdf", () => ({
 
 vi.mock("../queries", () => ({
   getIncidentById: mockGetById,
+}));
+
+vi.mock("../cc-queries", () => ({
+  loadIncidentCc: mockLoadIncidentCc,
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -95,6 +101,8 @@ beforeEach(() => {
     }),
   });
   mockRenderPdf.mockResolvedValue(Buffer.from("pdf-bytes"));
+  mockLoadIncidentCc.mockReset();
+  mockLoadIncidentCc.mockResolvedValue({ cc: [], note: null });
   delete process.env.MAIL_DRY_RUN;
 });
 
@@ -179,5 +187,76 @@ describe("sendIncidentMail — Graph 실패", () => {
     expect(insertArg.status).toBe("failed");
     expect(insertArg.error_message).toContain("unauthorized");
     expect(insertArg.graph_message_id).toBeNull();
+  });
+});
+
+describe("sendIncidentMail — 4년제 참조(이사님·영업자)", () => {
+  it("참조 대상을 대학·보고자로 찾아 CC 로 보낸다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(me);
+    mockGetById.mockResolvedValue(incident);
+    mockSendGraphMail.mockResolvedValue({ ok: true, messageId: "m" });
+    mockLoadIncidentCc.mockResolvedValue({
+      cc: [
+        { email: "llh@jinhak.com", name: "이이화" },
+        { email: "sales@jinhakapply.com", name: "윤영호" },
+      ],
+      note: null,
+    });
+
+    const result = await sendIncidentMail({ incidentId: incident.id });
+
+    expect(mockLoadIncidentCc).toHaveBeenCalledWith(
+      "한양대학교",
+      "alcure23@jinhakapply.com",
+    );
+    expect(mockSendGraphMail.mock.calls[0][0].cc).toEqual([
+      { email: "llh@jinhak.com", name: "이이화" },
+      { email: "sales@jinhakapply.com", name: "윤영호" },
+    ]);
+    expect(result).toMatchObject({
+      ok: true,
+      cc: ["llh@jinhak.com", "sales@jinhakapply.com"],
+    });
+  });
+
+  it("참조가 없으면 cc 를 안 넘긴다(받는 사람만)", async () => {
+    mockGetCurrentOperator.mockResolvedValue(me);
+    mockGetById.mockResolvedValue(incident);
+    mockSendGraphMail.mockResolvedValue({ ok: true, messageId: "m" });
+
+    await sendIncidentMail({ incidentId: incident.id });
+
+    expect(mockSendGraphMail.mock.calls[0][0].cc).toBeUndefined();
+  });
+
+  it("참조를 못 채운 사정(note)을 결과로 돌려준다 — 활동 로그에 남긴다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(me);
+    mockGetById.mockResolvedValue(incident);
+    mockSendGraphMail.mockResolvedValue({ ok: true, messageId: "m" });
+    mockLoadIncidentCc.mockResolvedValue({
+      cc: [{ email: "llh@jinhak.com", name: "이이화" }],
+      note: "영업자 김은호 — 조직권한 영업팀에 없음",
+    });
+
+    const result = await sendIncidentMail({ incidentId: incident.id });
+
+    expect(result).toMatchObject({
+      ok: true,
+      ccNote: "영업자 김은호 — 조직권한 영업팀에 없음",
+    });
+  });
+
+  it("dry_run 에도 참조를 계산해 돌려준다", async () => {
+    process.env.MAIL_DRY_RUN = "true";
+    mockGetCurrentOperator.mockResolvedValue(me);
+    mockGetById.mockResolvedValue(incident);
+    mockLoadIncidentCc.mockResolvedValue({
+      cc: [{ email: "llh@jinhak.com", name: "이이화" }],
+      note: null,
+    });
+
+    const result = await sendIncidentMail({ incidentId: incident.id });
+
+    expect(result).toMatchObject({ ok: true, status: "dry_run", cc: ["llh@jinhak.com"] });
   });
 });
