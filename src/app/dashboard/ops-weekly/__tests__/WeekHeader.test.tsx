@@ -46,9 +46,7 @@ const base = {
   submittedAt: null,
   prevOpen: false,
   prevHref: "/dashboard/ops-weekly?week=2026-11-09&tab=application",
-  thisWeekHref: "/dashboard/ops-weekly?week=2026-11-16&tab=application",
-  nextWeekHref: "/dashboard/ops-weekly?week=2026-11-23&tab=application",
-  current: "this" as "this" | "next" | null,
+  nextHref: "/dashboard/ops-weekly?week=2026-11-23&tab=application",
 };
 
 const tokens = (el: Element) => el.className.split(/\s+/);
@@ -123,42 +121,16 @@ describe("WeekHeader", () => {
     );
   });
 
-  it("운영리포트처럼 — 제목 주간업무보고, 그 아래 이번 주 일정", () => {
+  it("‹ › 주 이동 링크", () => {
     render(<WeekHeader {...base} />);
-    const h = screen.getByRole("heading", { name: "주간업무보고" });
-    expect(tokens(h)).toEqual(
-      expect.arrayContaining(["text-xl", "font-bold", "text-ink"]),
+    expect(screen.getByRole("link", { name: "이전 주" })).toHaveAttribute(
+      "href",
+      base.prevHref,
     );
-    const sched = screen.getByText("2026년 11월 3주차 · 11/16~11/20");
-    expect(tokens(sched)).toEqual(
-      expect.arrayContaining(["text-xs", "text-muted", "tabular-nums"]),
+    expect(screen.getByRole("link", { name: "다음 주" })).toHaveAttribute(
+      "href",
+      base.nextHref,
     );
-    expect(h.parentElement).toBe(sched.parentElement);
-  });
-
-  it("오른쪽엔 이번 주·다음 주 버튼뿐 — 보는 주가 켜진다(운영리포트 기간 버튼 모양)", () => {
-    render(<WeekHeader {...base} />);
-    const group = screen.getByRole("group", { name: "주 선택" });
-    const links = Array.from(group.querySelectorAll("a"));
-    expect(links.map((l) => l.textContent)).toEqual(["이번 주", "다음 주"]);
-    const [thisW, nextW] = links;
-    expect(thisW).toHaveAttribute("href", base.thisWeekHref);
-    expect(nextW).toHaveAttribute("href", base.nextWeekHref);
-    expect(thisW).toHaveAttribute("aria-current", "page");
-    expect(tokens(thisW)).toEqual(
-      expect.arrayContaining(["border-vermilion", "bg-vermilion", "text-cream"]),
-    );
-    expect(nextW).not.toHaveAttribute("aria-current");
-    expect(tokens(nextW)).toEqual(
-      expect.arrayContaining(["border-line", "hover:bg-ink", "hover:text-cream"]),
-    );
-    expect(screen.queryByRole("link", { name: "이전 주" })).toBeNull();
-  });
-
-  it("다른 주를 보는 중이면 둘 다 꺼진다", () => {
-    render(<WeekHeader {...base} current={null} />);
-    const group = screen.getByRole("group", { name: "주 선택" });
-    expect(group.querySelector("[aria-current]")).toBeNull();
   });
 
   it("내 보고 | 전체 보고 — 지금 영역으로 가는 링크, 전체는 op=all", () => {
@@ -258,7 +230,20 @@ describe("WeekHeader", () => {
     expect(screen.queryByText(/^당번 /)).toBeNull();
   });
 
-  it("내 보고서에서 주 버튼은 지금 영역(URL)을 따라간다 — week·op 순서 유지", () => {
+  it("주 이동: 이전·다음 링크와 주 표시가 줄바꿈 없는 한 묶음(min-w-0)", () => {
+    render(<WeekHeader {...base} />);
+    const prev = screen.getByRole("link", { name: "이전 주" });
+    const next = screen.getByRole("link", { name: "다음 주" });
+    expect(prev.parentElement).toBe(next.parentElement);
+    const group = (prev.parentElement as Element).className.split(/\s+/);
+    expect(group).toContain("min-w-0");
+    expect(group).not.toContain("flex-wrap");
+    const label = screen.getByText("2026년 11월 3주차 · 11/16~11/20");
+    expect(label.parentElement).toBe(prev.parentElement);
+    expect(label.className.split(/\s+/)).toContain("min-w-0");
+  });
+
+  it("내 보고서에서 주 이동 링크는 지금 영역(URL)을 따라간다 — week·op 순서 유지", () => {
     setUrl("?week=2026-11-16&tab=pims");
     render(<WeekHeader {...base} />);
     const next = screen.getByRole("link", { name: "다음 주" });
@@ -269,9 +254,10 @@ describe("WeekHeader", () => {
     render(
       <WeekHeader
         {...base}
-        nextWeekHref="/dashboard/ops-weekly?week=2026-11-23&tab=project&op=b%40example.com"
+        nextHref="/dashboard/ops-weekly?week=2026-11-23&tab=project&op=b%40example.com"
       />,
     );
+    // 프로젝트·TF 는 이제 영역 탭 — 주를 넘겨도 그 탭에 머문다.
     expect(
       screen.getByRole("link", { name: "다음 주" }).getAttribute("href"),
     ).toBe(
@@ -284,7 +270,7 @@ describe("WeekHeader", () => {
     render(<WeekHeader {...base} showReportState={false} />);
     expect(screen.getByRole("link", { name: "다음 주" })).toHaveAttribute(
       "href",
-      base.nextWeekHref,
+      base.nextHref,
     );
   });
 
@@ -344,10 +330,21 @@ describe("WeekHeader", () => {
       ).toBeInTheDocument();
     });
 
-    it("내 보고 | 전체 보고 토글 칸은 오늘 할 일 MineScopeToggle 과 같은 px-3 py-1 text-xs", () => {
+    it("주 이동은 오늘 할 일과 같은 글씨 — 버튼 text-sm·border-line·같은 치수, 주 표시 text-base bold tracking", () => {
       render(<WeekHeader {...base} />);
+      const t = tokens(screen.getByRole("link", { name: "이전 주" }));
+      expect(t).toEqual(expect.arrayContaining(["text-sm", "border-line", "text-ink"]));
+      // 높이는 오늘 할 일 ‹ › 그대로(py-1 + text-sm 줄높이 + 테두리 = 30px), 가로만 같게 — 정사각형
+      expect(t).toEqual(expect.arrayContaining(["size-7.5", "justify-center"]));
+      expect(t).not.toContain("px-2");
+      // 토글 칸은 오늘 할 일 MineScopeToggle 과 같은 px-3 py-1 text-xs, 고정 높이 없음
       const seg = tokens(screen.getByRole("link", { name: "전체 보고서" }));
       expect(seg).toEqual(expect.arrayContaining(["px-3", "py-1", "text-xs"]));
+      const toggle = screen.getByRole("link", { name: "전체 보고서" }).parentElement as HTMLElement;
+      expect(toggle.className.split(/\s+/)).not.toContain("h-9");
+      expect(t).not.toContain("text-xs");
+      const label = tokens(screen.getByText(/주차 · /));
+      expect(label).toEqual(expect.arrayContaining(["text-base", "font-bold", "tracking-[-0.02em]"]));
     });
   });
 });

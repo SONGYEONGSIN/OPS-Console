@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { stageBreakdowns } from "@/features/ops-weekly/merge";
 import { PageTabs } from "@/components/common/PageTabs";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { OPS_WEEKLY_SLUG } from "@/features/ops-weekly/constants";
 import { dutyNameOf } from "@/features/ops-weekly/overview";
-import { shiftWeek, weekOf, type WeekRef } from "@/features/ops-weekly/week";
+import { shiftWeek, type WeekRef } from "@/features/ops-weekly/week";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
@@ -163,8 +164,6 @@ function WeekView({ view }: { view: Week }) {
   const op = otherOpOf(view);
   const weekStart = week.week_start;
   const { kpis } = view;
-  // 주 버튼의 '이번 주' 는 달력의 이번 주(KST)다 — 보고가 끝나 다음 주가 열렸어도 이번 주는 이번 주다.
-  const thisWeek = weekOf(new Date()).weekStart;
   const showKpi = (viewed !== null || view.all !== null) && kpis !== null;
   // 내 보고 | 전체 보고 — 작성자 전원과 남의 보고서를 열 수 있는 사람(전체 보고를 볼 수 있는 사람)에게만.
   const isWriter = view.roles.includes("report");
@@ -210,15 +209,7 @@ function WeekView({ view }: { view: Week }) {
         returnReason={report?.return_reason ?? null}
         prevOpen={view.prevOpen}
         prevHref={opsWeeklyHref(shiftWeek(weekStart, -1), tab, op)}
-        thisWeekHref={opsWeeklyHref(thisWeek, tab, op)}
-        nextWeekHref={opsWeeklyHref(shiftWeek(thisWeek, 1), tab, op)}
-        current={
-          weekStart === thisWeek
-            ? "this"
-            : weekStart === shiftWeek(thisWeek, 1)
-              ? "next"
-              : null
-        }
+        nextHref={opsWeeklyHref(shiftWeek(weekStart, 1), tab, op)}
       />
         {showKpi ? (
           <StickyKpiBar>
@@ -231,6 +222,15 @@ function WeekView({ view }: { view: Week }) {
               weekStart={weekStart}
               op={op}
               appSubState={appSubStateOf(view.snapshot?.application)}
+              breakdowns={
+                view.snapshot !== null && view.detail !== null
+                  ? stageBreakdowns(
+                      view.snapshot,
+                      view.detail.overrides,
+                      view.detail.manual,
+                    )
+                  : undefined
+              }
             />
           </StickyKpiBar>
         ) : null}

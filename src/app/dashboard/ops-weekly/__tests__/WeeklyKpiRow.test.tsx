@@ -3,6 +3,7 @@ import {
   render,
   screen,
   cleanup,
+  within,
   fireEvent,
   act,
 } from "@testing-library/react";
@@ -34,16 +35,7 @@ import { setUrl } from "./search-params-mock";
 const BASE = { weekStart: "2026-11-16", op: null } as const;
 const W = "/dashboard/ops-weekly?week=2026-11-16";
 
-const KPIS = {
-  dev: 1,
-  test: 2,
-  opening: 3,
-  running: 4,
-  closing: 5,
-  pims: 6,
-  scoreCalc: null,
-  leave: 8,
-};
+const KPIS = { dev: 1, test: 2, opening: 3, running: 4, closing: 5, pims: 6 };
 
 beforeEach(() => {
   setUrl("?week=2026-11-16&tab=application");
@@ -54,7 +46,7 @@ afterEach(() => {
 });
 
 describe("WeeklyKpiRow", () => {
-  it("카드 8장 라벨 순서 + 수집 전은 '구분 미확인'(0 아님)", () => {
+  it("카드 라벨 순서(합격자 발표가 맨 끝) + 수집 전은 '구분 미확인'(0 아님)", () => {
     render(
       <WeeklyKpiRow
         {...BASE}
@@ -66,25 +58,21 @@ describe("WeeklyKpiRow", () => {
           running: 5,
           closing: 1,
           pims: 0,
-          scoreCalc: null,
-          leave: 0,
         }}
       />,
     );
     expect(
       screen.getAllByTestId("weekly-kpi-label").map((n) => n.textContent),
     ).toEqual([
-      "운영 중",
       "개발 중",
       "테스트 중",
+      "운영 중",
       "차주 오픈 예정",
-      "합격자 발표",
-      "성적산출",
-      "휴가·외근",
       "차주 마감 예정",
+      "합격자 발표",
     ]);
     expect(screen.getAllByText("구분 미확인")).toHaveLength(2);
-    expect(screen.getAllByText("0")).toHaveLength(2);
+    expect(screen.getByText("0")).toBeInTheDocument();
     expect(screen.queryByText("PIMS 발표 예정")).toBeNull();
   });
 
@@ -93,16 +81,7 @@ describe("WeeklyKpiRow", () => {
       <WeeklyKpiRow
         {...BASE}
         ownerName="홍길동"
-        kpis={{
-          dev: 3,
-          test: 1,
-          opening: 2,
-          running: 5,
-          closing: 1,
-          pims: 0,
-          scoreCalc: null,
-          leave: 0,
-        }}
+        kpis={{ dev: 3, test: 1, opening: 2, running: 5, closing: 1, pims: 0 }}
         unknownCount={4}
       />,
     );
@@ -114,16 +93,7 @@ describe("WeeklyKpiRow", () => {
       <WeeklyKpiRow
         {...BASE}
         ownerName="홍길동"
-        kpis={{
-          dev: 3,
-          test: 1,
-          opening: 2,
-          running: 5,
-          closing: 1,
-          pims: 0,
-          scoreCalc: null,
-          leave: 0,
-        }}
+        kpis={{ dev: 3, test: 1, opening: 2, running: 5, closing: 1, pims: 0 }}
         unknownCount={0}
       />,
     );
@@ -151,29 +121,62 @@ describe("WeeklyKpiRow", () => {
           running: 5,
           closing: 1,
           pims: 0,
-          scoreCalc: null,
-          leave: 0,
         }}
       />,
     );
     const units = screen.getAllByText("건");
-    expect(units).toHaveLength(5);
+    expect(units).toHaveLength(4);
     expect(units[0].className.split(/\s+/)).toContain("text-muted");
   });
 
-  it("카드는 운영리포트 KpiCard 모양 — 라벨·큰 숫자·단위뿐, 대학구분 칸·묶음 카드가 없다", () => {
-    render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
-    expect(screen.queryByRole("group")).toBeNull();
-    expect(screen.queryAllByTestId("weekly-kpi-univ")).toHaveLength(0);
-    const card = screen.getByText("휴가·외근").closest("a") as Element;
-    expect(card.className.split(/\s+/)).toEqual(
-      expect.arrayContaining(["border", "p-4", "gap-1", "bg-situation-bg"]),
-    );
-    const num = screen.getByText("8").className.split(/\s+/);
-    expect(num).toEqual(
-      expect.arrayContaining(["text-2xl", "font-bold", "tabular-nums"]),
-    );
-    expect(num).not.toContain("font-mono");
+  describe("차주 오픈·마감은 한 장", () => {
+    const kpis = { ...KPIS, opening: 2, running: 5, closing: 7, pims: 0 };
+    const tok = (el: Element) => el.className.split(/\s+/);
+
+    it("카드 하나(group)가 두 칸을 품고, 합계는 내지 않는다", () => {
+      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={kpis} />);
+      const card = screen.getByRole("group", { name: "차주 오픈 / 마감" });
+      expect(card).toHaveTextContent("차주 오픈 예정");
+      expect(card).toHaveTextContent("차주 마감 예정");
+      // 2 + 7 = 9 를 적지 않는다 — 겹칠 수 있어 합이 뜻을 잃는다
+      expect(card).not.toHaveTextContent("9");
+      // 폰·태블릿 3열에서는 두 칸, lg 5열에서는 다른 카드와 같은 한 칸
+      expect(tok(card)).toEqual(
+        expect.arrayContaining(["col-span-2", "lg:col-span-1"]),
+      );
+      expect(tok(card)).toContain("border-line-soft");
+      expect(tok(card)).toContain("bg-situation-bg");
+    });
+
+    it("칸 사이에 세로 구분선, 숫자는 tabular-nums", () => {
+      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={kpis} />);
+      const card = screen.getByRole("group", { name: "차주 오픈 / 마감" });
+      const dividers = card.querySelectorAll(".w-px");
+      expect(dividers).toHaveLength(1);
+      expect(tok(dividers[0])).toContain("bg-line-soft");
+      const num = screen.getByText("7");
+      expect(tok(num)).toContain("tabular-nums");
+      expect(tok(num)).not.toContain("font-mono");
+    });
+
+    it("좁은 화면에서도 칸이 넘치지 않는다(min-w-0 + 줄바꿈 허용)", () => {
+      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={kpis} />);
+      const card = screen.getByRole("group", { name: "차주 오픈 / 마감" });
+      const row = card.querySelector(".w-px")?.parentElement?.parentElement;
+      expect(row).toBeTruthy();
+      expect(tok(row as Element)).toContain("flex");
+      const segs = card.querySelectorAll("[data-segment]");
+      expect(segs).toHaveLength(2);
+      segs.forEach((n) => expect(tok(n)).toContain("min-w-0"));
+    });
+
+    it("바깥은 링크가 아니라 group(호버 없음), 두 칸이 각각 링크", () => {
+      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={kpis} />);
+      const card = screen.getByRole("group", { name: "차주 오픈 / 마감" });
+      expect(card.tagName).not.toBe("A");
+      expect(card.querySelectorAll("a")).toHaveLength(2);
+      expect(card.className).not.toContain("hover:");
+    });
   });
 
   describe("카드는 링크다", () => {
@@ -188,7 +191,6 @@ describe("WeeklyKpiRow", () => {
       expect(hrefOf("차주 오픈 예정")).toBe(`${W}&tab=application&sub=opening`);
       expect(hrefOf("차주 마감 예정")).toBe(`${W}&tab=application&sub=closing`);
       expect(hrefOf("합격자 발표")).toBe(`${W}&tab=pims`);
-      expect(hrefOf("휴가·외근")).toBe(`${W}&tab=leave`);
     });
 
     it("남의 보고서를 보는 중이면 op 를 유지한다", () => {
@@ -220,7 +222,7 @@ describe("WeeklyKpiRow", () => {
       expect(test.className).toContain("focus-visible:outline-2");
     });
 
-    it("sub 가 URL 에 있으면 그 카드가 활성", () => {
+    it("sub 가 URL 에 있으면 그 카드가 활성, 오픈·마감은 칸 단위", () => {
       setUrl("?week=2026-11-16&tab=application&sub=closing");
       render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
       const closing = screen.getByText("차주 마감 예정").closest("a");
@@ -228,7 +230,7 @@ describe("WeeklyKpiRow", () => {
       expect(closing?.className).toContain("border-vermilion");
       const opening = screen.getByText("차주 오픈 예정").closest("a");
       expect(opening).not.toHaveAttribute("aria-current");
-      expect(opening?.className).toContain("border-line-soft");
+      expect(opening?.className).toContain("border-transparent");
       expect(opening?.className).toContain("hover:border-ink");
       expect(screen.getByText("개발 중").closest("a")).not.toHaveAttribute(
         "aria-current",
@@ -245,12 +247,6 @@ describe("WeeklyKpiRow", () => {
       expect(screen.getByText("개발 중").closest("a")).not.toHaveAttribute(
         "aria-current",
       );
-    });
-
-    it("성적산출은 데이터 연결 전 — 링크가 아니고 숫자 대신 '연결 전'", () => {
-      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
-      expect(screen.getByText("성적산출").closest("a")).toBeNull();
-      expect(screen.getByText("연결 전")).toBeInTheDocument();
     });
 
     it("같은 탭 안에서 누르면 이동 없이 URL 의 sub 만 바뀐다", () => {
@@ -290,20 +286,10 @@ describe("WeeklyKpiRow", () => {
     it("PIMS 탭에서 합격자 발표 카드는 서버를 안 거치고 금주 발표로 돌린다", () => {
       setUrl("?week=2026-11-16&tab=pims&sub=nextWeek");
       render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
-      const link = screen
-        .getByText("합격자 발표")
-        .closest("a") as HTMLElement;
+      const link = screen.getByText("합격자 발표").closest("a") as HTMLElement;
+      expect(link.getAttribute("href")).toBe(`${W}&tab=pims`);
       expect(fireEvent.click(link)).toBe(false);
       expect(window.location.search).toContain("sub=thisWeek");
-    });
-
-    it("휴가·외근 카드는 tab=leave 로 바꾸고 sub 를 지운다", () => {
-      setUrl("?week=2026-11-16&tab=application&sub=dev");
-      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
-      const link = screen.getByText("휴가·외근").closest("a") as HTMLElement;
-      expect(fireEvent.click(link)).toBe(false);
-      expect(window.location.search).toBe("?week=2026-11-16&tab=leave");
-      expect(link).toHaveAttribute("aria-current", "true");
     });
 
     it("구분 미수집 주: 기본 활성은 운영 중, 수집된 주는 개발 중", () => {
@@ -356,9 +342,7 @@ describe("WeeklyKpiRow", () => {
     it("다른 영역 카드(합격자 발표)도 가로채 tab=pims·sub=thisWeek 로 바꾼다", () => {
       setUrl("?week=2026-11-16&tab=application&sub=dev");
       render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
-      const link = screen
-        .getByText("합격자 발표")
-        .closest("a") as HTMLElement;
+      const link = screen.getByText("합격자 발표").closest("a") as HTMLElement;
       expect(fireEvent.click(link)).toBe(false);
       expect(window.location.search).toBe(
         "?week=2026-11-16&tab=pims&sub=thisWeek",
@@ -375,9 +359,9 @@ describe("WeeklyKpiRow", () => {
         "?week=2026-11-16&tab=application&sub=running",
       );
       expect(link).toHaveAttribute("aria-current", "true");
-      expect(
-        screen.getByText("합격자 발표").closest("a"),
-      ).not.toHaveAttribute("aria-current");
+      expect(screen.getByText("합격자 발표").closest("a")).not.toHaveAttribute(
+        "aria-current",
+      );
     });
 
     it("남의 보고서(op)를 보는 중이어도 클릭이 op 를 지우지 않는다", () => {
@@ -385,9 +369,7 @@ describe("WeeklyKpiRow", () => {
       render(
         <WeeklyKpiRow {...BASE} op="a@x" ownerName="홍길동" kpis={KPIS} />,
       );
-      fireEvent.click(
-        screen.getByText("합격자 발표").closest("a") as Element,
-      );
+      fireEvent.click(screen.getByText("합격자 발표").closest("a") as Element);
       expect(window.location.search).toBe(
         "?week=2026-11-16&tab=pims&op=a%40x&sub=thisWeek",
       );
@@ -395,9 +377,7 @@ describe("WeeklyKpiRow", () => {
 
     it("수정 키 클릭은 다른 영역 카드도 가로채지 않는다", () => {
       render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
-      const link = screen
-        .getByText("합격자 발표")
-        .closest("a") as HTMLElement;
+      const link = screen.getByText("합격자 발표").closest("a") as HTMLElement;
       const before = window.location.search;
       expect(fireEvent.click(link, { ctrlKey: true })).toBe(true);
       expect(fireEvent.click(link, { metaKey: true })).toBe(true);
@@ -504,17 +484,135 @@ describe("WeeklyKpiRow", () => {
     });
   });
 
-  it("그리드는 운영리포트와 같은 2열 → md 4열(두 줄 × 4장), 카드는 min-w-0", () => {
-    render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
-    const grid = screen
-      .getAllByTestId("weekly-kpi-label")[0]
-      .closest(".grid") as Element;
-    expect(grid.className.split(/\s+/)).toEqual(
-      expect.arrayContaining(["grid-cols-2", "md:grid-cols-4", "gap-3"]),
+  describe("그리드·카드 크기", () => {
+    it("3열(폰·태블릿) → lg 5열(카드 너비 균등), 카드는 min-w-0 이고 라벨은 줄바꿈 허용", () => {
+      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      const grid = screen
+        .getAllByTestId("weekly-kpi-label")[0]
+        .closest(".grid") as Element;
+      expect(grid.className.split(/\s+/)).toEqual(
+        expect.arrayContaining([
+          "grid-cols-3",
+          "lg:grid-cols-5",
+          "gap-2",
+          "md:gap-3",
+        ]),
+      );
+      expect(grid.className).not.toContain("grid-cols-2");
+      const card = screen.getByText("개발 중").closest("a") as Element;
+      expect(card.className).toContain("min-w-0");
+      expect(card.className).toContain("p-3");
+      expect(card.className).toContain("md:p-4");
+      expect(screen.getByText("개발 중").className).toContain(
+        "[overflow-wrap:anywhere]",
+      );
+      expect(screen.getByText("1").className).toContain("text-xl");
+    });
+
+    it("3열에서는 칸 합이 6(1+1+1 + 2+1), lg 5열에서는 카드 다섯이 한 칸씩 — 빈 칸이 없다", () => {
+      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      const grid = document.querySelector(".grid") as Element;
+      const cls = (el: Element) => el.className.split(/\s+/);
+      const narrow = (el: Element) => (cls(el).includes("col-span-2") ? 2 : 1);
+      const wide = (el: Element) =>
+        cls(el).includes("col-span-2") && !cls(el).includes("lg:col-span-1")
+          ? 2
+          : 1;
+      const kids = [...grid.children];
+      expect(kids.reduce((n, c) => n + narrow(c), 0)).toBe(6);
+      expect(kids.reduce((n, c) => n + wide(c), 0)).toBe(5);
+    });
+  });
+
+  it("개발·테스트·운영 카드 아래 대학구분 칸 — 칸마다 라벨과 건수, 칸이 없으면 줄도 없다", () => {
+    render(
+      <WeeklyKpiRow
+        {...BASE}
+        ownerName="홍길동"
+        kpis={KPIS}
+        breakdowns={{
+          dev: [],
+          test: [{ label: "대학원", count: 2 }],
+          running: [
+            { label: "4년제", count: 3 },
+            { label: "2년제", count: 1 },
+          ],
+        }}
+      />,
     );
-    expect(grid.children).toHaveLength(8);
+    const running = screen.getByRole("link", { name: /운영 중/ });
+    const cells = within(running).getAllByTestId("weekly-kpi-univ");
+    expect(cells.map((c) => c.textContent)).toEqual(["4년제3건", "2년제1건"]);
+    const dev = screen.getByRole("link", { name: /개발 중/ });
+    expect(within(dev).queryAllByTestId("weekly-kpi-univ")).toHaveLength(0);
+    // 균등 배열 — 칸마다 같은 몫을 차지한다
+    cells.forEach((c) => expect(c.parentElement?.className).toContain("flex-1"));
+    // 좁은 화면(lg 미만): 한 줄에 `라벨 건수` 로 세로로 쌓고 글자가 한 자씩 꺾이지 않는다 — 세로선은 숨긴다
+    cells.forEach((c) => {
+      expect(c.className.split(/\s+/)).toEqual(
+        expect.arrayContaining(["justify-between", "whitespace-nowrap", "lg:flex-col"]),
+      );
+    });
+    const wrap = cells[0].parentElement?.parentElement as HTMLElement;
+    expect(wrap.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["flex-col", "lg:flex-row"]),
+    );
+  });
+
+  it("차주 오픈·마감 칸 아래에도 대학구분 칸", () => {
+    render(
+      <WeeklyKpiRow
+        {...BASE}
+        ownerName="홍길동"
+        kpis={KPIS}
+        breakdowns={{
+          opening: [{ label: "4년제", count: 3 }],
+          closing: [
+            { label: "2년제", count: 4 },
+            { label: "대학원", count: 1 },
+          ],
+        }}
+      />,
+    );
+    const group = screen.getByRole("group", { name: "차주 오픈 / 마감" });
     expect(
-      (screen.getByText("개발 중").closest("a") as Element).className,
-    ).toContain("min-w-0");
+      within(group)
+        .getAllByTestId("weekly-kpi-univ")
+        .map((c) => c.textContent),
+    ).toEqual(["4년제3건", "2년제4건", "대학원1건"]);
+  });
+
+  it("대학구분 칸은 글자보다 좁아지지 않고, 모자라면 다음 줄로 넘긴다 — 세로선이 숫자와 겹치지 않게", () => {
+    render(
+      <WeeklyKpiRow
+        {...BASE}
+        ownerName="홍길동"
+        kpis={KPIS}
+        breakdowns={{
+          opening: [
+            { label: "4년제", count: 16 },
+            { label: "2년제", count: 1 },
+            { label: "대학원", count: 18 },
+            { label: "기타", count: 8 },
+          ],
+        }}
+      />,
+    );
+    const group = screen.getByRole("group", { name: "차주 오픈 / 마감" });
+    const cells = within(group).getAllByTestId("weekly-kpi-univ");
+    // 칸마다 왼쪽 세로선 + 좌우 여백 — 글자보다 좁아지지 않는다
+    cells.forEach((c) =>
+      expect(c.parentElement?.className.split(/\s+/)).toEqual(
+        expect.arrayContaining(["lg:min-w-fit", "lg:border-l", "lg:pl-2", "lg:pr-2"]),
+      ),
+    );
+    // 다음 줄로 넘어간 칸도 줄 맨 앞의 세로선은 잘려 안 보인다 — 줄을 왼쪽으로 선+여백만큼 당기고 바깥에서 자른다
+    const wrap = cells[0].parentElement?.parentElement as HTMLElement;
+    expect(wrap.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["lg:flex-wrap", "lg:gap-y-1", "lg:-ml-[calc(0.5rem+1px)]"]),
+    );
+    expect((wrap.parentElement as HTMLElement).className.split(/\s+/)).toContain(
+      "lg:overflow-hidden",
+    );
   });
 });
