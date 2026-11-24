@@ -117,6 +117,21 @@ describe("dispatchRatioAudit", () => {
     expect(adminCall[0].html).not.toContain("한국체육대학교");
   });
 
+  it("영업팀은 개인 발송 대상이 아니다 — 같은 이름이어도 관리자 채팅으로 취합한다", async () => {
+    h.select.mockResolvedValue({
+      data: [...OPERATORS, { name: "윤영호", email: "yyh@jinhakapply.com", team: "영업팀" }],
+      error: null,
+    });
+    const { dispatchRatioAudit } = await import("../dispatch");
+    const r = await dispatchRatioAudit({
+      ...base,
+      findings: [finding("한서대학교", "윤영호")],
+    });
+    expect(r.sent).toBe(0);
+    expect(r.unassignedCount).toBe(1);
+    expect(h.ensureOneOnOneChat).not.toHaveBeenCalled();
+  });
+
   it("담당자 이름이 비어 있어도 조용히 사라지지 않고 관리자에게 간다", async () => {
     const { dispatchRatioAudit } = await import("../dispatch");
     const r = await dispatchRatioAudit({

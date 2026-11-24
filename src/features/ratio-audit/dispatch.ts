@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isSalesTeam } from "@/features/auth/operators";
 import {
   ensureOneOnOneChat,
   sendTeamsChatMessage,
@@ -59,15 +60,20 @@ function sender(): string {
   );
 }
 
-/** 운영자 이름 → 메일. Moa 표기(closing_services.operator_name)와 대조한다. */
+/**
+ * 운영자 이름 → 메일. Moa 표기(closing_services.operator_name)와 대조한다.
+ * 영업팀은 뺀다 — 영업자는 사고보고 메일만 받는다(2026-11-24).
+ */
 async function operatorEmails(): Promise<Map<string, string>> {
   const admin = createAdminClient();
-  const { data, error } = await admin.from("operators").select("name, email");
+  const { data, error } = await admin
+    .from("operators")
+    .select("name, email, team");
   if (error)
     throw new Error(`[ratio-audit] 운영자 조회 실패: ${error.message}`);
   return new Map(
     (data ?? [])
-      .filter((r) => r.name && r.email)
+      .filter((r) => r.name && r.email && !isSalesTeam(r.team))
       .map((r) => [r.name as string, r.email as string]),
   );
 }
