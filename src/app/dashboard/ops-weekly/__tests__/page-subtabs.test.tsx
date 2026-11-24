@@ -24,12 +24,12 @@ vi.mock("../_components/WeekHeader", () => ({
     week: unknown;
     scope: unknown;
     dutyName: string | null;
-    nextHref: string;
+    nextWeekHref: string;
     submit?: React.ReactNode;
   }) => (
     <div
       data-testid="week-header"
-      data-next={p.nextHref}
+      data-next={p.nextWeekHref}
       data-duty={p.dutyName ?? "(null)"}
       data-scope={JSON.stringify(p.scope)}
       data-week={JSON.stringify(p.week)}
@@ -109,7 +109,7 @@ function viewFor(tab: string, isAdmin: boolean, over = {}) {
     report: { id: "r1", status: "draft", checked_tabs: [], snapshot: null },
     snapshot: snap({ unmatchedApplication: 3, unmatchedPims: 2 }),
     detail: EMPTY,
-    kpis: { dev: 1, test: 2, opening: 3, running: 4, closing: 5, pims: 6 },
+    kpis: { dev: 1, test: 2, opening: 3, running: 4, closing: 5, pims: 6, scoreCalc: null, leave: 6 },
     submittedCount: 0,
     prevOpen: false,
     freezeNotice: false,
@@ -148,7 +148,7 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     const bar = screen.getByText(/^홍길동의 이번 주/).parentElement as Element;
     expect(bar.className).toContain("lg:sticky");
     expect(bar.className).toContain("bg-paper");
-    expect(screen.getAllByTestId("weekly-kpi-label")).toHaveLength(6);
+    expect(screen.getAllByTestId("weekly-kpi-label")).toHaveLength(8);
     expect(kpiCard("운영 중")?.getAttribute("href")).toBe(
       "/dashboard/ops-weekly?week=2026-11-16&tab=application&sub=running",
     );

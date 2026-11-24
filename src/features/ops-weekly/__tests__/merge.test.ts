@@ -6,7 +6,6 @@ import {
   autoSnapshotSchema,
   computeKpis,
   groupEntriesByProject,
-  stageBreakdowns,
   type AutoSnapshot,
   type ItemOverride,
   type ManualItem,
@@ -49,6 +48,7 @@ function snapshot(
     closing?: string[];
     pimsThis?: string[];
     pimsNext?: string[];
+    leave?: string[];
     devStatusCollected?: boolean;
   } = {},
 ): AutoSnapshot {
@@ -66,7 +66,7 @@ function snapshot(
       devStatusCollected: over.devStatusCollected ?? false,
     },
     pims: { thisWeek: list(over.pimsThis), nextWeek: list(over.pimsNext) },
-    leave: [],
+    leave: (over.leave ?? []).map((k) => leaveItem(k)),
     unmatched: { application: 0, pims: 0 },
   };
 }
@@ -144,6 +144,8 @@ describe("computeKpis", () => {
       running: 2,
       closing: 0,
       pims: 2,
+      scoreCalc: null,
+      leave: 0,
     });
   });
 
@@ -157,12 +159,22 @@ describe("computeKpis", () => {
     expect(k.test).toBe(0);
   });
 
-  it("PIMS 직접 추가는 금주·차주 모두 더한다", () => {
-    const k = computeKpis(snapshot({ pimsThis: ["pims:1"] }), new Map(), [
-      manual("pims", "thisWeek"),
-      manual("pims", "nextWeek"),
-    ]);
-    expect(k.pims).toBe(3);
+  it("합격자 발표는 금주·차주를 합쳐 세고(뺀 건 제외), 직접 추가를 더한다", () => {
+    const k = computeKpis(
+      snapshot({ pimsThis: ["pims:1", "pims:2"], pimsNext: ["pims:3"] }),
+      new Map([["pims:2", ov("pims:2", true)]]),
+      [manual("pims", "thisWeek"), manual("pims", "nextWeek")],
+    );
+    expect(k.pims).toBe(4);
+  });
+
+  it("휴가·외근은 탭 제목과 같이 뺀 건도 세고 직접 추가를 더한다", () => {
+    const k = computeKpis(
+      snapshot({ leave: ["leave:br:1", "leave:br:2"] }),
+      new Map([["leave:br:2", ov("leave:br:2", true)]]),
+      [manual("leave", "leave:br")],
+    );
+    expect(k.leave).toBe(3);
   });
 });
 
@@ -179,11 +191,20 @@ describe("autoSnapshotSchema", () => {
       ...base,
       application: {
         ...base.application,
-        dev: [{ ...base.application.dev[0], universityType: "4년제", category: "수시" }],
+        dev: [
+          {
+            ...base.application.dev[0],
+            universityType: "4년제",
+            category: "수시",
+          },
+        ],
       },
     };
     const parsed = autoSnapshotSchema.parse(withCols);
-    expect(parsed.application.dev[0]).toMatchObject({ universityType: "4년제", category: "수시" });
+    expect(parsed.application.dev[0]).toMatchObject({
+      universityType: "4년제",
+      category: "수시",
+    });
     expect(autoSnapshotSchema.safeParse(base).success).toBe(true);
   });
 
@@ -208,58 +229,5 @@ describe("groupEntriesByProject", () => {
       ["p1", ["운영자A", "운영자B"]],
       ["p2", ["운영자B"]],
     ]);
-  });
-});
-
-describe("stageBreakdowns — 개발·테스트·운영 카드의 대학구분 칸", () => {
-  const typed = (key: string, universityType: string | null): AutoItem => ({
-    ...ai(key),
-    universityType,
-  });
-
-  it("4년제·2년제·대학원·기타 순, 0 인 칸은 빼고, 전문대는 2년제·나머지는 기타·직접 추가는 직접", () => {
-    const snap = snapshot();
-    const s: AutoSnapshot = {
-      ...snap,
-      application: {
-        ...snap.application,
-        dev: [
-          typed("a", "대학원"),
-          typed("b", "4년제"),
-          typed("c", "전문대"),
-          typed("d", "2년제"),
-          typed("e", "초중고교"),
-          typed("f", null),
-          typed("x", "4년제"),
-        ],
-      },
-    };
-    const out = stageBreakdowns(s, new Map([["x", ov("x", true)]]), [
-      manual("application", "dev"),
-    ]);
-    expect(out.dev).toEqual([
-      { label: "4년제", count: 1 },
-      { label: "2년제", count: 2 },
-      { label: "대학원", count: 1 },
-      { label: "기타", count: 2 },
-      { label: "직접", count: 1 },
-    ]);
-    expect(out.test).toEqual([]);
-    expect(out.running).toEqual([]);
-  });
-
-  it("차주 오픈·마감도 같은 칸으로 센다", () => {
-    const snap = snapshot();
-    const s: AutoSnapshot = {
-      ...snap,
-      application: {
-        ...snap.application,
-        opening: [typed("o1", "4년제")],
-        closing: [typed("c1", "대학원"), typed("c2", "대학원")],
-      },
-    };
-    const out = stageBreakdowns(s, new Map(), []);
-    expect(out.opening).toEqual([{ label: "4년제", count: 1 }]);
-    expect(out.closing).toEqual([{ label: "대학원", count: 2 }]);
   });
 });
