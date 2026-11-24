@@ -2,26 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useRef, type MouseEvent } from "react";
-import type { WeeklyKpis } from "@/features/ops-weekly/merge";
+import type { UnivBreakdown, WeeklyKpis } from "@/features/ops-weekly/merge";
 import { opsWeeklyHref, resolveAppSub } from "../_params";
 import { subTabsIdOf } from "./SubTabs";
 import { useOpsArea } from "./use-ops-area";
 import { useOpsSub } from "./use-ops-sub";
 
-type Target =
-  | { tab: "application"; sub: string }
-  | { tab: "pims"; sub: null }
-  | { tab: "leave"; sub: null };
-/** target 이 null 이면 아직 갈 탭이 없는 카드다(성적산출 — 데이터 연결 전). */
-type Card = { key: keyof WeeklyKpis; label: string; target: Target | null };
+type Target = { tab: "application" | "pims"; sub: string | null };
+type Card = { key: keyof WeeklyKpis; label: string; target: Target };
 
-// 카드 8장 — 운영리포트처럼 4장씩 두 줄. 운영 중이 맨 앞, 차주 마감 예정이 맨 뒤(2026-11-25 사용자 지시). 라벨·순서는 여기서만 정한다.
-const CARDS: readonly Card[] = [
-  {
-    key: "running",
-    label: "운영 중",
-    target: { tab: "application", sub: "running" },
-  },
+// 라벨·순서는 여기서만 정한다. 합격자 발표는 맨 끝(원서접수 카드들과 갈라 읽힌다).
+const STAGE_CARDS: readonly Card[] = [
   { key: "dev", label: "개발 중", target: { tab: "application", sub: "dev" } },
   {
     key: "test",
@@ -29,13 +20,25 @@ const CARDS: readonly Card[] = [
     target: { tab: "application", sub: "test" },
   },
   {
+    key: "running",
+    label: "운영 중",
+    target: { tab: "application", sub: "running" },
+  },
+];
+const PIMS_CARD: Card = {
+  key: "pims",
+  label: "합격자 발표",
+  target: { tab: "pims", sub: null },
+};
+// 한 장에 두 칸으로 묶는다 — 운영리포트 '계약 체결'(ContractSheetCard)과 같은 모양.
+// 합계는 내지 않는다: 접수 중이면서 차주 마감인 건이 둘 다 들 수 있어 합이 뜻을 잃는다.
+const PAIR_LABEL = "차주 오픈 / 마감";
+const PAIR: readonly Card[] = [
+  {
     key: "opening",
     label: "차주 오픈 예정",
     target: { tab: "application", sub: "opening" },
   },
-  { key: "pims", label: "합격자 발표", target: { tab: "pims", sub: null } },
-  { key: "scoreCalc", label: "성적산출", target: null },
-  { key: "leave", label: "휴가·외근", target: { tab: "leave", sub: null } },
   {
     key: "closing",
     label: "차주 마감 예정",
@@ -44,26 +47,67 @@ const CARDS: readonly Card[] = [
 ];
 const STAGE_KEYS: ReadonlySet<keyof WeeklyKpis> = new Set(["dev", "test"]);
 
-// 운영리포트 KpiCard 와 같은 모양. 카드는 면(面)이라 hover:bg-ink 를 못 쓴다 — 보더만 ink 로 바꾼다.
+// 카드는 면(面)이라 hover:bg-ink 를 못 쓴다 — 보더만 ink 로 바꾼다.
 const CARD_BASE =
-  "flex min-w-0 flex-col gap-1 border p-4 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
+  "flex min-w-0 flex-col gap-1 border p-3 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink md:p-4";
 const CARD_IDLE = "border-line-soft bg-situation-bg hover:border-ink";
 const CARD_ACTIVE = "border-vermilion bg-vermilion/10";
+const SEG_BASE =
+  "-m-1 flex min-w-0 flex-1 flex-col gap-0.5 border p-1 transition-colors focus-visible:outline-2 focus-visible:outline-ink";
+const SEG_IDLE = "border-transparent hover:border-ink";
+
+/**
+ * 대학구분 칸 — lg 이상은 차주 오픈/마감 카드의 두 칸과 같은 모양(작은 라벨 위·숫자 아래, 세로선, 균등 배열).
+ * lg 미만은 카드가 좁아 칸으로 나누면 글자가 한 자씩 꺾인다 — `라벨 … 건수` 한 줄씩 세로로 쌓는다.
+ * lg 이상에서 칸은 글자보다 좁아지지 않고(`lg:min-w-fit`) 모자라면 다음 줄로 넘긴다 — 차주 오픈/마감은 카드 반쪽에
+ * 칸이 셋·넷 들어가 줄어든 칸의 숫자가 세로선을 덮었다.
+ * 세로선은 칸마다 왼쪽 테두리다. 줄을 선+여백(0.5rem+1px)만큼 왼쪽으로 당기고 바깥에서 잘라, 첫 줄이든 넘어간 줄이든
+ * **줄 맨 앞 칸의 선은 안 보이고** 글자는 카드 왼쪽 선에 맞는다(넘어간 줄 맨 앞에 선이 떠 있었다).
+ */
+function UnivCells({ cells }: { cells: UnivBreakdown }) {
+  if (cells.length === 0) return null;
+  return (
+    <div className="mt-1 lg:overflow-hidden">
+      {/* 일회성 임의 값: 칸 왼쪽 선(1px)+여백(pl-2) 만큼 당겨 줄 맨 앞의 선을 바깥 overflow 로 자른다 */}
+      <div className="flex flex-col gap-0.5 lg:-ml-[calc(0.5rem+1px)] lg:flex-row lg:flex-wrap lg:gap-y-1">
+        {cells.map((c) => (
+          <div
+            key={c.label}
+            className="flex min-w-0 flex-1 lg:min-w-fit lg:border-l lg:border-line-soft lg:pl-2 lg:pr-2"
+          >
+            <div
+              data-testid="weekly-kpi-univ"
+              className="flex min-w-0 flex-1 items-baseline justify-between gap-1 whitespace-nowrap lg:flex-col lg:items-start lg:justify-start lg:gap-0"
+            >
+              <span className="text-2xs text-muted">{c.label}</span>
+              <span className="text-sm font-bold tabular-nums text-ink">
+                {c.count.toLocaleString("ko-KR")}
+                <span className="ml-0.5 text-2xs font-medium text-muted">
+                  건
+                </span>
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const isPlainLeftClick = (e: MouseEvent) =>
   e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
 
 // 붙은 카드 줄 밑에 하위 탭 줄이 가려져 있으면 보이는 자리까지만 내린다(scroll-margin 이 높이를 알려 준다).
-const scrollToSubTabs = (tab: "application" | "pims") =>
+const scrollToSubTabs = (tab: Target["tab"]) =>
   document
     .getElementById(subTabsIdOf(tab))
     ?.scrollIntoView?.({ block: "nearest" });
 
 /**
- * 건수 카드 8장(운영리포트 KPI 카드 모양). 개발/테스트 구분이 수집되지 않았으면(null) 0 이 아니라 `구분 미확인`이다.
+ * 건수 카드 5장(한 장은 두 칸 — 차주 오픈·마감). 개발/테스트 구분이 수집되지 않았으면(null) 0 이 아니라 `구분 미확인`이다.
  * 일부만 수집됐으면 숫자 옆에 구분이 안 된 건수를 적어 과소집계가 보이게 한다.
  * 카드는 그 영역·하위 탭으로 가는 링크다 — 평범한 왼쪽 클릭은 영역이 같든 다르든 서버 왕복 없이 주소(`tab`·`sub`)만 바꾼다.
- * 내 보고서가 영역을 늘 마운트하기 때문이다.
+ * 내 보고서가 영역 셋을 늘 마운트하기 때문이다.
  */
 export function WeeklyKpiRow({
   kpis,
@@ -72,6 +116,7 @@ export function WeeklyKpiRow({
   weekStart,
   op,
   appSubState = { showUnknown: false, collected: true },
+  breakdowns,
 }: {
   kpis: WeeklyKpis;
   /** 이 숫자가 누구의 보고서 것인지 — 제출 현황·설정 탭에서도 카드가 남아 있어 밝혀야 한다 */
@@ -82,6 +127,8 @@ export function WeeklyKpiRow({
   op: string | null;
   /** 원서접수 하위 탭의 보이는 키·기본값을 정하는 사실 — SubTabs 와 같은 해석을 위해 page 가 넘긴다 */
   appSubState?: { showUnknown: boolean; collected: boolean };
+  /** 개발·테스트·운영 카드 아래 대학구분 칸(stageBreakdowns) — 차주 오픈/마감 카드처럼 세로선으로 가른다 */
+  breakdowns?: Partial<Record<keyof WeeklyKpis, UnivBreakdown>>;
 }) {
   const { area, setArea } = useOpsArea();
   const { raw } = useOpsSub();
@@ -89,7 +136,7 @@ export function WeeklyKpiRow({
 
   // 다른 영역 카드의 스크롤은 그 영역이 커밋돼 패널이 `hidden` 에서 풀린 뒤에 한다 — Next 는 주소 갱신을
   // transition 안에서 맞추므로 클릭 핸들러(나 rAF 한 번) 안에서는 아직 숨은 줄을 가리켜 아무 일도 안 일어난다.
-  const pendingScroll = useRef<"application" | "pims" | null>(null);
+  const pendingScroll = useRef<Target["tab"] | null>(null);
   useEffect(() => {
     const tab = pendingScroll.current;
     if (tab === null) return;
@@ -98,65 +145,23 @@ export function WeeklyKpiRow({
   }, [area]);
 
   const hrefOf = (t: Target) => opsWeeklyHref(weekStart, t.tab, op, t.sub);
-  const isActive = (t: Target) => {
-    if (t.tab === "application")
-      return area === "application" && appSub === t.sub;
-    if (t.tab === "pims") return area === "pims";
-    return area === "leave";
-  };
+  const isActive = (t: Target) =>
+    t.tab === "pims"
+      ? area === "pims"
+      : area === "application" && appSub === t.sub;
 
   function onClick(e: MouseEvent<HTMLAnchorElement>, t: Target) {
     // 수정 키·가운데 클릭은 href 대로(새 탭). 합격자 발표 카드는 href 에 sub 가 없지만(영역 이동은 기본 하위 탭)
-    // 클릭하면 금주 발표로 보낸다. 휴가·외근은 하위 탭이 없어 스크롤할 줄도 없다.
+    // 클릭하면 금주 발표로 보낸다.
     if (!isPlainLeftClick(e)) return;
     e.preventDefault();
-    if (t.tab === "leave") {
-      setArea("leave", null);
-      return;
-    }
     setArea(t.tab, t.sub ?? "thisWeek");
     if (t.tab === area) scrollToSubTabs(t.tab);
     else pendingScroll.current = t.tab;
   }
 
-  function body(key: keyof WeeklyKpis, label: string, active: boolean) {
-    const value = kpis[key];
-    return (
-      <>
-        <div
-          data-testid="weekly-kpi-label"
-          className={`text-xs font-medium [overflow-wrap:anywhere] ${active ? "text-vermilion" : "text-muted"}`}
-        >
-          {label}
-        </div>
-        {value === null ? (
-          <div className="text-sm font-medium text-muted">
-            {STAGE_KEYS.has(key) ? "구분 미확인" : "연결 전"}
-          </div>
-        ) : (
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold tabular-nums text-ink">
-              {value.toLocaleString("ko-KR")}
-            </span>
-            <span className="text-xs text-muted">건</span>
-          </div>
-        )}
-        {value !== null && STAGE_KEYS.has(key) && unknownCount > 0 ? (
-          <div className="text-xs text-muted [overflow-wrap:anywhere]">{`구분 미확인 ${unknownCount}건`}</div>
-        ) : null}
-      </>
-    );
-  }
-
   function single({ key, label, target }: Card) {
-    // 갈 탭이 없는 카드는 링크가 아니다 — 누를 수 있어 보이면 안 된다.
-    if (target === null) {
-      return (
-        <div key={key} className={`${CARD_BASE} border-line-soft bg-situation-bg`}>
-          {body(key, label, false)}
-        </div>
-      );
-    }
+    const value = kpis[key];
     const active = isActive(target);
     return (
       <Link
@@ -168,7 +173,24 @@ export function WeeklyKpiRow({
         }}
         className={`${CARD_BASE} ${active ? CARD_ACTIVE : CARD_IDLE}`}
       >
-        {body(key, label, active)}
+        <div
+          data-testid="weekly-kpi-label"
+          className={`text-xs font-medium [overflow-wrap:anywhere] ${active ? "text-vermilion" : "text-muted"}`}
+        >
+          {label}
+        </div>
+        {value === null ? (
+          <div className="text-sm font-medium text-muted">구분 미확인</div>
+        ) : (
+          <div className="text-xl font-bold tabular-nums text-ink md:text-2xl">
+            {value.toLocaleString("ko-KR")}
+            <span className="ml-0.5 text-sm font-medium text-muted">건</span>
+          </div>
+        )}
+        {value !== null ? <UnivCells cells={breakdowns?.[key] ?? []} /> : null}
+        {value !== null && STAGE_KEYS.has(key) && unknownCount > 0 ? (
+          <div className="text-xs text-muted [overflow-wrap:anywhere]">{`구분 미확인 ${unknownCount}건`}</div>
+        ) : null}
       </Link>
     );
   }
@@ -178,8 +200,51 @@ export function WeeklyKpiRow({
       <p className="px-5 pt-4 text-xs text-muted lg:px-7">
         {`${ownerName}의 이번 주 · 항목 간 중복 집계될 수 있습니다`}
       </p>
-      <div className="grid grid-cols-2 gap-3 px-5 pt-2 md:grid-cols-4 lg:px-7">
-        {CARDS.map(single)}
+      <div className="grid grid-cols-3 gap-2 px-5 pt-2 md:gap-3 lg:grid-cols-5 lg:px-7">
+        {STAGE_CARDS.map(single)}
+        <div
+          role="group"
+          aria-label={PAIR_LABEL}
+          className="col-span-2 flex min-w-0 flex-col gap-1 border lg:col-span-1 border-line-soft bg-situation-bg p-3 md:p-4"
+        >
+          <div className="text-xs font-medium text-muted">{PAIR_LABEL}</div>
+          <div className="flex gap-3">
+            {PAIR.map(({ key, label, target }, i) => {
+              const active = isActive(target);
+              return (
+                <div key={key} className="flex min-w-0 flex-1 gap-3">
+                  {i > 0 ? (
+                    <div className="w-px shrink-0 self-stretch bg-line-soft" />
+                  ) : null}
+                  <Link
+                    href={hrefOf(target)}
+                    data-segment={key}
+                    aria-current={active ? "true" : undefined}
+                    onClick={(e) => {
+                      onClick(e, target);
+                    }}
+                    className={`${SEG_BASE} ${active ? CARD_ACTIVE : SEG_IDLE}`}
+                  >
+                    <div
+                      data-testid="weekly-kpi-label"
+                      className={`text-2xs [overflow-wrap:anywhere] ${active ? "text-vermilion" : "text-muted"}`}
+                    >
+                      {label}
+                    </div>
+                    <div className="text-xl font-bold tabular-nums text-ink md:text-2xl">
+                      {(kpis[key] ?? 0).toLocaleString("ko-KR")}
+                      <span className="ml-0.5 text-sm font-medium text-muted">
+                        건
+                      </span>
+                    </div>
+                    <UnivCells cells={breakdowns?.[key] ?? []} />
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        {single(PIMS_CARD)}
       </div>
     </>
   );

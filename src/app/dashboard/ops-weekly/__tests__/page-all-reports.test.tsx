@@ -33,7 +33,7 @@ vi.mock("next/navigation", async () => ({
 
 import OpsWeeklyPage from "../page";
 
-const KPIS = { dev: 1, test: 2, opening: 3, running: 4, closing: 5, pims: 6, scoreCalc: null, leave: 6 };
+const KPIS = { dev: 1, test: 2, opening: 3, running: 4, closing: 5, pims: 6 };
 
 function allView(over: Record<string, unknown> = {}) {
   const base = snap();
