@@ -28,6 +28,7 @@ import { ProjectOverview } from "./ProjectOverview";
 import { SubmissionTable } from "./SubmissionTable";
 import { BTN_CLASS, FIELD_CLASS } from "./styles";
 import { useWorkflow } from "./use-workflow";
+import { useOpsPath } from "./ops-path";
 
 type Props = {
   week: WeekRow;
@@ -199,6 +200,7 @@ function RemindButton({ weekId }: { weekId: string }) {
 }
 
 export function StatusTab(props: Props) {
+  const path = useOpsPath();
   const { week, actor, writers, reports, projectGroups, finalize } = props;
   const wf = useWorkflow();
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -248,7 +250,7 @@ export function StatusTab(props: Props) {
           reports={reports}
           settingsHref={
             canManageSettings(actor)
-              ? manageHref(week.week_start, "exclusions")
+              ? manageHref(week.week_start, "exclusions", path)
               : undefined
           }
           canReturn={(r) => canReturnReport(actor, state, r.status)}

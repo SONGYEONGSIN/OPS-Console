@@ -2,6 +2,11 @@
 
 export const OPS_WEEKLY_SLUG = "ops-weekly";
 export const OPS_WEEKLY_PATH = "/dashboard/ops-weekly";
+/** 새 화면(운영리포트형 머리·카드 8장) — 같은 데이터를 보는 관리자 전용 메뉴. 다듬는 동안 기존 메뉴와 나란히 둔다. */
+export const OPS_WEEKLY_V2_SLUG = "ops-weekly-v2";
+export const OPS_WEEKLY_V2_PATH = "/dashboard/ops-weekly-v2";
+/** 보고서를 바꾸는 action 이 다시 그릴 주소 — 두 메뉴가 같은 데이터라 한쪽만 그리면 다른 쪽이 낡는다. */
+export const OPS_WEEKLY_PATHS = [OPS_WEEKLY_PATH, OPS_WEEKLY_V2_PATH] as const;
 export const OPS_WEEKLY_DEV_STATUS_JOB_ID = "ops-weekly-dev-status";
 
 export const AREAS = ["application", "pims", "project", "tf", "leave"] as const;

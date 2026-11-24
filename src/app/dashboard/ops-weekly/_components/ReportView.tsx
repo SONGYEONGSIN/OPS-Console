@@ -35,6 +35,8 @@ type Props = {
   detail: ReportDetail;
   /** 남의 보고서를 보는 중이면 그 사람 이름과 제출 현황 주소 — 제목을 달고 제출은 없다. 본인 보고서면 null */
   viewingOther: { name: string; backHref: string } | null;
+  /** 어느 메뉴 주소인지(서버 부품이라 OpsPathProvider 를 못 읽는다) — 없으면 기존 메뉴 */
+  path?: string;
 };
 
 type Slots = Record<AreaTab, ReactNode>;
@@ -128,7 +130,10 @@ function directAddOf(
 }
 
 /** 프로젝트·TF 탭 본문 — 프로젝트 절 위, TF 절 아래(TF 는 TF 담당자에게만). */
-function projectsOf({ view, detail }: Props, editable: boolean): ReactNode {
+function projectsOf(
+  { view, detail, path }: Props,
+  editable: boolean,
+): ReactNode {
   const panel = (kind: ProjectKind) => (
     <ProjectTab
       key={kind}
@@ -138,7 +143,7 @@ function projectsOf({ view, detail }: Props, editable: boolean): ReactNode {
       editable={editable}
       settingsHref={
         view.actor.isAdmin
-          ? manageHref(view.week.week_start, "projects")
+          ? manageHref(view.week.week_start, "projects", path)
           : undefined
       }
     />

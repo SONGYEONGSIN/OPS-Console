@@ -12,7 +12,7 @@ import { canViewMenu } from "@/features/auth/permission";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult } from "./actions";
-import { OPS_WEEKLY_PATH, OPS_WEEKLY_SLUG } from "./constants";
+import { OPS_WEEKLY_PATHS, OPS_WEEKLY_SLUG } from "./constants";
 import { normEmail } from "./email";
 import { emitOpsWeeklyEvent } from "./events";
 import { freezeWeekSnapshots } from "./freeze";
@@ -129,7 +129,7 @@ function submitRejection(ctx: ReportCtx, isWriter: boolean): string {
 
 /** 전환은 끝났다 — 전원 제출이면 이벤트를 낸다. 확인이 실패하면 숨기지 않고 알린다. */
 async function afterSubmit(week: WeekRow): Promise<ActionResult> {
-  revalidatePath(OPS_WEEKLY_PATH);
+  for (const path of OPS_WEEKLY_PATHS) revalidatePath(path);
   try {
     const pending = await listPendingWriters(week.id);
     if (pending.length === 0) {
@@ -212,7 +212,7 @@ export async function returnReport(input: {
     return failOf(`다시 작성 요청에 실패했습니다: ${res.error.message}`);
   }
   if (changedRows(res.data) === 0) return failOf(NOT_SUBMITTED);
-  revalidatePath(OPS_WEEKLY_PATH);
+  for (const path of OPS_WEEKLY_PATHS) revalidatePath(path);
   await emitOpsWeeklyEvent({
     type: "report-returned",
     weekId: week.id,
@@ -248,7 +248,7 @@ export async function saveDutySummary(input: {
   if (res.error)
     return failOf(`요약 저장에 실패했습니다: ${res.error.message}`);
   if (changedRows(res.data) === 0) return failOf(LOCKED);
-  revalidatePath(OPS_WEEKLY_PATH);
+  for (const path of OPS_WEEKLY_PATHS) revalidatePath(path);
   return OK;
 }
 
@@ -333,7 +333,7 @@ export async function finalizeWeek(input: {
   if (res.error)
     return failOf(`최종 보고에 실패했습니다: ${res.error.message}`);
   if (changedRows(res.data) === 0) return failOf("이미 보고된 주입니다.");
-  revalidatePath(OPS_WEEKLY_PATH);
+  for (const path of OPS_WEEKLY_PATHS) revalidatePath(path);
   await emitOpsWeeklyEvent({
     type: "week-reported",
     weekId: week.id,
@@ -370,7 +370,7 @@ export async function reopenWeek(input: {
     .select("id");
   if (res.error) return failOf(`정정에 실패했습니다: ${res.error.message}`);
   if (changedRows(res.data) === 0) return failOf("이미 다시 열린 주입니다.");
-  revalidatePath(OPS_WEEKLY_PATH);
+  for (const path of OPS_WEEKLY_PATHS) revalidatePath(path);
   return OK;
 }
 

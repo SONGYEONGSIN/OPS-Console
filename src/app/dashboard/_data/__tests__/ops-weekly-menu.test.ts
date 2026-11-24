@@ -40,3 +40,18 @@ describe("주간업무보고 메뉴 등록", () => {
     expect(PAGE_META["ops-weekly"]?.headline.title).toBe("주간업무보고");
   });
 });
+
+describe("주간업무보고(신규) 메뉴 등록", () => {
+  it("'분석 & 보고' 묶음에 주간업무보고 바로 아래, 관리자 전용", () => {
+    const g = group("분석 & 보고");
+    const slugs = g.items.map((i) => i.slug);
+    expect(slugs.indexOf("ops-weekly-v2")).toBe(slugs.indexOf("ops-weekly") + 1);
+    const item = g.items.find((i) => i.slug === "ops-weekly-v2");
+    expect(item?.label).toBe("주간업무보고(신규)");
+    expect(item?.adminOnly).toBe(true);
+    expect(ADMIN_ONLY_MENU_SLUGS.has("ops-weekly-v2")).toBe(true);
+    expect(PAGE_META["ops-weekly-v2"]?.headline.title).toBe(
+      "주간업무보고(신규)",
+    );
+  });
+});

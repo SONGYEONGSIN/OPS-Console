@@ -7,6 +7,7 @@ import { opsWeeklyHref, resolveAppSub } from "../_params";
 import { subTabsIdOf } from "./SubTabs";
 import { useOpsArea } from "./use-ops-area";
 import { useOpsSub } from "./use-ops-sub";
+import { useOpsPath } from "./ops-path";
 
 type Target = { tab: "application" | "pims"; sub: string | null };
 type Card = { key: keyof WeeklyKpis; label: string; target: Target };
@@ -144,7 +145,9 @@ export function WeeklyKpiRow({
     scrollToSubTabs(tab);
   }, [area]);
 
-  const hrefOf = (t: Target) => opsWeeklyHref(weekStart, t.tab, op, t.sub);
+  const path = useOpsPath();
+  const hrefOf = (t: Target) =>
+    opsWeeklyHref(weekStart, t.tab, op, t.sub, path);
   const isActive = (t: Target) =>
     t.tab === "pims"
       ? area === "pims"

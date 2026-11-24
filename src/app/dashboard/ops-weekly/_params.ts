@@ -136,8 +136,10 @@ export function opsWeeklyHref(
   tab: string,
   op: string | null,
   sub: string | null = null,
+  /** 어느 메뉴의 주소인지 — 기존 메뉴와 새 화면 메뉴(관리자 전용)가 같은 화면 부품을 쓴다. */
+  path: string = OPS_WEEKLY_PATH,
 ): string {
-  const base = `${OPS_WEEKLY_PATH}?week=${weekStart}&tab=${tab}`;
+  const base = `${path}?week=${weekStart}&tab=${tab}`;
   const withOp = op === null ? base : `${base}&op=${encodeURIComponent(op)}`;
   return sub === null ? withOp : `${withOp}&sub=${sub}`;
 }
@@ -200,11 +202,18 @@ const ROLE_TAB_TARGET: Record<RoleTab, OpsTab> = {
 export function buildRoleTabs(args: {
   weekStart: string;
   roles: readonly RoleTab[];
+  path?: string;
 }): PageTab[] {
   return args.roles.map((r) => ({
     key: r,
     label: ROLE_TAB_LABEL[r],
-    href: opsWeeklyHref(args.weekStart, ROLE_TAB_TARGET[r], null),
+    href: opsWeeklyHref(
+      args.weekStart,
+      ROLE_TAB_TARGET[r],
+      null,
+      null,
+      args.path,
+    ),
   }));
 }
 
@@ -233,6 +242,10 @@ export function parseSection(raw: string | null): ManageSection {
   return MANAGE_SECTIONS.find((s) => s === raw) ?? "overview";
 }
 
-export function manageHref(weekStart: string, section: ManageSection): string {
-  return `${opsWeeklyHref(weekStart, "settings", null)}&section=${section}`;
+export function manageHref(
+  weekStart: string,
+  section: ManageSection,
+  path?: string,
+): string {
+  return `${opsWeeklyHref(weekStart, "settings", null, null, path)}&section=${section}`;
 }

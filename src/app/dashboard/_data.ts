@@ -344,6 +344,13 @@ export const sidebarSections: SbSection[] = [
             slug: "ops-weekly",
             pattern: "list",
           },
+          {
+            ico: "·",
+            label: "주간업무보고(신규)",
+            slug: "ops-weekly-v2",
+            pattern: "list",
+            adminOnly: true,
+          },
         ],
       },
       {

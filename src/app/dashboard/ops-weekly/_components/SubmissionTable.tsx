@@ -7,6 +7,7 @@ import type { WriterCandidate } from "@/features/ops-weekly/roster";
 import { formatMdHm } from "../_format";
 import { opsWeeklyHref } from "../_params";
 import { BTN_CLASS } from "./styles";
+import { useOpsPath } from "./ops-path";
 
 type Props = {
   week: WeekRow;
@@ -43,6 +44,7 @@ function toneOf(report: ReportRow | undefined): keyof typeof STATUS_TONE {
 
 /** 명단 순서대로 한 줄씩 — 보고서 행이 없으면 아직 안 만든 것이라 미제출이다. */
 export function SubmissionTable(props: Props) {
+  const path = useOpsPath();
   const { week, writers, reports, canReturn, onReturn } = props;
   const byEmail = new Map(reports.map((r) => [normEmail(r.operator_email), r]));
   if (writers.length === 0) {
@@ -100,6 +102,8 @@ export function SubmissionTable(props: Props) {
                       week.week_start,
                       "application",
                       w.email,
+                      null,
+                      path,
                     )}
                     className="underline"
                   >

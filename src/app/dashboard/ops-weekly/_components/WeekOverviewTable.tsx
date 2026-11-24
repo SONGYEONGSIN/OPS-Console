@@ -11,6 +11,7 @@ import { formatMdHm } from "../_format";
 import { opsWeeklyHref } from "../_params";
 import { BTN_CLASS, ERROR_CLASS } from "./styles";
 import { useWorkflow } from "./use-workflow";
+import { useOpsPath } from "./ops-path";
 
 type Props = { rows: readonly WeekOverviewRow[]; actor: Actor };
 
@@ -37,7 +38,8 @@ function ActionCell(props: {
 }) {
   const { row, actor } = props;
   const phase = weekPhaseOf(row.state);
-  const href = opsWeeklyHref(row.weekStart, "status", null);
+  const path = useOpsPath();
+  const href = opsWeeklyHref(row.weekStart, "status", null, null, path);
   const linkText =
     phase === "reported"
       ? "보기"
