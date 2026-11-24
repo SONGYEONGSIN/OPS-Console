@@ -15,8 +15,27 @@
  * 값을 바꾸면 `supabase/migrations`의 operators_team_check도 함께 고쳐야 하고,
  * 안 고치면 `features/operators/__tests__/team-single-source.test.ts`가 잡는다.
  */
-export const OPERATOR_TEAMS = ["운영1팀", "운영2팀", "기획팀"] as const;
+export const OPERATOR_TEAMS = ["운영1팀", "운영2팀", "기획팀", "영업팀"] as const;
 export type OperatorTeam = (typeof OPERATOR_TEAMS)[number];
+
+/**
+ * 영업팀은 운영 업무를 맡지 않는다 — 사고보고 메일 참조(4년제 대학 영업자)의 이름→메일을
+ * 찾으려고 조직권한에 등재한다. 그래서 운영자를 고르는 칸(백업·인수인계·서비스 담당 등)과
+ * 결재선에서는 빠진다(`isSalesTeam`). 부서는 '영업부'로 둬 운영부 뉴스레터에 실리지 않는다.
+ */
+export const SALES_TEAM = "영업팀" as const;
+export const SALES_DEPARTMENT = "영업부" as const;
+
+export function isSalesTeam(team: string | null | undefined): boolean {
+  return team === SALES_TEAM;
+}
+
+/** 팀이 정하는 부서 — 조직권한에서 등록·팀 변경 때 함께 저장한다. */
+export function departmentOfTeam(team: OperatorTeam): string {
+  if (team === SALES_TEAM) return SALES_DEPARTMENT;
+  if (team === "기획팀") return "본부장 직속";
+  return "운영부";
+}
 export type OperatorDepartment = "운영부" | "본부장 직속";
 export type OperatorRole = "부장" | "팀장" | "TL" | "매니저";
 export type OperatorGender = "남" | "여";

@@ -25,6 +25,7 @@ import {
 } from "@/features/mailbox/delegation";
 import { operatorNameByEmail } from "@/features/auth/operators";
 import { listOperators } from "@/features/operators/queries";
+import { pickableOperators } from "@/features/operators/pickable";
 import { mailboxEntryToListRow } from "./_row-mapper";
 import { AutoDraftToggle } from "./AutoDraftToggle";
 import { MailboxOwnerSwitcher } from "./MailboxOwnerSwitcher";
@@ -73,11 +74,8 @@ export default async function MailboxPage({
   // 위임 후보 = active 운영자 중 본인·이미 위임한 사람 제외(조직·권한 계정 선택용).
   const operators = myEmail ? await listOperators() : [];
   const delegatedSet = new Set(myDelegations.map((d) => d.grantee_email));
-  const delegationCandidates = operators
-    .filter(
-      (o) =>
-        o.status === "active" && o.email !== myEmail && !delegatedSet.has(o.email),
-    )
+  const delegationCandidates = pickableOperators(operators)
+    .filter((o) => o.email !== myEmail && !delegatedSet.has(o.email))
     .map((o) => ({ email: o.email, name: o.name }));
 
   const delegatedOwners = myEmail

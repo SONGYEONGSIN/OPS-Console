@@ -1,12 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockGetCurrentOperator, mockUpdateChain, mockInsertChain } = vi.hoisted(
-  () => ({
-    mockGetCurrentOperator: vi.fn(),
-    mockUpdateChain: vi.fn(),
-    mockInsertChain: vi.fn(),
-  }),
-);
+const {
+  mockGetCurrentOperator,
+  mockUpdateChain,
+  mockInsertChain,
+  mockInsertPayload,
+  mockUpdatePayload,
+} = vi.hoisted(() => ({
+  mockGetCurrentOperator: vi.fn(),
+  mockUpdateChain: vi.fn(),
+  mockInsertChain: vi.fn(),
+  mockInsertPayload: vi.fn(),
+  mockUpdatePayload: vi.fn(),
+}));
 
 vi.mock("@/features/auth/queries", () => ({
   getCurrentOperator: mockGetCurrentOperator,
@@ -17,14 +23,18 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
     from: () => ({
-      insert: () => ({
-        select: () => ({ single: mockInsertChain }),
-      }),
-      update: () => ({
-        eq: () => ({
-          select: () => ({ single: mockUpdateChain }),
-        }),
-      }),
+      insert: (payload: unknown) => {
+        mockInsertPayload(payload);
+        return { select: () => ({ single: mockInsertChain }) };
+      },
+      update: (payload: unknown) => {
+        mockUpdatePayload(payload);
+        return {
+          eq: () => ({
+            select: () => ({ single: mockUpdateChain }),
+          }),
+        };
+      },
       select: () => ({
         eq: () => ({
           maybeSingle: vi.fn().mockResolvedValue({
@@ -74,6 +84,8 @@ beforeEach(() => {
   mockGetCurrentOperator.mockReset();
   mockUpdateChain.mockReset();
   mockInsertChain.mockReset();
+  mockInsertPayload.mockReset();
+  mockUpdatePayload.mockReset();
 });
 
 describe("admin 가드", () => {
@@ -229,5 +241,48 @@ describe("배정 칸 저장 권한", () => {
     });
     expect(r.ok).toBe(false);
     expect(mockUpdateChain).not.toHaveBeenCalled();
+  });
+});
+
+describe("영업팀 — 부서는 영업부", () => {
+  it("createOperator — 영업팀으로 등록하면 department 를 영업부로 넣는다(운영부 뉴스레터 제외)", async () => {
+    mockGetCurrentOperator.mockResolvedValue(adminMe);
+    mockInsertChain.mockResolvedValue({ data: { id: "x" }, error: null });
+    await createOperator({ ...validCreate, team: "영업팀", permission: "viewer" });
+    expect(mockInsertPayload.mock.calls[0][0]).toMatchObject({
+      team: "영업팀",
+      department: "영업부",
+    });
+  });
+
+  it("createOperator — 운영팀은 운영부", async () => {
+    mockGetCurrentOperator.mockResolvedValue(adminMe);
+    mockInsertChain.mockResolvedValue({ data: { id: "x" }, error: null });
+    await createOperator(validCreate);
+    expect(mockInsertPayload.mock.calls[0][0]).toMatchObject({ department: "운영부" });
+  });
+
+  it("updateOperator — 영업팀에서 운영팀으로 옮기면 운영부로 돌아온다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(adminMe);
+    mockUpdateChain.mockResolvedValue({ data: { id: "x" }, error: null });
+    await updateOperator("00000000-0000-0000-0000-000000000001", { team: "운영2팀" });
+    expect(mockUpdatePayload.mock.calls[0][0]).toMatchObject({ department: "운영부" });
+  });
+
+  it("updateOperator — 팀을 안 바꾸면 department 도 안 보낸다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(adminMe);
+    mockUpdateChain.mockResolvedValue({ data: { id: "x" }, error: null });
+    await updateOperator("00000000-0000-0000-0000-000000000001", { name: "새이름" });
+    expect(mockUpdatePayload.mock.calls[0][0]).not.toHaveProperty("department");
+  });
+
+  it("updateOperator — 팀을 영업팀으로 바꾸면 department 도 영업부", async () => {
+    mockGetCurrentOperator.mockResolvedValue(adminMe);
+    mockUpdateChain.mockResolvedValue({ data: { id: "x" }, error: null });
+    await updateOperator("00000000-0000-0000-0000-000000000001", { team: "영업팀" });
+    expect(mockUpdatePayload.mock.calls[0][0]).toMatchObject({
+      team: "영업팀",
+      department: "영업부",
+    });
   });
 });

@@ -104,6 +104,7 @@ E2E 운영 메모:
 도메인별 동작:
 - **미수채권 독려** (receivables): admin 수동 트리거 → 경과일수 ≥ `MAIL_REMINDER_THRESHOLD_DAYS`(기본 10일) 청구건을 `학교담당자` 컬럼 이메일로 그룹화 일괄 발송. 이력 `receivables_mail_sends`
 - **인수인계 요청** (handover): wizard step3에서 발송. 14 카테고리 → **HTML 첨부**(`features/handover/html-document.ts`). 이력 `handover_progress`
+- **사고보고** (incidents): 등록 시 담당부서 고정 보고자(운영1팀 허승철 / 운영2팀 송영신)에게 PDF 첨부 발송. **대학이 4년제면 이사님(조직권한 role `이사`)과 그 대학 영업자를 참조**로 넣는다(2026-11-24) — 대분류·영업자는 총괄장 `02. 배정리스트`의 `대분류`·`영업자` 칸이 정본이고, 영업자 칸은 이름뿐이라 조직권한 **영업팀**에서 같은 이름으로 메일을 찾는다(`features/incidents/cc.ts`). 이사님(이이화)은 `mail_cc_excluded` 가 켜져 있지만 **이 메일만 예외**(사용자 지시). 영업자를 못 찾거나 시트를 못 읽으면 참조 없이 보내고 활동 로그에 사정을 적는다. **영업팀은 운영 업무를 안 맡는다** — 부서 `영업부`(앱이 팀으로 채움, 운영부 뉴스레터 제외), 운영자 고르는 칸(`pickableOperators`)·경위서 결재선에서 빠진다. 이력 `incident_mail_sends`(참조는 활동 로그 `mail_cc`)
 - **백업 요청** (backup-requests): 그룹별 발송 — 1명 일괄 모드 (single group) / 서비스별 모드 (per-substitute group). **HTML 첨부도 그룹별 본인 담당 services만 렌더** (메일 본문↔첨부 일관). 이력 `backup_request_mail_sends`
 
 테스트 발송 스크립트 (DB 영향 없음, 단일 Graph 호출):

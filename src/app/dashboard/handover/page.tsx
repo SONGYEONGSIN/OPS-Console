@@ -15,6 +15,7 @@ import { HandoverWizard } from "./HandoverWizard";
 import { HandoverHistory } from "./HandoverHistory";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listOperators } from "@/features/operators/queries";
+import { pickableOperators } from "@/features/operators/pickable";
 import { requireMenu } from "@/features/auth/menu-guard";
 import {
   listServicesWithHandover,
@@ -93,8 +94,8 @@ export default async function HandoverPage({
     );
 
     const ops = await listOperators();
-    const operatorCandidates = ops
-      .filter((o) => o.status === "active" && o.email !== me?.email)
+    const operatorCandidates = pickableOperators(ops)
+      .filter((o) => o.email !== me?.email)
       .map((o) => ({
         email: o.email,
         name: o.name,

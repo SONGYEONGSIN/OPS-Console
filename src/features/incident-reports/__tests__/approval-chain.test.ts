@@ -29,4 +29,21 @@ describe("pickApprovalChain", () => {
     expect(chain.ceo).toBeNull();
     expect(chain.author.name).toBe("혼자");
   });
+  it("영업팀은 결재선에 안 든다 — 영업팀 부장·이사가 먼저 등록돼 있어도 운영 쪽을 고른다", () => {
+    const sales = [
+      { email: "s1@x.com", name: "영업부장", team: "영업팀", role: "부장", leader: null },
+      { email: "s2@x.com", name: "영업이사", team: "영업팀", role: "이사", leader: null },
+      { email: "s3@x.com", name: "영업팀장", team: "영업팀", role: "팀장", leader: null },
+    ];
+    const ops = [
+      { email: "a@x.com", name: "작성", team: "운영1팀", role: "매니저", leader: null },
+      { email: "b@x.com", name: "운영부장", team: "운영1팀", role: "부장", leader: null },
+      { email: "c@x.com", name: "운영이사", team: "운영1팀", role: "이사", leader: null },
+      { email: "t@x.com", name: "운영팀장", team: "운영1팀", role: "팀장", leader: null },
+    ];
+    const chain = pickApprovalChain(ops[0], [...sales, ...ops]);
+    expect(chain.director?.name).toBe("운영부장");
+    expect(chain.ceo?.name).toBe("운영이사");
+    expect(chain.approver?.name).toBe("운영팀장");
+  });
 });

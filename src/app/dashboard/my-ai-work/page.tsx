@@ -8,6 +8,7 @@ import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listAiWorks } from "@/features/ai-work/queries";
 import { listOperators } from "@/features/operators/queries";
+import { pickableOperators } from "@/features/operators/pickable";
 import {
   createAiWork,
   updateAiWork,
@@ -37,8 +38,8 @@ export default async function MyAiWorkPage({
   const allWorks = await listAiWorks();
   const allOperators = await listOperators();
   // 후보는 재직 중 + 본인 제외 (backup 도메인과 동일 규칙).
-  const aiWorkOperators = allOperators
-    .filter((op) => op.status === "active" && op.email !== me?.email)
+  const aiWorkOperators = pickableOperators(allOperators)
+    .filter((op) => op.email !== me?.email)
     .map((op) => ({ email: op.email, name: op.name }));
   // 표시 이름은 퇴사자도 풀어야 하므로 필터 전 전체 목록으로 만든다.
   const operatorNameByEmail = new Map(

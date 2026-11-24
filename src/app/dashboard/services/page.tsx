@@ -12,6 +12,7 @@ import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listOperators } from "@/features/operators/queries";
+import { pickableOperators } from "@/features/operators/pickable";
 import { listServices, type ServicesFilter } from "@/features/services/queries";
 import {
   createService,
@@ -69,8 +70,7 @@ export default async function ServicesPage({
 
   // EditForm: 운영자 select 후보 (active operators 전체)
   const allOperators = await listOperators();
-  const servicesOperators = allOperators
-    .filter((op) => op.status === "active")
+  const servicesOperators = pickableOperators(allOperators)
     .map((op) => ({ email: op.email, name: op.name }));
 
   // EditForm: 대학명 → 학교키·다음 시퀀스 매핑 (전체 services 대상)
