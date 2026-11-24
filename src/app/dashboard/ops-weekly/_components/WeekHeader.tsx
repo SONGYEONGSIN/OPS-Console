@@ -7,6 +7,7 @@ import { formatMdHm } from "../_format";
 import type { HeaderWeek } from "../_header-week";
 import { ALL_OP, opsWeeklyHref } from "../_params";
 import { useOpsArea } from "./use-ops-area";
+import { useOpsPath } from "./ops-path";
 
 type Props = {
   weekRef: WeekRef;
@@ -89,6 +90,7 @@ function ScopeToggle(props: {
   area: string;
 }) {
   const { scope, weekStart, area } = props;
+  const path = useOpsPath();
   const items = [
     {
       key: "mine" as const,
@@ -118,7 +120,7 @@ function ScopeToggle(props: {
         return (
           <Link
             key={it.key}
-            href={opsWeeklyHref(weekStart, area, it.op)}
+            href={opsWeeklyHref(weekStart, area, it.op, null, path)}
             aria-current={on ? "page" : undefined}
             className={`${cls} cursor-pointer ${on ? SEG_ON : SEG_OFF}`}
           >

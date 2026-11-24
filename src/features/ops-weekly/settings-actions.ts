@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult } from "./actions";
-import { OPS_WEEKLY_PATH, type ProjectKind } from "./constants";
+import { OPS_WEEKLY_PATHS, type ProjectKind } from "./constants";
 import { normEmail } from "./email";
 import { canManageSettings } from "./permissions";
 import type { RecipientWarning } from "./roster";
@@ -50,7 +50,7 @@ async function requireAdmin(): Promise<Admin | Fail> {
 }
 
 function done(): ActionResult {
-  revalidatePath(OPS_WEEKLY_PATH);
+  for (const path of OPS_WEEKLY_PATHS) revalidatePath(path);
   return OK;
 }
 

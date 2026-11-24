@@ -130,6 +130,8 @@ export const ADMIN_ONLY_MENU_SLUGS = new Set([
   "checklist",
   // 개발 환경 설정이지 운영 업무가 아니다.
   "tools",
+  // 주간업무보고 새 화면 — 다듬는 동안 관리자만 본다(2026-11-25).
+  "ops-weekly-v2",
 ]);
 
 /**

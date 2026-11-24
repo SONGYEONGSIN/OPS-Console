@@ -98,6 +98,8 @@ describe("saveAreaNote", () => {
       { onConflict: "report_id,area" },
     );
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/ops-weekly");
+    // 새 화면 메뉴도 같은 보고서를 보여 준다 — 한쪽만 그리면 다른 쪽이 낡는다.
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/ops-weekly-v2");
   });
 
   it("입력이 틀리면 쓰지 않는다", async () => {

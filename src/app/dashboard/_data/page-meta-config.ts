@@ -115,6 +115,11 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     description:
       "운영1·2팀 주간 업무를 미리 채워진 화면에서 확인·제출하고, 당번이 모아 보고합니다.",
   },
+  "ops-weekly-v2": {
+    headline: { accent: "분석 · 보고", title: "주간업무보고(신규)" },
+    description:
+      "주간업무보고 새 화면입니다. 같은 보고서를 운영리포트형 머리와 카드 8장으로 봅니다 — 관리자만 봅니다.",
+  },
   tools: {
     headline: { accent: "AI & 자동화", title: "도구" },
     description:

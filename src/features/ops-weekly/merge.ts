@@ -113,6 +113,13 @@ export type WeeklyKpis = {
   pims: number;
 };
 
+/** 새 화면 메뉴(ops-weekly-v2)의 카드 8장 — 기존 카드 숫자에 성적산출·휴가·외근을 더한다. */
+export type WeeklyKpisV2 = WeeklyKpis & {
+  /** 성적산출 — 원천이 아직 없다(데이터 연결 예정). 0 이 아니라 null 이라 카드가 `연결 전` 이다. */
+  scoreCalc: number | null;
+  leave: number;
+};
+
 /** 뺀 건을 뺀 자동 건수 — KPI 와 하위 탭 숫자가 같은 식을 쓴다. */
 export function kept(
   list: readonly AutoItem[],
@@ -240,4 +247,17 @@ export function groupEntriesByProject(
         a.operatorName.localeCompare(b.operatorName, "ko"),
       ),
     }));
+}
+
+export function computeKpisV2(
+  snap: AutoSnapshot,
+  overrides: ReadonlyMap<string, ItemOverride>,
+  manual: readonly ManualItem[],
+): WeeklyKpisV2 {
+  return {
+    ...computeKpis(snap, overrides, manual),
+    scoreCalc: null,
+    // 휴가·외근 탭은 뺀 건도 행으로 남겨 센다 — 탭 제목(areaCounts)과 같은 수.
+    leave: snap.leave.length + manual.filter((m) => m.area === "leave").length,
+  };
 }

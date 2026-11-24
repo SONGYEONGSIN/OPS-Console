@@ -13,7 +13,7 @@ import {
   MAX_IMAGE_BYTES,
   OPS_WEEKLY_BUCKET,
   OPS_WEEKLY_IMAGE_RE,
-  OPS_WEEKLY_PATH,
+  OPS_WEEKLY_PATHS,
   OPS_WEEKLY_SIGNED_URL_TTL_SEC,
 } from "./constants";
 import { normEmail } from "./email";
@@ -59,7 +59,7 @@ const isFail = <T extends object>(v: T | Fail): v is Fail =>
   "ok" in v && v.ok === false;
 
 function done(): ActionResult {
-  revalidatePath(OPS_WEEKLY_PATH);
+  for (const path of OPS_WEEKLY_PATHS) revalidatePath(path);
   return OK;
 }
 
@@ -125,7 +125,7 @@ export async function addManualItem(
   const failed = writeFailed("항목", res.error);
   if (failed) return failed;
   const id = (res.data as { id: string } | null)?.id;
-  revalidatePath(OPS_WEEKLY_PATH);
+  for (const path of OPS_WEEKLY_PATHS) revalidatePath(path);
   return { ok: true, id };
 }
 
