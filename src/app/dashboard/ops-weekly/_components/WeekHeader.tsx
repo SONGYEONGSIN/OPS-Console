@@ -31,13 +31,19 @@ type Props = {
   /** 다시 작성 요청에 적힌 사유 */
   returnReason?: string | null;
   prevOpen: boolean;
+  /** `지난주로` 안내 링크 — 주 이동 버튼은 이번 주·다음 주 둘뿐이다. */
   prevHref: string;
-  nextHref: string;
+  thisWeekHref: string;
+  nextWeekHref: string;
+  /** 지금 보는 주가 달력의 이번 주·다음 주 중 어느 것인지 — 다른 주면 null(둘 다 꺼짐). */
+  current: "this" | "next" | null;
 };
 
-// 높이는 오늘 할 일(WeeklyView)의 ‹ › 그대로 — py-1(8) + text-sm 줄높이(20) + 테두리(2) = 30px. 가로를 같게 해 정사각형. 호버는 버튼 표준(검정).
-const NAV_LINK =
-  "inline-flex size-7.5 shrink-0 items-center justify-center border border-line text-sm text-ink hover:border-ink hover:bg-ink hover:text-cream";
+// 운영리포트 기간 버튼(PeriodSelector)과 같은 모양. 꺼진 칸 호버는 버튼 표준(검정).
+const WEEK_BTN = "border px-3 py-1.5 text-xs";
+const WEEK_ON = "border-vermilion bg-vermilion text-cream";
+const WEEK_OFF =
+  "border-line bg-transparent text-ink hover:border-ink hover:bg-ink hover:text-cream";
 
 function StatusBadge(props: {
   status: ReportStatus | null;
@@ -134,12 +140,13 @@ export function WeekHeader(props: Props) {
   const { area } = useOpsArea();
   const { weekRef, week, prevOpen, reportStatus } = props;
   const showOwnState = props.showReportState && props.scope?.active !== "all";
-  const prevHref = props.showReportState
-    ? withTab(props.prevHref, area)
-    : props.prevHref;
-  const nextHref = props.showReportState
-    ? withTab(props.nextHref, area)
-    : props.nextHref;
+  const follow = (href: string) =>
+    props.showReportState ? withTab(href, area) : href;
+  const prevHref = follow(props.prevHref);
+  const weekButtons = [
+    { key: "this" as const, label: "이번 주", href: follow(props.thisWeekHref) },
+    { key: "next" as const, label: "다음 주", href: follow(props.nextWeekHref) },
+  ];
   const locked = week.status === "reported" && week.reported_at;
   const returnReason =
     reportStatus === "returned" && props.returnReason
@@ -148,18 +155,35 @@ export function WeekHeader(props: Props) {
   const hasMessages = locked || returnReason !== null || prevOpen;
 
   return (
-    <div className="flex flex-col gap-2 px-5 pt-4 lg:px-7 text-sm text-ink">
+    <div className="flex flex-col gap-3 px-5 pt-4 lg:px-7 text-sm text-ink">
+      {/* 운영리포트 머리와 같은 짜임 — 왼쪽 제목·일정, 오른쪽 기간(주) 버튼 */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-ink">주간업무보고</h2>
+          <p className="mt-1 text-xs text-muted tabular-nums">{`${weekRef.label} · ${weekRef.rangeLabel}`}</p>
+        </div>
+        <div
+          className="flex flex-wrap items-center gap-1"
+          role="group"
+          aria-label="주 선택"
+        >
+          {weekButtons.map((b) => {
+            const on = props.current === b.key;
+            return (
+              <Link
+                key={b.key}
+                href={b.href}
+                aria-current={on ? "page" : undefined}
+                className={`${WEEK_BTN} ${on ? WEEK_ON : WEEK_OFF}`}
+              >
+                {b.label}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-          <div className="flex min-w-0 items-center gap-x-2">
-            <Link href={prevHref} aria-label="이전 주" className={NAV_LINK}>
-              ‹
-            </Link>
-            <span className="min-w-0 text-base font-bold tracking-[-0.02em] tabular-nums">{`${weekRef.label} · ${weekRef.rangeLabel}`}</span>
-            <Link href={nextHref} aria-label="다음 주" className={NAV_LINK}>
-              ›
-            </Link>
-          </div>
           {props.scope !== null ? (
             <ScopeToggle
               scope={props.scope}

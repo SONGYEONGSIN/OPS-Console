@@ -85,21 +85,20 @@ describe("주간업무보고 반응형 — 모양 단언", () => {
     expect(tokens(tr)).not.toContain("align-top");
   });
 
-  it("KPI 는 폰·태블릿 3열, lg 부터 한 줄 6열 — 고아 칸이 없다", () => {
+  it("KPI 8장은 폰 2열, md 부터 4열 두 줄 — 고아 칸이 없다", () => {
     render(
       <WeeklyKpiRow
         weekStart="2026-11-16"
         op={null}
         ownerName="홍길동"
-        kpis={{ dev: 1, test: 1, opening: 1, running: 1, closing: 1, pims: 1 }}
+        kpis={{ dev: 1, test: 1, opening: 1, running: 1, closing: 1, pims: 1, scoreCalc: null, leave: 1 }}
       />,
     );
     const grid = screen.getAllByTestId("weekly-kpi-label")[0].closest(".grid");
     const t = tokens(grid as Element);
-    expect(t).toContain("grid-cols-3");
-    expect(t).toContain("lg:grid-cols-5");
-    expect(t).not.toContain("lg:grid-cols-6");
-    expect(t).not.toContain("grid-cols-2");
+    expect(t).toContain("grid-cols-2");
+    expect(t).toContain("md:grid-cols-4");
+    expect(grid?.children).toHaveLength(8);
     expect(t).toContain("px-5");
     expect(t).toContain("lg:px-7");
     // 캡션이 위에 붙으면서 그리드 위 여백이 줄었다 — 캡션도 같은 좌우 여백

@@ -35,7 +35,7 @@ function viewFor(tab: string, over: Record<string, unknown> = {}) {
     report: null,
     snapshot: null,
     detail: null,
-    kpis: { dev: 1, test: 2, opening: 3, running: 4, closing: 5, pims: 6 },
+    kpis: { dev: 1, test: 2, opening: 3, running: 4, closing: 5, pims: 6, scoreCalc: null, leave: 6 },
     submittedCount: 0,
     prevOpen: false,
     canEdit: false,
@@ -56,7 +56,7 @@ describe("KPI 는 내 보고서에서만 — 누구의 숫자인지 밝힌다", 
     const { unmount } = render(
       await OpsWeeklyPage({ searchParams: Promise.resolve({ tab }) }),
     );
-    expect(screen.getAllByTestId("weekly-kpi-label")).toHaveLength(6);
+    expect(screen.getAllByTestId("weekly-kpi-label")).toHaveLength(8);
     expect(screen.getByText(/^홍길동의 이번 주/)).toBeInTheDocument();
     unmount();
   });
