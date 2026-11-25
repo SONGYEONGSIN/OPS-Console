@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { EditFormProps } from "../types";
 import { ListSearch } from "@/components/common/ListSearch";
 import { DateInput } from "@/components/common/DateInput";
@@ -105,6 +105,9 @@ export function IncidentEditForm({
 
   // 신규 보고만 등급 필수 — 기존 NULL 행은 그대로 저장된다
   const [severityError, setSeverityError] = useState<string | null>(null);
+  // 등급 칸은 폼 위쪽, 저장 버튼은 맨 아래라 가드 문구가 화면 밖에 뜬다 — 포커스로 칸을 보이게 한다.
+  // 같은 오류로 다시 눌러도 옮겨야 해서 error 를 보는 effect 가 아니라 submit 에서 직접 부른다.
+  const severityRef = useRef<HTMLSelectElement>(null);
 
   const department = row.incidentDepartment ?? "운영부-운영1팀";
   const reporterName = REPORTER_BY_DEPARTMENT[department];
@@ -115,6 +118,7 @@ export function IncidentEditForm({
         e.preventDefault();
         if (isNew && !row.incidentSeverity) {
           setSeverityError(SEVERITY_REQUIRED);
+          severityRef.current?.focus();
           return;
         }
         onSave(row);
@@ -296,6 +300,7 @@ export function IncidentEditForm({
         error={severityError ?? undefined}
         criteria={incidentSeverityCriteria}
         canEditCriteria={isAdmin}
+        selectRef={severityRef}
       />
 
       <label className="block text-xs">

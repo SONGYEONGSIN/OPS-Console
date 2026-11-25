@@ -7,6 +7,7 @@ vi.mock("@/features/incidents/severity-criteria-actions", () => ({
 }));
 
 import { SeverityField } from "../SeverityField";
+import { InspectorPanel } from "../../../InspectorPanel";
 
 // 테스트 fixture — 실제 기준 문구의 원천은 마이그레이션 seed 하나다.
 const CRITERIA: SeverityCriteria = {
@@ -228,5 +229,111 @@ describe("SeverityField — admin 편집 진입 (T12)", () => {
     fireEvent.click(screen.getByRole("button", EDIT));
     fireEvent.click(screen.getByRole("button", { name: "취소" }));
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("SeverityField — 리뷰 지적 (M1·M3·L1·L4·L5)", () => {
+  it("M1: ? 에서 Escape 는 포커스만 풀고 인스펙터를 닫지 않는다", () => {
+    const onClose = vi.fn();
+    render(
+      <InspectorPanel open onClose={onClose}>
+        <SeverityField
+          value={undefined}
+          onChange={vi.fn()}
+          required={false}
+          criteria={CRITERIA}
+          canEditCriteria={false}
+        />
+      </InspectorPanel>,
+    );
+    const help = screen.getByRole("button", { name: "사고 등급 기준 보기" });
+    help.focus();
+    fireEvent.keyDown(help, { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(document.activeElement).not.toBe(help);
+  });
+
+  it("M3: 툴팁은 투명 래퍼(pt-1.5, margin·테두리 없음) 안에 테두리 상자를 둔다", () => {
+    renderField();
+    const tip = screen.getByRole("tooltip", { hidden: true });
+    const classes = tip.className.split(/\s+/);
+    expect(classes).toContain("pt-1.5");
+    expect(classes.some((c) => c.startsWith("mt-"))).toBe(false);
+    expect(classes.some((c) => c === "border" || c.startsWith("border-"))).toBe(
+      false,
+    );
+    const box = tip.firstElementChild as HTMLElement;
+    expect(box.className).toContain("border-ink");
+    expect(box.className).toContain("bg-cream");
+  });
+
+  it("L1: 위치 기준은 머리 줄 div 다 — 그룹 span 에는 relative 가 없다", () => {
+    renderField();
+    const help = screen.getByRole("button", { name: "사고 등급 기준 보기" });
+    const group = help.parentElement as HTMLElement;
+    const header = group.parentElement as HTMLElement;
+    expect(group.className.split(/\s+/)).not.toContain("relative");
+    expect(header.className.split(/\s+/)).toContain("relative");
+    const tip = screen.getByRole("tooltip", { hidden: true });
+    expect(tip.className).toContain("max-w-full");
+  });
+
+  it("L4: 머리 줄 간격은 gap-2 (누르는 영역 중심 간격 24px)", () => {
+    renderField();
+    const help = screen.getByRole("button", { name: "사고 등급 기준 보기" });
+    const header = help.parentElement?.parentElement as HTMLElement;
+    expect(header.className.split(/\s+/)).toContain("gap-2");
+  });
+
+  it("L5: required 면 select 에 aria-required, 아니면 없다", () => {
+    const { unmount } = render(
+      <SeverityField
+        value={undefined}
+        onChange={vi.fn()}
+        required
+        criteria={CRITERIA}
+        canEditCriteria={false}
+      />,
+    );
+    expect(
+      screen.getByLabelText("사고 등급").getAttribute("aria-required"),
+    ).toBe("true");
+    unmount();
+    renderField({ required: false });
+    expect(
+      screen.getByLabelText("사고 등급").getAttribute("aria-required"),
+    ).toBeNull();
+  });
+
+  it("L5: 오류 문구는 select 의 aria-describedby 로 묶이고, 오류가 없으면 묶지 않는다", () => {
+    const { unmount } = render(
+      <SeverityField
+        value={undefined}
+        onChange={vi.fn()}
+        required
+        error="사고 등급을 선택하세요."
+        criteria={CRITERIA}
+        canEditCriteria={false}
+      />,
+    );
+    const alert = screen.getByRole("alert");
+    expect(alert.id).not.toBe("");
+    expect(
+      screen.getByLabelText("사고 등급").getAttribute("aria-describedby"),
+    ).toBe(alert.id);
+    unmount();
+    renderField();
+    expect(
+      screen.getByLabelText("사고 등급").getAttribute("aria-describedby"),
+    ).toBeNull();
+  });
+
+  it("L5: ? 글자 크기는 토큰 text-2xs 다", () => {
+    renderField();
+    const cls = screen.getByRole("button", {
+      name: "사고 등급 기준 보기",
+    }).className;
+    expect(cls).toContain("text-2xs");
+    expect(cls).not.toContain("text-[10px]");
   });
 });

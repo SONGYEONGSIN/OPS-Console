@@ -235,6 +235,22 @@ describe("updateIncident", () => {
     );
   });
 
+  it("실경로처럼 severity: undefined 키가 실려도 통과하고 patch 를 직렬화하면 severity 가 없다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockUpdateResult.mockReturnValue({ data: baseRow, error: null });
+
+    const r = await updateIncident(baseRow.id, {
+      status: "처리중",
+      severity: undefined,
+    });
+    expect(r.ok).toBe(true);
+    const sent = JSON.parse(JSON.stringify(updatePatches[0])) as Record<
+      string,
+      unknown
+    >;
+    expect("severity" in sent).toBe(false);
+  });
+
   it("department 변경 시 reporter_* 자동 재매핑", async () => {
     mockGetCurrentOperator.mockResolvedValue(meOperator);
     mockUpdateResult.mockReturnValue({ data: baseRow, error: null });

@@ -18,6 +18,8 @@ type Props = {
   criteria: SeverityCriteria | null;
   /** admin 만 기준 문구를 고친다. */
   canEditCriteria: boolean;
+  /** 신규 가드에 걸렸을 때 폼이 등급 칸으로 포커스를 옮기는 데 쓴다. */
+  selectRef?: React.Ref<HTMLSelectElement>;
 };
 
 function isSeverity(v: string): v is IncidentSeverity {
@@ -27,40 +29,50 @@ function isSeverity(v: string): v is IncidentSeverity {
 /**
  * `?` 툴팁 — hover·포커스로 열린다. 모양은 live/MetricSubcard 톤이고 다른 점은 둘:
  * 포커스로도 열리고, pointer-events-none 을 빼서 포인터를 툴팁 위로 옮겨도 닫히지 않는다(WCAG 1.4.13).
+ * `role="tooltip"` 은 투명 래퍼이고 테두리 상자는 그 안에 있다 — `?` 와의 틈을 margin 이 아니라
+ * padding(pt-1.5)으로 두어 틈도 hover 영역에 든다.
+ * 위치 기준(relative)은 이 span 이 아니라 머리 줄 div 다 — left-0 이 칸 왼쪽 끝이 되어 좁은 서랍에서
+ * 가로로 잘리지 않는다. DOM 상 자식이라 group-hover/group-focus-within 은 그대로 동작한다.
  * CSS 툴팁은 Esc 로 안 닫혀서 `?` 에서 Escape 면 포커스를 푼다.
  */
 function CriteriaTooltip({ criteria }: { criteria: SeverityCriteria | null }) {
   const tipId = useId();
   return (
-    <span className="group relative inline-flex">
+    <span className="group inline-flex">
       <button
         type="button"
         aria-label="사고 등급 기준 보기"
         aria-describedby={tipId}
         onKeyDown={(e) => {
-          if (e.key === "Escape") e.currentTarget.blur();
+          if (e.key !== "Escape") return;
+          // preventDefault 로 '이 Esc 는 썼다'고 표시한다 — InspectorPanel 은 defaultPrevented 면
+          // 서랍을 닫지 않는다(ModalShell 과 같은 규약). 안 하면 신규 작성 초안이 사라진다.
+          e.preventDefault();
+          e.currentTarget.blur();
         }}
-        className="inline-flex h-4 w-4 cursor-help items-center justify-center border border-line-soft text-[10px] leading-none text-muted hover:border-ink hover:bg-ink hover:text-cream focus:border-ink"
+        className="inline-flex h-4 w-4 cursor-help items-center justify-center border border-line-soft text-2xs leading-none text-muted hover:border-ink hover:bg-ink hover:text-cream focus:border-ink"
       >
         ?
       </button>
       <div
         role="tooltip"
         id={tipId}
-        className="absolute left-0 top-full z-20 mt-1.5 hidden w-max max-w-[300px] border border-ink bg-cream px-2.5 py-2 text-[11px] leading-snug text-ink group-hover:block group-focus-within:block"
+        className="absolute left-0 top-full z-20 hidden w-max max-w-full pt-1.5 group-hover:block group-focus-within:block"
       >
-        {criteria === null ? (
-          "기준을 불러오지 못했습니다."
-        ) : (
-          <dl className="space-y-1">
-            {SEVERITY_VALUES.map((v) => (
-              <div key={v}>
-                <dt className="font-semibold">{v}</dt>
-                <dd className="text-ink-soft">{criteria[v] || "—"}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
+        <div className="max-w-[300px] border border-ink bg-cream px-2.5 py-2 text-[11px] leading-snug text-ink">
+          {criteria === null ? (
+            "기준을 불러오지 못했습니다."
+          ) : (
+            <dl className="space-y-1">
+              {SEVERITY_VALUES.map((v) => (
+                <div key={v}>
+                  <dt className="font-semibold">{v}</dt>
+                  <dd className="text-ink-soft">{criteria[v] || "—"}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
       </div>
     </span>
   );
@@ -104,11 +116,13 @@ export function SeverityField({
   error,
   criteria,
   canEditCriteria,
+  selectRef,
 }: Props) {
   const [editing, setEditing] = useState(false);
+  const errorId = useId();
   return (
     <div className="block text-xs">
-      <div className="mb-1 flex items-center gap-1.5 text-muted">
+      <div className="relative mb-1 flex items-center gap-2 text-muted">
         <span>사고 등급</span>
         {required && <span className="text-faint">(필수)</span>}
         <CriteriaTooltip criteria={criteria} />
@@ -124,8 +138,11 @@ export function SeverityField({
         )}
       </div>
       <select
+        ref={selectRef}
         aria-label="사고 등급"
         aria-invalid={error ? true : undefined}
+        aria-required={required || undefined}
+        aria-describedby={error ? errorId : undefined}
         value={value ?? ""}
         onChange={(e) => {
           if (isSeverity(e.target.value)) onChange(e.target.value);
@@ -144,7 +161,7 @@ export function SeverityField({
         ))}
       </select>
       {error && (
-        <p role="alert" className="mt-1 text-2xs text-vermilion">
+        <p id={errorId} role="alert" className="mt-1 text-2xs text-vermilion">
           {error}
         </p>
       )}

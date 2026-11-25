@@ -145,4 +145,18 @@ describe("IncidentEditForm — 사고 등급", () => {
     render(<StatefulForm initial={EXISTING_ROW} onSave={vi.fn()} />);
     expect(screen.queryByText("(필수)")).toBeNull();
   });
+
+  it("M2: 가드에 걸리면 등급 select 로 포커스가 가고, 다른 칸에 있다가 다시 눌러도 간다", () => {
+    render(<StatefulForm initial={NEW_ROW} onSave={vi.fn()} />);
+    const severity = screen.getByLabelText("사고 등급");
+    const save = screen.getByRole("button", { name: "저장" });
+    fireEvent.click(save);
+    expect(document.activeElement).toBe(severity);
+
+    const title = screen.getByLabelText("사고제목");
+    title.focus();
+    expect(document.activeElement).toBe(title);
+    fireEvent.click(save);
+    expect(document.activeElement).toBe(severity);
+  });
 });
