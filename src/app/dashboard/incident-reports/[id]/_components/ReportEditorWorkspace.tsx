@@ -16,6 +16,8 @@ import { updateIncident } from "@/features/incidents/actions";
 import { FormPage } from "@/app/dashboard/_components/inspector/list-variants/incident-reports/FormPage";
 import { HandlingRowsEditor } from "@/app/dashboard/_components/inspector/HandlingRowsEditor";
 import { statusBadgeTone } from "@/app/dashboard/_components/inspector/list-variants/badge-tone";
+import { PaginationNav } from "@/components/common/ListPagination";
+import { EDITOR_PANEL_WIDTH_CLASS } from "./editor-panel-width";
 
 type TextKey =
   | "recipient_university"
@@ -37,7 +39,7 @@ const POST_FIELDS: { key: TextKey; label: string; textarea: boolean }[] = [
 ];
 
 const inputClass =
-  "w-full border border-line bg-cream px-2 py-1 text-ink focus:border-vermilion focus:bg-situation-bg focus:outline-none";
+  "w-full border border-line-soft bg-field-bg px-2 py-1 text-ink focus:border-ink focus:bg-white focus:outline-none";
 
 type ApprovalOverride = {
   approverName: string | null;
@@ -223,30 +225,16 @@ export function ReportEditorWorkspace({
         <div className="min-h-0 flex-1 overflow-y-auto bg-paper p-6">
           <FormPage model={model} page={page} />
         </div>
-        <div className="mt-3 flex items-center justify-center gap-3 text-sm">
-          <button
-            type="button"
-            aria-label="이전 페이지"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="cursor-pointer border border-line bg-cream px-3 py-1.5 text-ink transition-opacity hover:border-ink hover:bg-ink hover:text-cream disabled:opacity-40"
-          >
-            ← 이전
-          </button>
-          <span className="font-mono text-xs text-muted">{page} / 2</span>
-          <button
-            type="button"
-            aria-label="다음 페이지"
-            disabled={page >= 2}
-            onClick={() => setPage((p) => Math.min(2, p + 1))}
-            className="cursor-pointer border border-line bg-cream px-3 py-1.5 text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:opacity-40"
-          >
-            다음 →
-          </button>
-        </div>
+        <PaginationNav
+          page={page}
+          totalPages={2}
+          onChange={(p) => setPage(Math.min(2, Math.max(1, p)))}
+        />
       </div>
 
-      <aside className="flex w-[360px] shrink-0 flex-col border-l border-line pl-4">
+      <aside
+        className={`flex ${EDITOR_PANEL_WIDTH_CLASS} shrink-0 flex-col border-l border-line pl-4`}
+      >
         <div className="mb-3 flex items-center justify-between">
           <span className="text-sm font-bold text-ink">편집</span>
           <span

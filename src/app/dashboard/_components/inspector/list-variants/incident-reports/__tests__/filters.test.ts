@@ -18,6 +18,7 @@ describe("incident-reports filters", () => {
     expect(row.incidentReportUniversity).toBe("");
     expect(row.incidentReportAuthorName).toBe("송영신");
     expect(row.name).toBe("");
+    expect("incidentReportCeoName" in row).toBe(false);
   });
 
   it("currentUserName 미지정 시 작성자 빈 문자열", () => {
