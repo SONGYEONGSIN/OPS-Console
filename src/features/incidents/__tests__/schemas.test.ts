@@ -6,6 +6,7 @@ import {
   APP_TYPE_VALUES,
   DEPARTMENT_VALUES,
   STATUS_VALUES,
+  SEVERITY_VALUES,
 } from "../schemas";
 
 const baseCreate = {
@@ -38,6 +39,9 @@ describe("enum values", () => {
   });
   it("STATUS 4값", () => {
     expect(STATUS_VALUES).toEqual(["미처리", "처리중", "처리완료", "보류"]);
+  });
+  it("SEVERITY 4값 — 심각부터 낮음 순서", () => {
+    expect(SEVERITY_VALUES).toEqual(["심각", "높음", "보통", "낮음"]);
   });
 });
 
@@ -153,6 +157,46 @@ describe("incidentRowSchema", () => {
     };
     const r = incidentRowSchema.safeParse(row);
     expect(r.success).toBe(true);
+  });
+
+  describe("severity — 기존 행은 NULL, 마이그 전 행은 키 없음", () => {
+    const row = {
+      id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      year: 2027,
+      university_name: "건국대학교(서울)",
+      app_type: "공통원서",
+      category: "결제",
+      title: "결제 오류",
+      department: "운영부-운영1팀",
+      assignee_email: null,
+      assignee_name: null,
+      reporter_email: "alcure23@jinhakapply.com",
+      reporter_name: "허승철",
+      created_at: "2026-05-16T00:00:00Z",
+      updated_at: "2026-05-16T00:00:00Z",
+    };
+
+    it("null 통과", () => {
+      const r = incidentRowSchema.safeParse({ ...row, severity: null });
+      expect(r.success).toBe(true);
+      if (r.success) expect(r.data.severity).toBeNull();
+    });
+
+    it("키 없음 통과", () => {
+      expect(incidentRowSchema.safeParse(row).success).toBe(true);
+    });
+
+    it("등급 값은 그대로 실린다", () => {
+      const r = incidentRowSchema.safeParse({ ...row, severity: "높음" });
+      expect(r.success).toBe(true);
+      if (r.success) expect(r.data.severity).toBe("높음");
+    });
+
+    it("4값 밖('긴급')은 거부", () => {
+      expect(
+        incidentRowSchema.safeParse({ ...row, severity: "긴급" }).success,
+      ).toBe(false);
+    });
   });
 });
 
