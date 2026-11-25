@@ -66,7 +66,7 @@ describe("WeekHeaderV2", () => {
       expect.arrayContaining([
         "border-line",
         "hover:border-vermilion",
-        "hover:bg-vermilion/10",
+        "hover:bg-vermilion/20",
         "hover:text-vermilion",
       ]),
     );
@@ -107,7 +107,7 @@ describe("WeekHeaderV2", () => {
       expect.arrayContaining([
         "border-line",
         "hover:border-ink",
-        "hover:bg-ink/10",
+        "hover:bg-ink/20",
       ]),
     );
     expect(all.getAttribute("href")).toContain("op=all");
