@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  within,
+} from "@testing-library/react";
 import type { ListRow } from "../../../../patterns/ListPattern";
 
 const { mockGetBundle, mockCreate } = vi.hoisted(() => ({
@@ -180,5 +186,42 @@ describe("IncidentView 탭", () => {
     expect(screen.queryByText("연결된 경위서")).not.toBeInTheDocument();
     expect(screen.getByText(/수시모집/)).toBeInTheDocument();
     expect(screen.getByText("작성 중")).toBeInTheDocument();
+  });
+});
+
+describe("IncidentView 사고 등급", () => {
+  function severitySection(): HTMLElement {
+    const heading = screen.getByRole("heading", { name: "사고 등급" });
+    const section = heading.closest("section");
+    if (!section) throw new Error("사고 등급 섹션이 없다");
+    return section;
+  }
+
+  it("등급이 있으면 사고 등급 섹션에 그 값을 평문으로 보인다", () => {
+    render(<IncidentView row={{ ...baseRow, incidentSeverity: "심각" }} />);
+    const section = severitySection();
+    expect(within(section).getByText("등급")).toBeInTheDocument();
+    expect(within(section).getByText("심각")).toBeInTheDocument();
+  });
+
+  it("등급이 null 이면 사고 등급 섹션에 — 를 보인다", () => {
+    render(<IncidentView row={{ ...baseRow, incidentSeverity: null }} />);
+    expect(within(severitySection()).getByText("—")).toBeInTheDocument();
+  });
+
+  it("등급이 없으면(undefined) 사고 등급 섹션에 — 를 보인다", () => {
+    render(<IncidentView row={baseRow} />);
+    expect(within(severitySection()).getByText("—")).toBeInTheDocument();
+  });
+
+  it("사고 등급 섹션은 일자 섹션 바로 다음, 담당 섹션 앞에 온다", () => {
+    render(<IncidentView row={{ ...baseRow, incidentSeverity: "보통" }} />);
+    const headings = screen
+      .getAllByRole("heading", { level: 4 })
+      .map((h) => h.textContent);
+    const i = headings.indexOf("일자");
+    expect(i).toBeGreaterThanOrEqual(0);
+    expect(headings[i + 1]).toBe("사고 등급");
+    expect(headings[i + 2]).toBe("담당");
   });
 });
