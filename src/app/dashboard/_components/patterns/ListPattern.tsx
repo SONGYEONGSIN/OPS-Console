@@ -25,6 +25,7 @@ import type {
   DevControlSpecSend,
 } from "@/features/dev-control-specs/schemas";
 import { type OperatorPermission } from "@/features/operators/schemas";
+import type { IncidentSeverity } from "@/features/incidents/schemas";
 
 export type ListRow = {
   id: string;
@@ -331,6 +332,8 @@ export type ListRow = {
   incidentOccurredDate?: string | null;
   /** incidents — 처리일자 (YYYY-MM-DD, nullable) */
   incidentResolvedDate?: string | null;
+  /** incidents — 사고 등급 (신규 필수, 기존 행은 null) */
+  incidentSeverity?: IncidentSeverity | null;
   /** incidents — 사고제목 */
   incidentTitle?: string;
   /** incidents — 본문 4섹션 (markdown) */

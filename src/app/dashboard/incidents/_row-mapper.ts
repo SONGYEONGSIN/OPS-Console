@@ -19,6 +19,7 @@ export function incidentToListRow(
     incidentCategory: r.category,
     incidentOccurredDate: r.occurred_date ?? null,
     incidentResolvedDate: r.resolved_date ?? null,
+    incidentSeverity: r.severity ?? null,
     incidentTitle: r.title,
     incidentCauseSummary: r.cause_summary ?? null,
     incidentRootCause: r.root_cause ?? null,

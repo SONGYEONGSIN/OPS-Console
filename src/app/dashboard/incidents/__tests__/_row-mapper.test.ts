@@ -42,3 +42,21 @@ describe("incidentToListRow", () => {
     expect(incidentToListRow(base, "sent").incidentReportStatus).toBe("sent");
   });
 });
+
+describe("incidentToListRow — 사고 등급", () => {
+  it("severity 를 incidentSeverity 로 옮긴다", () => {
+    expect(
+      incidentToListRow({ ...base, severity: "높음" }).incidentSeverity,
+    ).toBe("높음");
+  });
+
+  it("기존 NULL 행은 null", () => {
+    expect(
+      incidentToListRow({ ...base, severity: null }).incidentSeverity,
+    ).toBeNull();
+  });
+
+  it("키가 없는 행(마이그 전)도 null", () => {
+    expect(incidentToListRow(base).incidentSeverity).toBeNull();
+  });
+});
