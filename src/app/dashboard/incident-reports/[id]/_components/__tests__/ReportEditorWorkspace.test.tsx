@@ -64,7 +64,7 @@ describe("ReportEditorWorkspace", () => {
     fireEvent.change(screen.getByLabelText("경위"), {
       target: { value: "수정된 경위" },
     });
-    fireEvent.click(screen.getByLabelText("다음 페이지"));
+    fireEvent.click(screen.getByRole("button", { name: "다음 →" }));
     const reflected = screen
       .getAllByText("수정된 경위")
       .filter((el) => el.tagName !== "TEXTAREA");
@@ -84,7 +84,7 @@ describe("ReportEditorWorkspace", () => {
     render(<ReportEditorWorkspace report={report} />);
     expect(screen.getByText(/수신자/)).toBeInTheDocument();
     expect(screen.getByText("1 / 2")).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText("다음 페이지"));
+    fireEvent.click(screen.getByRole("button", { name: "다음 →" }));
     expect(screen.getByText("경 위 서")).toBeInTheDocument();
     expect(screen.getByText("2 / 2")).toBeInTheDocument();
   });
@@ -199,7 +199,7 @@ describe("ReportEditorWorkspace", () => {
       target: { value: "오류 확인 요청" },
     });
     // 2페이지(경위서)에 표로 반영
-    fireEvent.click(screen.getByLabelText("다음 페이지"));
+    fireEvent.click(screen.getByRole("button", { name: "다음 →" }));
     const table = screen.getByRole("table");
     expect(table).toBeInTheDocument();
     // 표 셀에 반영 (편집 textarea 값과 구분해 표 범위로 한정)
@@ -265,5 +265,28 @@ describe("ReportEditorWorkspace — 편집 패널 폭", () => {
     const aside = container.querySelector("aside");
     expect(aside?.classList.contains("w-[560px]")).toBe(true);
     expect(aside?.classList.contains("w-[360px]")).toBe(false);
+  });
+});
+
+describe("ReportEditorWorkspace — 페이지 넘기기", () => {
+  it("공통 PaginationNav 를 쓴다 (손으로 만든 버튼·font-mono 카운터 없음)", () => {
+    render(<ReportEditorWorkspace report={report} />);
+    const nav = screen.getByRole("navigation", { name: "페이지 이동" });
+    const prev = within(nav).getByRole("button", { name: "← 이전" });
+    const next = within(nav).getByRole("button", { name: "다음 →" });
+    expect(prev).toBeDisabled();
+    expect(next).toBeEnabled();
+    for (const btn of [prev, next]) {
+      expect(btn.classList.contains("bg-cream")).toBe(false);
+      expect(btn.hasAttribute("aria-label")).toBe(false);
+    }
+    expect(within(nav).getByText("1 / 2").classList.contains("font-mono")).toBe(
+      false,
+    );
+    fireEvent.click(next);
+    expect(within(nav).getByText("2 / 2")).toBeInTheDocument();
+    expect(next).toBeDisabled();
+    fireEvent.click(prev);
+    expect(within(nav).getByText("1 / 2")).toBeInTheDocument();
   });
 });

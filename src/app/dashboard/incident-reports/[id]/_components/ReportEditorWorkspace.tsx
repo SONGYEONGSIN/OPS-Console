@@ -16,6 +16,7 @@ import { updateIncident } from "@/features/incidents/actions";
 import { FormPage } from "@/app/dashboard/_components/inspector/list-variants/incident-reports/FormPage";
 import { HandlingRowsEditor } from "@/app/dashboard/_components/inspector/HandlingRowsEditor";
 import { statusBadgeTone } from "@/app/dashboard/_components/inspector/list-variants/badge-tone";
+import { PaginationNav } from "@/components/common/ListPagination";
 import { EDITOR_PANEL_WIDTH_CLASS } from "./editor-panel-width";
 
 type TextKey =
@@ -224,27 +225,11 @@ export function ReportEditorWorkspace({
         <div className="min-h-0 flex-1 overflow-y-auto bg-paper p-6">
           <FormPage model={model} page={page} />
         </div>
-        <div className="mt-3 flex items-center justify-center gap-3 text-sm">
-          <button
-            type="button"
-            aria-label="이전 페이지"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="cursor-pointer border border-line bg-cream px-3 py-1.5 text-ink transition-opacity hover:border-ink hover:bg-ink hover:text-cream disabled:opacity-40"
-          >
-            ← 이전
-          </button>
-          <span className="font-mono text-xs text-muted">{page} / 2</span>
-          <button
-            type="button"
-            aria-label="다음 페이지"
-            disabled={page >= 2}
-            onClick={() => setPage((p) => Math.min(2, p + 1))}
-            className="cursor-pointer border border-line bg-cream px-3 py-1.5 text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:opacity-40"
-          >
-            다음 →
-          </button>
-        </div>
+        <PaginationNav
+          page={page}
+          totalPages={2}
+          onChange={(p) => setPage(Math.min(2, Math.max(1, p)))}
+        />
       </div>
 
       <aside
