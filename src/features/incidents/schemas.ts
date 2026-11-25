@@ -94,3 +94,17 @@ export type IncidentCreate = z.infer<typeof incidentCreateSchema>;
 
 export const incidentUpdateSchema = incidentCreateSchema.partial();
 export type IncidentUpdate = z.infer<typeof incidentUpdateSchema>;
+
+/**
+ * 등급별 판단 기준(incident_severity_criteria) 저장 입력.
+ * enum 키 record 는 4등급을 모두 요구한다 — 하나라도 빠지면 거부.
+ */
+export const severityCriteriaSchema = z.record(
+  severitySchema,
+  z
+    .string()
+    .trim()
+    .min(1, "기준 문구를 입력하세요.")
+    .max(500, "기준 문구는 500자 이내로 입력하세요."),
+);
+export type SeverityCriteria = Record<IncidentSeverity, string>;

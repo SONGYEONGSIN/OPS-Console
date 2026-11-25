@@ -8,6 +8,7 @@ import {
   STATUS_VALUES,
   SEVERITY_VALUES,
   SEVERITY_REQUIRED,
+  severityCriteriaSchema,
 } from "../schemas";
 
 const baseCreate = {
@@ -243,5 +244,72 @@ describe("incidentUpdateSchema", () => {
     expect(incidentUpdateSchema.safeParse({ severity: null }).success).toBe(
       false,
     );
+  });
+});
+
+describe("severityCriteriaSchema", () => {
+  const full = {
+    심각: "다수 지원자 영향",
+    높음: "여러 지원자 영향",
+    보통: "일부 지원자 영향",
+    낮음: "지원자 영향 없음",
+  };
+
+  it("4등급 모두 있으면 통과", () => {
+    expect(severityCriteriaSchema.safeParse(full).success).toBe(true);
+  });
+
+  it("등급 키 하나라도 빠지면 거부", () => {
+    const { 보통: _omit, ...withoutOne } = full;
+    void _omit;
+    expect(severityCriteriaSchema.safeParse(withoutOne).success).toBe(false);
+  });
+
+  it("4값 밖 키는 거부", () => {
+    expect(
+      severityCriteriaSchema.safeParse({ ...full, 긴급: "x" }).success,
+    ).toBe(false);
+  });
+
+  it("빈 문구 거부 — 입력 안내", () => {
+    const r = severityCriteriaSchema.safeParse({ ...full, 낮음: "" });
+    expect(r.success).toBe(false);
+    if (!r.success)
+      expect(r.error.issues[0].message).toBe("기준 문구를 입력하세요.");
+  });
+
+  it("공백뿐인 문구도 빈 문구로 거부", () => {
+    const r = severityCriteriaSchema.safeParse({ ...full, 낮음: "   " });
+    expect(r.success).toBe(false);
+    if (!r.success)
+      expect(r.error.issues[0].message).toBe("기준 문구를 입력하세요.");
+  });
+
+  it("501자 거부 — 길이 안내", () => {
+    const r = severityCriteriaSchema.safeParse({
+      ...full,
+      심각: "가".repeat(501),
+    });
+    expect(r.success).toBe(false);
+    if (!r.success)
+      expect(r.error.issues[0].message).toBe(
+        "기준 문구는 500자 이내로 입력하세요.",
+      );
+  });
+
+  it("500자는 통과", () => {
+    expect(
+      severityCriteriaSchema.safeParse({ ...full, 심각: "가".repeat(500) })
+        .success,
+    ).toBe(true);
+  });
+
+  it("앞뒤 공백은 trim 된다", () => {
+    const r = severityCriteriaSchema.safeParse({
+      ...full,
+      높음: "  재안내 필요  ",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.높음).toBe("재안내 필요");
   });
 });
