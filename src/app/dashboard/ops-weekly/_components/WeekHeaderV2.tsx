@@ -31,12 +31,12 @@ type Props = {
 const WEEK_BTN = "border px-3 py-1.5 text-xs";
 const WEEK_ON = "border-vermilion bg-vermilion text-cream";
 const WEEK_OFF =
-  "border-line bg-transparent text-ink hover:border-vermilion hover:bg-vermilion/10 hover:text-vermilion";
+  "border-line bg-transparent text-ink hover:border-vermilion hover:bg-vermilion/20 hover:text-vermilion";
 
 // 범위 토글 — 켜진 칸은 검정, 꺼진 칸 호버는 검정 음영(2026-11-25 사용자 지시).
 const SCOPE_ON = "border-ink bg-ink text-cream";
 const SCOPE_OFF =
-  "border-line bg-transparent text-ink hover:border-ink hover:bg-ink/10";
+  "border-line bg-transparent text-ink hover:border-ink hover:bg-ink/20";
 
 /** 링크라 서버가 그 범위로 다시 읽는다. 영역(URL)은 그대로 들고 간다. */
 function ScopeButtons({ scope, area }: { scope: Scope; area: string }) {
