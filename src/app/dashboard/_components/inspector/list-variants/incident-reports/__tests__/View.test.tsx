@@ -116,3 +116,21 @@ describe("IncidentReportView onChanged", () => {
     expect(arg.body).toContain("이해영");
   });
 });
+
+describe("IncidentReportView 결재라인", () => {
+  it("담당자·팀장·본부장만 보이고 사장 칸은 없다 (데이터는 있어도)", () => {
+    const row: ListRow = {
+      ...baseRow,
+      incidentReportAuthorName: "이해영",
+      incidentReportApproverName: "송영신",
+      incidentReportDirectorName: "이이화",
+      incidentReportCeoName: "주정현",
+    };
+    render(<IncidentReportView row={row} />);
+    expect(screen.getByText("담당자")).toBeInTheDocument();
+    expect(screen.getByText("본부장")).toBeInTheDocument();
+    expect(screen.getByText("이이화")).toBeInTheDocument();
+    expect(screen.queryByText("사장")).toBeNull();
+    expect(screen.queryByText("주정현")).toBeNull();
+  });
+});

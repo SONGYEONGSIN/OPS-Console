@@ -219,7 +219,6 @@ export function IncidentReportView({
             { term: "담당자", desc: row.incidentReportAuthorName ?? "—" },
             { term: "팀장", desc: row.incidentReportApproverName ?? "—" },
             { term: "본부장", desc: row.incidentReportDirectorName ?? "—" },
-            { term: "사장", desc: row.incidentReportCeoName ?? "—" },
           ]}
         />
       </Section>

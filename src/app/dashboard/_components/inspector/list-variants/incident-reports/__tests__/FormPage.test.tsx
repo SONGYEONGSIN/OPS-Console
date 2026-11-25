@@ -30,14 +30,15 @@ const source: FormSource = {
 const model = deriveFormModel(source);
 
 describe("FormPage page 1 (공문)", () => {
-  it("수신대학·제목·결재자 한 줄(담당자/팀장/본부장/사장)을 렌더한다", () => {
+  it("수신대학·제목·결재자 한 줄(담당자/팀장/본부장)을 렌더한다 — 사장 칸은 없다", () => {
     render(<FormPage model={model} page={1} />);
     expect(screen.getByText(/수신자/)).toBeInTheDocument();
     expect(screen.getAllByText(/전산파일 오류 건/).length).toBeGreaterThan(0);
     expect(screen.getByText(/담당자/)).toBeInTheDocument();
     expect(screen.getByText(/팀장/)).toBeInTheDocument();
     expect(screen.getByText(/본부장/)).toBeInTheDocument();
-    expect(screen.getByText(/사장/)).toBeInTheDocument();
+    expect(screen.queryByText(/사장/)).toBeNull();
+    expect(screen.queryByText(/주정현/)).toBeNull();
   });
   it("회사명과 직인 이미지를 렌더한다", () => {
     render(<FormPage model={model} page={1} />);
