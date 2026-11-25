@@ -61,3 +61,26 @@ describe("ModalShell — a4 사이즈", () => {
     expect(container.querySelector(".max-w-2xl")).not.toBeNull();
   });
 });
+
+/**
+ * 모달은 인스펙터 안에서 열리기도 한다(사고 등급 기준 편집). Esc 를 모달이 썼다고
+ * 이벤트에 표시해야 바깥 층(InspectorPanel)이 같은 Esc 로 같이 닫히지 않는다.
+ */
+describe("ModalShell — Esc 소비 표시", () => {
+  it("Escape 를 처리하면 onClose 를 부르고 이벤트를 defaultPrevented 로 남긴다", () => {
+    const onClose = vi.fn();
+    render(
+      <ModalShell title="t" onClose={onClose}>
+        <p>b</p>
+      </ModalShell>,
+    );
+    const event = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(event);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(event.defaultPrevented).toBe(true);
+  });
+});

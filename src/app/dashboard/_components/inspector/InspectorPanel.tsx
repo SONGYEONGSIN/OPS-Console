@@ -34,6 +34,9 @@ export function InspectorPanel({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
+      // 안쪽 모달(ModalShell)이 이미 쓴 Esc 는 무시한다. '#ops-modal-root 에 자식이 있나'로
+      // 보면 안 된다 — 실제 브라우저는 리스너 사이에 React 가 모달을 먼저 언마운트한다.
+      if (e.defaultPrevented) return;
       if (e.key === "Escape") onClose();
     };
     const onDown = (e: MouseEvent) => {
