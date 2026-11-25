@@ -258,3 +258,12 @@ describe("ReportEditorWorkspace — 편집 칸 입력창 표준", () => {
     }
   });
 });
+
+describe("ReportEditorWorkspace — 편집 패널 폭", () => {
+  it("편집 패널(aside)은 560px", () => {
+    const { container } = render(<ReportEditorWorkspace report={report} />);
+    const aside = container.querySelector("aside");
+    expect(aside?.classList.contains("w-[560px]")).toBe(true);
+    expect(aside?.classList.contains("w-[360px]")).toBe(false);
+  });
+});

@@ -16,6 +16,7 @@ import { updateIncident } from "@/features/incidents/actions";
 import { FormPage } from "@/app/dashboard/_components/inspector/list-variants/incident-reports/FormPage";
 import { HandlingRowsEditor } from "@/app/dashboard/_components/inspector/HandlingRowsEditor";
 import { statusBadgeTone } from "@/app/dashboard/_components/inspector/list-variants/badge-tone";
+import { EDITOR_PANEL_WIDTH_CLASS } from "./editor-panel-width";
 
 type TextKey =
   | "recipient_university"
@@ -246,7 +247,9 @@ export function ReportEditorWorkspace({
         </div>
       </div>
 
-      <aside className="flex w-[360px] shrink-0 flex-col border-l border-line pl-4">
+      <aside
+        className={`flex ${EDITOR_PANEL_WIDTH_CLASS} shrink-0 flex-col border-l border-line pl-4`}
+      >
         <div className="mb-3 flex items-center justify-between">
           <span className="text-sm font-bold text-ink">편집</span>
           <span
