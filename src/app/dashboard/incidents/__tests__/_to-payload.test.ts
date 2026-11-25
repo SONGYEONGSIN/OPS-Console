@@ -43,3 +43,21 @@ describe("toIncidentPayload", () => {
     expect(toIncidentPayload(base, 2026).handling_rows).toEqual([]);
   });
 });
+
+describe("toIncidentPayload — 사고 등급", () => {
+  it("incidentSeverity 를 severity 로 매핑한다", () => {
+    expect(
+      toIncidentPayload({ ...base, incidentSeverity: "보통" }, 2026).severity,
+    ).toBe("보통");
+  });
+
+  it("값이 없으면 키는 있어도 undefined — update 스키마가 null 을 거부하므로", () => {
+    expect(toIncidentPayload(base, 2026).severity).toBeUndefined();
+  });
+
+  it("기존 NULL 행 수정도 null 이 아니라 undefined", () => {
+    expect(
+      toIncidentPayload({ ...base, incidentSeverity: null }, 2026).severity,
+    ).toBeUndefined();
+  });
+});
