@@ -241,3 +241,20 @@ describe("ReportEditorWorkspace — 상태 배지 톤", () => {
     );
   });
 });
+
+describe("ReportEditorWorkspace — 편집 칸 입력창 표준", () => {
+  it("입력창은 border-line-soft bg-field-bg + focus:border-ink focus:bg-white", () => {
+    render(<ReportEditorWorkspace report={report} />);
+    for (const label of ["경위", "인사말", "사과 본문 (공문 2번)"]) {
+      const cls = screen.getByLabelText(label).classList;
+      expect(cls.contains("border-line-soft")).toBe(true);
+      expect(cls.contains("bg-field-bg")).toBe(true);
+      expect(cls.contains("focus:border-ink")).toBe(true);
+      expect(cls.contains("focus:bg-white")).toBe(true);
+      expect(cls.contains("border-line")).toBe(false);
+      expect(cls.contains("bg-cream")).toBe(false);
+      expect(cls.contains("focus:border-vermilion")).toBe(false);
+      expect(cls.contains("focus:bg-situation-bg")).toBe(false);
+    }
+  });
+});

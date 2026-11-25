@@ -37,7 +37,7 @@ const POST_FIELDS: { key: TextKey; label: string; textarea: boolean }[] = [
 ];
 
 const inputClass =
-  "w-full border border-line bg-cream px-2 py-1 text-ink focus:border-vermilion focus:bg-situation-bg focus:outline-none";
+  "w-full border border-line-soft bg-field-bg px-2 py-1 text-ink focus:border-ink focus:bg-white focus:outline-none";
 
 type ApprovalOverride = {
   approverName: string | null;
