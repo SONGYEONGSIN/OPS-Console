@@ -59,7 +59,7 @@ describe("WeeklyKpiRowV2", () => {
     render(
       <WeeklyKpiRow
         {...BASE}
-        ownerName="홍길동"
+       
         kpis={{
           dev: null,
           test: null,
@@ -93,7 +93,7 @@ describe("WeeklyKpiRowV2", () => {
     render(
       <WeeklyKpiRow
         {...BASE}
-        ownerName="홍길동"
+       
         kpis={{
           dev: 3,
           test: 1,
@@ -114,7 +114,7 @@ describe("WeeklyKpiRowV2", () => {
     render(
       <WeeklyKpiRow
         {...BASE}
-        ownerName="홍길동"
+       
         kpis={{
           dev: 3,
           test: 1,
@@ -131,20 +131,16 @@ describe("WeeklyKpiRowV2", () => {
     expect(screen.queryByText(/구분 미확인/)).toBeNull();
   });
 
-  it("누구의 숫자인지 캡션으로 밝힌다", () => {
-    render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
-    const caption = screen.getByText(/^홍길동의 이번 주/);
-    const t = caption.className.split(/\s+/);
-    expect(t).toContain("text-xs");
-    expect(t).toContain("text-muted");
-    expect(caption).toHaveTextContent("항목 간 중복 집계될 수 있습니다");
+  it("카드 위 캡션 줄이 없다 — 새 화면은 카드만(2026-11-25 사용자 지시)", () => {
+    render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
+    expect(screen.queryByText(/이번 주 · 항목 간 중복/)).toBeNull();
   });
 
   it("숫자 뒤 단위 '건'은 muted, 값이 없는 카드에는 단위가 없다", () => {
     render(
       <WeeklyKpiRow
         {...BASE}
-        ownerName="홍길동"
+       
         kpis={{
           dev: null,
           test: null,
@@ -163,7 +159,7 @@ describe("WeeklyKpiRowV2", () => {
   });
 
   it("카드는 운영리포트 KpiCard 모양 — 라벨·큰 숫자·단위뿐, 대학구분 칸·묶음 카드가 없다", () => {
-    render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+    render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
     expect(screen.queryByRole("group")).toBeNull();
     expect(screen.queryAllByTestId("weekly-kpi-univ")).toHaveLength(0);
     const card = screen.getByText("휴가·외근").closest("a") as Element;
@@ -182,7 +178,7 @@ describe("WeeklyKpiRowV2", () => {
       screen.getByText(label).closest("a")?.getAttribute("href");
 
     it("href 는 같은 주·탭에 sub 를 붙이고, 합격자 발표는 PIMS 탭", () => {
-      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
       expect(hrefOf("개발 중")).toBe(`${W}&tab=application&sub=dev`);
       expect(hrefOf("테스트 중")).toBe(`${W}&tab=application&sub=test`);
       expect(hrefOf("운영 중")).toBe(`${W}&tab=application&sub=running`);
@@ -194,7 +190,7 @@ describe("WeeklyKpiRowV2", () => {
 
     it("남의 보고서를 보는 중이면 op 를 유지한다", () => {
       render(
-        <WeeklyKpiRow {...BASE} op="a@x" ownerName="홍길동" kpis={KPIS} />,
+        <WeeklyKpiRow {...BASE} op="a@x" kpis={KPIS} />,
       );
       expect(hrefOf("운영 중")).toBe(
         `${W}&tab=application&op=a%40x&sub=running`,
@@ -203,7 +199,7 @@ describe("WeeklyKpiRowV2", () => {
     });
 
     it("원서접수 탭: 하위 탭 기본(개발 중)이 활성 — vermilion 보더·aria-current, 숫자는 ink", () => {
-      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
       const dev = screen.getByText("개발 중").closest("a") as HTMLElement;
       expect(dev).toHaveAttribute("aria-current", "true");
       expect(dev.className).toContain("border-vermilion");
@@ -223,7 +219,7 @@ describe("WeeklyKpiRowV2", () => {
 
     it("sub 가 URL 에 있으면 그 카드가 활성", () => {
       setUrl("?week=2026-11-16&tab=application&sub=closing");
-      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
       const closing = screen.getByText("차주 마감 예정").closest("a");
       expect(closing).toHaveAttribute("aria-current", "true");
       expect(closing?.className).toContain("border-vermilion");
@@ -238,7 +234,7 @@ describe("WeeklyKpiRowV2", () => {
 
     it("PIMS 탭에서는 합격자 발표만 활성(하위 탭 무관)", () => {
       setUrl("?week=2026-11-16&tab=pims&sub=nextWeek");
-      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
       expect(screen.getByText("합격자 발표").closest("a")).toHaveAttribute(
         "aria-current",
         "true",
@@ -249,13 +245,13 @@ describe("WeeklyKpiRowV2", () => {
     });
 
     it("성적산출은 데이터 연결 전 — 링크가 아니고 숫자 대신 '연결 전'", () => {
-      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
       expect(screen.getByText("성적산출").closest("a")).toBeNull();
       expect(screen.getByText("연결 전")).toBeInTheDocument();
     });
 
     it("같은 탭 안에서 누르면 이동 없이 URL 의 sub 만 바뀐다", () => {
-      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
       const link = screen.getByText("운영 중").closest("a") as HTMLElement;
       expect(fireEvent.click(link)).toBe(false);
       expect(window.location.search).toContain("sub=running");
@@ -266,7 +262,7 @@ describe("WeeklyKpiRowV2", () => {
     });
 
     it("수정 키를 누른 클릭은 가로채지 않는다", () => {
-      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
       const link = screen.getByText("운영 중").closest("a") as HTMLElement;
       expect(fireEvent.click(link, { ctrlKey: true })).toBe(true);
       expect(fireEvent.click(link, { metaKey: true })).toBe(true);
@@ -280,7 +276,7 @@ describe("WeeklyKpiRowV2", () => {
       const target = document.createElement("div");
       target.id = "ops-subtabs-application";
       document.body.appendChild(target);
-      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
       fireEvent.click(screen.getByText("운영 중").closest("a") as HTMLElement);
       expect(spy).toHaveBeenCalledTimes(1);
       expect(spy).toHaveBeenCalledWith({ block: "nearest" });
@@ -290,7 +286,7 @@ describe("WeeklyKpiRowV2", () => {
 
     it("PIMS 탭에서 합격자 발표 카드는 서버를 안 거치고 금주 발표로 돌린다", () => {
       setUrl("?week=2026-11-16&tab=pims&sub=nextWeek");
-      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
       const link = screen
         .getByText("합격자 발표")
         .closest("a") as HTMLElement;
@@ -300,7 +296,7 @@ describe("WeeklyKpiRowV2", () => {
 
     it("휴가·외근 카드는 tab=leave 로 바꾸고 sub 를 지운다", () => {
       setUrl("?week=2026-11-16&tab=application&sub=dev");
-      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
       const link = screen.getByText("휴가·외근").closest("a") as HTMLElement;
       expect(fireEvent.click(link)).toBe(false);
       expect(window.location.search).toBe("?week=2026-11-16&tab=leave");
@@ -312,7 +308,7 @@ describe("WeeklyKpiRowV2", () => {
         <WeeklyKpiRow
           {...BASE}
           appSubState={{ showUnknown: false, collected: false }}
-          ownerName="홍길동"
+         
           kpis={KPIS}
         />,
       );
@@ -328,7 +324,7 @@ describe("WeeklyKpiRowV2", () => {
         <WeeklyKpiRow
           {...BASE}
           appSubState={{ showUnknown: false, collected: true }}
-          ownerName="홍길동"
+         
           kpis={KPIS}
         />,
       );
@@ -344,7 +340,7 @@ describe("WeeklyKpiRowV2", () => {
         <WeeklyKpiRow
           {...BASE}
           appSubState={{ showUnknown: false, collected: true }}
-          ownerName="홍길동"
+         
           kpis={KPIS}
         />,
       );
@@ -356,7 +352,7 @@ describe("WeeklyKpiRowV2", () => {
 
     it("다른 영역 카드(합격자 발표)도 가로채 tab=pims·sub=thisWeek 로 바꾼다", () => {
       setUrl("?week=2026-11-16&tab=application&sub=dev");
-      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
       const link = screen
         .getByText("합격자 발표")
         .closest("a") as HTMLElement;
@@ -369,7 +365,7 @@ describe("WeeklyKpiRowV2", () => {
 
     it("합격자 발표에서 운영 중 카드 → tab=application·sub=running", () => {
       setUrl("?week=2026-11-16&tab=pims&sub=nextWeek");
-      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
       const link = screen.getByText("운영 중").closest("a") as HTMLElement;
       expect(fireEvent.click(link)).toBe(false);
       expect(window.location.search).toBe(
@@ -384,7 +380,7 @@ describe("WeeklyKpiRowV2", () => {
     it("남의 보고서(op)를 보는 중이어도 클릭이 op 를 지우지 않는다", () => {
       setUrl("?week=2026-11-16&tab=application&op=a%40x");
       render(
-        <WeeklyKpiRow {...BASE} op="a@x" ownerName="홍길동" kpis={KPIS} />,
+        <WeeklyKpiRow {...BASE} op="a@x" kpis={KPIS} />,
       );
       fireEvent.click(
         screen.getByText("합격자 발표").closest("a") as Element,
@@ -395,7 +391,7 @@ describe("WeeklyKpiRowV2", () => {
     });
 
     it("수정 키 클릭은 다른 영역 카드도 가로채지 않는다", () => {
-      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
       const link = screen
         .getByText("합격자 발표")
         .closest("a") as HTMLElement;
@@ -426,7 +422,7 @@ describe("WeeklyKpiRowV2", () => {
           </div>
           <WeeklyKpiRow
             kpis={KPIS}
-            ownerName="홍길동"
+           
             weekStart="2026-11-16"
             op={null}
           />
@@ -475,7 +471,7 @@ describe("WeeklyKpiRowV2", () => {
       render(
         <>
           <Areas />
-          <WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />
+          <WeeklyKpiRow {...BASE} kpis={KPIS} />
         </>,
       );
       const target = document.getElementById("ops-subtabs-pims") as HTMLElement;
@@ -492,7 +488,7 @@ describe("WeeklyKpiRowV2", () => {
 
     it("F3 영역 탭 등 카드 밖에서 영역이 바뀌어도 스크롤은 일어나지 않는다", () => {
       setUrl("?week=2026-11-16&tab=application");
-      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
       const target = document.createElement("div");
       target.id = "ops-subtabs-pims";
       target.scrollIntoView = vi.fn();
@@ -506,7 +502,7 @@ describe("WeeklyKpiRowV2", () => {
   });
 
   it("그리드는 운영리포트와 같은 2열 → md 4열(두 줄 × 4장), 카드는 min-w-0", () => {
-    render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+    render(<WeeklyKpiRow {...BASE} kpis={KPIS} />);
     const grid = screen
       .getAllByTestId("weekly-kpi-label")[0]
       .closest(".grid") as Element;
@@ -522,7 +518,7 @@ describe("WeeklyKpiRowV2", () => {
   it("새 화면 메뉴 안에서는 카드 링크가 그 메뉴 주소에 머문다", () => {
     render(
       <OpsPathProvider path="/dashboard/ops-weekly-v2">
-        <WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />
+        <WeeklyKpiRow {...BASE} kpis={KPIS} />
       </OpsPathProvider>,
     );
     expect(

@@ -68,15 +68,12 @@ const scrollToSubTabs = (tab: "application" | "pims") =>
  */
 export function WeeklyKpiRowV2({
   kpis,
-  ownerName,
   unknownCount = 0,
   weekStart,
   op,
   appSubState = { showUnknown: false, collected: true },
 }: {
   kpis: WeeklyKpis;
-  /** 이 숫자가 누구의 보고서 것인지 — 제출 현황·설정 탭에서도 카드가 남아 있어 밝혀야 한다 */
-  ownerName: string;
   unknownCount?: number;
   weekStart: string;
   /** 남의 보고서를 보는 중이면 그 이메일 — 링크가 같은 보고서에 머문다 */
@@ -155,7 +152,10 @@ export function WeeklyKpiRowV2({
     // 갈 탭이 없는 카드는 링크가 아니다 — 누를 수 있어 보이면 안 된다.
     if (target === null) {
       return (
-        <div key={key} className={`${CARD_BASE} border-line-soft bg-situation-bg`}>
+        <div
+          key={key}
+          className={`${CARD_BASE} border-line-soft bg-situation-bg`}
+        >
           {body(key, label, false)}
         </div>
       );
@@ -177,13 +177,8 @@ export function WeeklyKpiRowV2({
   }
 
   return (
-    <>
-      <p className="px-5 pt-4 text-xs text-muted lg:px-7">
-        {`${ownerName}의 이번 주 · 항목 간 중복 집계될 수 있습니다`}
-      </p>
-      <div className="grid grid-cols-2 gap-3 px-5 pt-2 md:grid-cols-4 lg:px-7">
-        {CARDS.map(single)}
-      </div>
-    </>
+    <div className="grid grid-cols-2 gap-3 px-5 pt-4 md:grid-cols-4 lg:px-7">
+      {CARDS.map(single)}
+    </div>
   );
 }

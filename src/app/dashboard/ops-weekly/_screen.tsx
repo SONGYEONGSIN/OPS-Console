@@ -231,7 +231,8 @@ function WeekView({
   return (
     <OpsPathProvider path={path}>
       <PendingSavesProvider key={report?.id ?? week.id}>
-        {view.roles.length > 1 ? (
+        {/* 새 화면 메뉴는 역할 탭 줄을 뺐다(2026-11-25 사용자 지시) — 제출 현황·관리는 기존 메뉴에서 연다. */}
+        {variant === "v1" && view.roles.length > 1 ? (
           <PageTabs
             active={
               roleTabOf(tab) !== "report"
@@ -247,7 +248,8 @@ function WeekView({
         ) : null}
         {variant === "v2" ? (
           <WeekHeaderV2
-            {...headerProps}
+            weekRef={weekRef}
+            showReportState={headerProps.showReportState}
             thisWeekHref={opsWeeklyHref(thisWeek, tab, op, null, path)}
             nextWeekHref={opsWeeklyHref(
               shiftWeek(thisWeek, 1),
@@ -304,9 +306,6 @@ function WeekView({
                 view.detail.overrides,
                 view.detail.manual,
               )}
-              ownerName={
-                view.all !== null ? "작성자 전원" : (viewed?.name ?? "")
-              }
               unknownCount={unknownCountOf(view)}
               weekStart={weekStart}
               op={op}
