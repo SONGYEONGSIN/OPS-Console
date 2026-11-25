@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import type { ListRow } from "../../patterns/ListPattern";
 import type { AssignmentChange } from "@/features/assignments/ledger-schemas";
 import type { OperatorPermission } from "@/features/operators/schemas";
+import type { SeverityCriteria } from "@/features/incidents/schemas";
 
 export type Variant =
   | "default"
@@ -128,6 +129,8 @@ export type EditFormProps = {
   incidentServiceOptions?: readonly { university: string; name: string }[];
   /** incidents variant — 카테고리 자동완성 후보 (자주 쓰는 값 datalist) */
   incidentCategorySuggestions?: readonly string[];
+  /** incidents variant — 사고 등급 기준 문구 (못 읽었으면 null — 툴팁이 안내한다) */
+  incidentSeverityCriteria?: SeverityCriteria | null;
   /** contracts variant — 계약진행현황 / 서비스여부 datalist 옵션 (실 데이터 distinct) */
   contractsStatusOptions?: readonly string[];
   contractsServiceActiveOptions?: readonly string[];

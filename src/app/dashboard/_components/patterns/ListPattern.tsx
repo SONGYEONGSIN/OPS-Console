@@ -25,7 +25,10 @@ import type {
   DevControlSpecSend,
 } from "@/features/dev-control-specs/schemas";
 import { type OperatorPermission } from "@/features/operators/schemas";
-import type { IncidentSeverity } from "@/features/incidents/schemas";
+import type {
+  IncidentSeverity,
+  SeverityCriteria,
+} from "@/features/incidents/schemas";
 
 export type ListRow = {
   id: string;
@@ -801,6 +804,8 @@ type Props = {
   incidentServiceOptions?: readonly { university: string; name: string }[];
   /** incidents variant — 카테고리 자동완성 후보 (datalist) */
   incidentCategorySuggestions?: readonly string[];
+  /** incidents variant — 사고 등급 기준 문구 (못 읽었으면 null) */
+  incidentSeverityCriteria?: SeverityCriteria | null;
   /** contracts variant — 계약진행현황 / 서비스여부 datalist 옵션 */
   contractsStatusOptions?: readonly string[];
   contractsServiceActiveOptions?: readonly string[];
@@ -865,6 +870,7 @@ export function ListPattern({
   incidentUniversityNameSuggestions,
   incidentServiceOptions,
   incidentCategorySuggestions,
+  incidentSeverityCriteria,
   contractsStatusOptions,
   contractsServiceActiveOptions,
   handoverServiceCandidates,
@@ -1128,6 +1134,7 @@ export function ListPattern({
               }
               incidentServiceOptions={incidentServiceOptions}
               incidentCategorySuggestions={incidentCategorySuggestions}
+              incidentSeverityCriteria={incidentSeverityCriteria}
               contractsStatusOptions={contractsStatusOptions}
               contractsServiceActiveOptions={contractsServiceActiveOptions}
               handoverServiceCandidates={handoverServiceCandidates}
