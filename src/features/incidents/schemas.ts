@@ -86,6 +86,8 @@ export const incidentCreateSchema = z.object({
   prevention: z.string().max(5000).nullable().optional(),
   department: departmentSchema,
   status: statusSchema.default("미처리"),
+  /** 신규 필수의 서버 강제점. update(partial)는 undefined 만 통과 — null 은 거부. */
+  severity: z.enum(SEVERITY_VALUES, { error: SEVERITY_REQUIRED }),
 });
 
 export type IncidentCreate = z.infer<typeof incidentCreateSchema>;

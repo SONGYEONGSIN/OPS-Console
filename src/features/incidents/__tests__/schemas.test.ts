@@ -7,6 +7,7 @@ import {
   DEPARTMENT_VALUES,
   STATUS_VALUES,
   SEVERITY_VALUES,
+  SEVERITY_REQUIRED,
 } from "../schemas";
 
 const baseCreate = {
@@ -23,6 +24,7 @@ const baseCreate = {
   prevention: "alert threshold 조정",
   department: "운영부-운영1팀" as const,
   status: "처리중" as const,
+  severity: "보통" as const,
 };
 
 describe("enum values", () => {
@@ -117,6 +119,21 @@ describe("incidentCreateSchema", () => {
       resolved_date: null,
     });
     expect(r.success).toBe(true);
+  });
+
+  it("severity 누락 → 사고 등급 안내 문구로 거부 (신규 필수)", () => {
+    const { severity: _omit, ...withoutSeverity } = baseCreate;
+    void _omit;
+    const r = incidentCreateSchema.safeParse(withoutSeverity);
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.error.issues[0].message).toBe(SEVERITY_REQUIRED);
+  });
+
+  it("severity 4값 밖은 거부", () => {
+    expect(
+      incidentCreateSchema.safeParse({ ...baseCreate, severity: "긴급" })
+        .success,
+    ).toBe(false);
   });
 
   it("본문 4섹션 모두 null 허용", () => {
@@ -214,5 +231,17 @@ describe("incidentUpdateSchema", () => {
   it("enum 외 값은 partial이라도 거부", () => {
     const r = incidentUpdateSchema.safeParse({ status: "완료됨" });
     expect(r.success).toBe(false);
+  });
+
+  it("severity 지정 통과 + 값이 실린다", () => {
+    const r = incidentUpdateSchema.safeParse({ severity: "낮음" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.severity).toBe("낮음");
+  });
+
+  it("severity null 은 거부 — 설정한 등급을 다시 비우지 못한다", () => {
+    expect(incidentUpdateSchema.safeParse({ severity: null }).success).toBe(
+      false,
+    );
   });
 });
