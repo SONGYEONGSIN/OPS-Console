@@ -414,6 +414,41 @@ describe("loadOpsWeeklyPage — 열람 판정", () => {
     expect(await load("z@x", "admin", {})).toMatchObject({ tab: "status" });
   });
 
+  it("새 화면 메뉴(mineByDefault): 당번·관리자도 작성자면 op 없이 열면 본인 보고서, ?op=all 이면 전체", async () => {
+    getWeekMock({ duty_email: "a@x" });
+    const opts = { mineByDefault: true };
+    const at = new Date("2026-11-18T03:00:00Z");
+    const as = (email: string, permission: "member" | "admin") =>
+      ({ email, permission }) as CurrentOperator;
+    expect(
+      await loadOpsWeeklyPage(as("a@x", "member"), {}, at, opts),
+    ).toMatchObject({
+      viewed: { email: "a@x" },
+      all: null,
+    });
+    expect(
+      await loadOpsWeeklyPage(as("b@x", "admin"), {}, at, opts),
+    ).toMatchObject({
+      viewed: { email: "b@x" },
+      all: null,
+    });
+    const all = await loadOpsWeeklyPage(
+      as("a@x", "member"),
+      { op: "all" },
+      at,
+      opts,
+    );
+    expect(all.kind === "week" && all.all !== null).toBe(true);
+    // 명단 밖 관리자는 본인 보고서가 없어 그대로 전체 보고다
+    const out = await loadOpsWeeklyPage(
+      as("z@x", "admin"),
+      { tab: "application" },
+      at,
+      opts,
+    );
+    expect(out.kind === "week" && out.all !== null).toBe(true);
+  });
+
   it("전체 보고: 명단 밖 관리자도 연다(탭 줄은 제출 현황·관리)", async () => {
     const v = await load("z@x", "admin", { op: "all" });
     expect(v).toMatchObject({ tab: "application", viewed: null, roles: ["status", "manage"] });

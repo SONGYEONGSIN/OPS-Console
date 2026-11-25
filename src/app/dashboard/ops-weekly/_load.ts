@@ -176,6 +176,7 @@ async function resolveAccess(
   actor: Actor,
   writers: readonly WriterCandidate[],
   sp: Sp,
+  mineByDefault: boolean,
 ): Promise<Access | null> {
   const state = normalizedWeekStateOf(week);
   // 받는 사람은 보고가 끝난 주만 읽는다 — 그 밖에는 명단을 조회할 까닭이 없다.
@@ -189,9 +190,11 @@ async function resolveAccess(
   // 전체 보고는 작성자 전원과, 남의 보고서를 열 수 있는 사람(당번·관리자·보고 끝난 주의 받는 사람)이 본다.
   // 관리자·당번은 op 가 없으면 전체 보고가 기본이다 — 명단 밖이면 내 보고서 쪽 탭을 연 때만(탭 없이 열면 제출 현황).
   const allByDefault = actor.isAdmin || isDuty(actor, state);
+  // 새 화면 메뉴는 작성자면 누구든 내 보고서가 기본이다(2026-11-25 사용자 지시) — 명단 밖이면 본인 보고서가 없어 그대로.
   const defaultAll =
     sp.op === undefined &&
     allByDefault &&
+    !(mineByDefault && isWriter) &&
     access !== null &&
     (isWriter
       ? roleOfParam(sp.tab) === null || roleOfParam(sp.tab) === "report"
@@ -459,6 +462,8 @@ export async function loadOpsWeeklyPage(
   me: CurrentOperator,
   sp: Sp,
   now: Date,
+  /** 새 화면 메뉴 — 관리자·당번도 op 없이 열면 내 보고서(작성자일 때) */
+  opts: { mineByDefault?: boolean } = {},
 ): Promise<OpsWeeklyView> {
   const cal = weekOf(now).weekStart;
   const calRow = await getWeek(cal);
@@ -475,7 +480,13 @@ export async function loadOpsWeeklyPage(
     isAdmin: me.permission === "admin",
   };
   const writers = await listWriters();
-  const access = await resolveAccess(week, actor, writers, sp);
+  const access = await resolveAccess(
+    week,
+    actor,
+    writers,
+    sp,
+    opts.mineByDefault === true,
+  );
   if (access === null) {
     return {
       kind: "no-access",

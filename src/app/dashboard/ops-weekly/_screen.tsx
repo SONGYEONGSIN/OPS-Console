@@ -250,6 +250,7 @@ function WeekView({
           <WeekHeaderV2
             weekRef={weekRef}
             showReportState={headerProps.showReportState}
+            scope={scope && { ...scope, weekStart }}
             thisWeekHref={opsWeeklyHref(thisWeek, tab, op, null, path)}
             nextWeekHref={opsWeeklyHref(
               shiftWeek(thisWeek, 1),
@@ -410,7 +411,10 @@ export async function renderOpsWeekly(
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const sp = await searchParams;
-  const view = await loadOpsWeeklyPage(me, sp, new Date());
+  // 새 화면 메뉴는 관리자·당번도 내 보고서가 기본이다(2026-11-25 사용자 지시).
+  const view = await loadOpsWeeklyPage(me, sp, new Date(), {
+    mineByDefault: variant === "v2",
+  });
   const config = resolvePageMeta(slug, meta);
   return (
     <>
