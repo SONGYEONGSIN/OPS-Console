@@ -19,6 +19,10 @@ describe("경위서 편집 패널 폭", () => {
     for (const rel of ["page.tsx", "_components/ReportEditorWorkspace.tsx"]) {
       const src = read(rel);
       expect(src).toContain("EDITOR_PANEL_WIDTH_CLASS");
+      // import 만 하고 className 엔 리터럴을 적으면 통과하면 안 된다.
+      expect(src).toMatch(
+        /className=\{`[^`]*\$\{EDITOR_PANEL_WIDTH_CLASS\}[^`]*`\}/,
+      );
       expect(src).not.toContain("w-[360px]");
     }
   });

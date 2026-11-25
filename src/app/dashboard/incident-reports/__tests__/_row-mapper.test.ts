@@ -46,7 +46,8 @@ describe("incidentReportToListRow", () => {
     expect(row.incidentReportApproverName).toBe("허승철");
     expect(row.incidentReportApproverEmail).toBe("hsc@example.com");
     expect(row.incidentReportDirectorName).toBe("본부장");
-    expect(row.incidentReportCeoName).toBe("사장");
+    // 사장(대표) 칸은 인스펙터에 안 그려서 목록 행에 싣지 않는다 — 공문 PDF 는 DB 값을 직접 읽는다.
+    expect("incidentReportCeoName" in row).toBe(false);
     expect(row.incidentReportGyeongwi).toBe("결제 과정에서 오류 발생");
     expect(row.incidentReportCause).toBe("DB 커넥션 풀 소진");
     expect(row.incidentReportHandling).toBe("풀 재시작 및 모니터링");

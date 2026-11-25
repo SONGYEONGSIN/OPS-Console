@@ -25,6 +25,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { IncidentReportView } from "../View";
+import { incidentReportToListRow } from "@/app/dashboard/incident-reports/_row-mapper";
 
 const baseRow: ListRow = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -118,19 +119,42 @@ describe("IncidentReportView onChanged", () => {
 });
 
 describe("IncidentReportView 결재라인", () => {
-  it("담당자·팀장·본부장만 보이고 사장 칸은 없다 (데이터는 있어도)", () => {
-    const row: ListRow = {
-      ...baseRow,
-      incidentReportAuthorName: "이해영",
-      incidentReportApproverName: "송영신",
-      incidentReportDirectorName: "이이화",
-      incidentReportCeoName: "주정현",
-    };
+  it("담당자·팀장·본부장만 보이고 사장(대표) 칸은 없다 — 실제 조직처럼 본부장 칸=부장, 대표=이사", () => {
+    const row = incidentReportToListRow({
+      id: baseRow.id,
+      incident_id: null,
+      recipient_university: "건국대학교",
+      title: "테스트 경위서",
+      draft_date: "2026-06-02",
+      gyeongwi: null,
+      cause: null,
+      handling: null,
+      handling_rows: [],
+      prevention: null,
+      apology: null,
+      author_name: "이해영",
+      author_email: "lee@x.com",
+      approver_name: "송영신",
+      approver_email: null,
+      approver_role: "팀장",
+      director_name: "허승철",
+      director_role: "부장",
+      ceo_name: "이이화",
+      ceo_role: "이사",
+      status: "draft",
+      reject_reason: null,
+      approved_at: null,
+      recipient_emails: [],
+      doc_number: null,
+      created_at: "2026-06-02T00:00:00Z",
+      updated_at: "2026-06-02T00:00:00Z",
+    });
     render(<IncidentReportView row={row} />);
     expect(screen.getByText("담당자")).toBeInTheDocument();
     expect(screen.getByText("본부장")).toBeInTheDocument();
-    expect(screen.getByText("이이화")).toBeInTheDocument();
+    expect(screen.getByText("허승철")).toBeInTheDocument();
     expect(screen.queryByText("사장")).toBeNull();
-    expect(screen.queryByText("주정현")).toBeNull();
+    expect(screen.queryByText("이사")).toBeNull();
+    expect(screen.queryByText("이이화")).toBeNull();
   });
 });
