@@ -1,3 +1,4 @@
+import { currentAcademicYear } from "@/lib/datetime";
 import type { ListRow } from "../../../patterns/ListPattern";
 
 /** 사고 보고 상태 필터 — 우측 "현재상황 전체" select와 중복이라 chip 미노출. ScopeChips(전체/내 사고)만 유지. */
@@ -14,7 +15,7 @@ export const INCIDENT_CATEGORY_SUGGESTIONS = [
 
 /**
  * '+ 새 사고 보고' 클릭 시 신규 행 factory. EditForm 첫 진입 시 default 값 채움.
- * 학년도 default는 page.tsx에서 currentAcademicYear()로 주입.
+ * 학년도는 주입값이 없으면 currentAcademicYear()(3월 시작) — ListPattern 은 currentUserName 만 넘긴다.
  */
 export function blankIncidentRow(opts?: {
   currentUserName?: string;
@@ -30,7 +31,7 @@ export function blankIncidentRow(opts?: {
     name: "",
     status: "active",
     owner: opts?.currentUserName ?? "",
-    incidentYear: opts?.currentAcademicYear ?? new Date().getFullYear(),
+    incidentYear: opts?.currentAcademicYear ?? currentAcademicYear(),
     incidentUniversityName: "",
     incidentAppType: "공통원서",
     incidentCategory: "",
