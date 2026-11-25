@@ -3,6 +3,10 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { InspectorListBody } from "../InspectorListBody";
 import type { ListRow } from "../../patterns/ListPattern";
 
+vi.mock("@/features/incidents/severity-criteria-actions", () => ({
+  updateSeverityCriteria: vi.fn(),
+}));
+
 const fixture: ListRow = {
   id: "svc-pay-001",
   name: "결제 게이트웨이",
@@ -418,5 +422,33 @@ describe("InspectorListBody ai-work variant", () => {
     expect(onSave).toHaveBeenCalled();
     const next = onSave.mock.calls[0][0];
     expect(next.name).toBe("회의록 요약 v2");
+  });
+});
+
+/**
+ * 사고 등급 기준 문구는 page → ListPattern → InspectorListBody → EditForm 로 내려온다.
+ * 이 층이 빠뜨리면 툴팁이 '기준을 불러오지 못했습니다.' 로 보여 조회 실패와 구분이 안 된다.
+ */
+describe("InspectorListBody incidents variant — 사고 등급 기준 전달", () => {
+  it("incidentSeverityCriteria 를 넘기면 편집 폼 툴팁에 그 문구가 보인다", () => {
+    const incidentRow = { id: "", name: "" } as unknown as ListRow;
+    render(
+      <InspectorListBody
+        row={incidentRow}
+        editing={true}
+        variant="incidents"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        incidentSeverityCriteria={{
+          심각: "전달-심각",
+          높음: "전달-높음",
+          보통: "전달-보통",
+          낮음: "전달-낮음",
+        }}
+      />,
+    );
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip.textContent).toContain("전달-심각");
+    expect(tooltip.textContent).toContain("전달-낮음");
   });
 });

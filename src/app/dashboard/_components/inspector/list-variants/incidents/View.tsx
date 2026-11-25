@@ -110,6 +110,14 @@ function IncidentInfo({ row }: { row: ListRow }) {
 
       <Divider />
 
+      <Section title="사고 등급">
+        <DefList
+          items={[{ term: "등급", desc: row.incidentSeverity ?? "—" }]}
+        />
+      </Section>
+
+      <Divider />
+
       <Section title="담당">
         <DefList
           items={[

@@ -86,6 +86,7 @@ const validInput = {
   title: "결제 오류",
   department: "운영부-운영1팀",
   status: "처리중",
+  severity: "보통",
 };
 
 const baseRow = {
@@ -179,6 +180,24 @@ describe("createIncident", () => {
     expect(r.ok).toBe(false);
   });
 
+  it("severity 없음 → 사고 등급 안내로 거부, insert 안 함", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    const { severity: _omit, ...withoutSeverity } = validInput;
+    void _omit;
+    const r = await createIncident(withoutSeverity);
+    expect(r).toEqual({ ok: false, error: "사고 등급을 선택하세요." });
+    expect(insertPayloads).toHaveLength(0);
+  });
+
+  it("severity 는 insert payload 에 실린다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockInsertResult.mockReturnValue({ data: baseRow, error: null });
+
+    await createIncident({ ...validInput, severity: "심각" });
+    const payload = insertPayloads[0] as Record<string, unknown>;
+    expect(payload.severity).toBe("심각");
+  });
+
   it("supabase insert 실패 → ok:false", async () => {
     mockGetCurrentOperator.mockResolvedValue(meOperator);
     mockInsertResult.mockReturnValue({
@@ -203,6 +222,33 @@ describe("updateIncident", () => {
     const patch = updatePatches[0] as Record<string, unknown>;
     expect(patch.status).toBe("처리완료");
     expect(patch.updated_at).toBeDefined();
+  });
+
+  it("severity 없는 수정은 통과하고 patch 에 severity 키가 없다 (기존 NULL 행)", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockUpdateResult.mockReturnValue({ data: baseRow, error: null });
+
+    const r = await updateIncident(baseRow.id, { status: "처리중" });
+    expect(r.ok).toBe(true);
+    expect("severity" in (updatePatches[0] as Record<string, unknown>)).toBe(
+      false,
+    );
+  });
+
+  it("실경로처럼 severity: undefined 키가 실려도 통과하고 patch 를 직렬화하면 severity 가 없다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockUpdateResult.mockReturnValue({ data: baseRow, error: null });
+
+    const r = await updateIncident(baseRow.id, {
+      status: "처리중",
+      severity: undefined,
+    });
+    expect(r.ok).toBe(true);
+    const sent = JSON.parse(JSON.stringify(updatePatches[0])) as Record<
+      string,
+      unknown
+    >;
+    expect("severity" in sent).toBe(false);
   });
 
   it("department 변경 시 reporter_* 자동 재매핑", async () => {

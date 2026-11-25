@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { EditFormProps } from "../types";
 import { ListSearch } from "@/components/common/ListSearch";
 import { DateInput } from "@/components/common/DateInput";
 import { HandlingRowsEditor } from "../../HandlingRowsEditor";
+import { SEVERITY_REQUIRED } from "@/features/incidents/schemas";
+import { SeverityField } from "./SeverityField";
 
 const APP_TYPE_OPTIONS = ["공통원서", "일반원서", "공공원서", "PIMS"] as const;
 const STATUS_OPTIONS = ["미처리", "처리중", "처리완료", "보류"] as const;
@@ -33,6 +35,7 @@ export function IncidentEditForm({
   incidentUniversityNameSuggestions = [],
   incidentServiceOptions = [],
   incidentCategorySuggestions = [],
+  incidentSeverityCriteria = null,
 }: EditFormProps) {
   const isAdmin = currentUserPermission === "admin";
   const isOwnAssignee =
@@ -100,6 +103,12 @@ export function IncidentEditForm({
     setRow({ ...row, incidentServiceName: name });
   }
 
+  // 신규 보고만 등급 필수 — 기존 NULL 행은 그대로 저장된다
+  const [severityError, setSeverityError] = useState<string | null>(null);
+  // 등급 칸은 폼 위쪽, 저장 버튼은 맨 아래라 가드 문구가 화면 밖에 뜬다 — 포커스로 칸을 보이게 한다.
+  // 같은 오류로 다시 눌러도 옮겨야 해서 error 를 보는 effect 가 아니라 submit 에서 직접 부른다.
+  const severityRef = useRef<HTMLSelectElement>(null);
+
   const department = row.incidentDepartment ?? "운영부-운영1팀";
   const reporterName = REPORTER_BY_DEPARTMENT[department];
 
@@ -107,6 +116,11 @@ export function IncidentEditForm({
     <form
       onSubmit={(e) => {
         e.preventDefault();
+        if (isNew && !row.incidentSeverity) {
+          setSeverityError(SEVERITY_REQUIRED);
+          severityRef.current?.focus();
+          return;
+        }
         onSave(row);
       }}
       className="space-y-3"
@@ -275,6 +289,19 @@ export function IncidentEditForm({
           />
         </label>
       </div>
+
+      <SeverityField
+        value={row.incidentSeverity ?? undefined}
+        onChange={(v) => {
+          setRow({ ...row, incidentSeverity: v });
+          setSeverityError(null);
+        }}
+        required={isNew}
+        error={severityError ?? undefined}
+        criteria={incidentSeverityCriteria}
+        canEditCriteria={isAdmin}
+        selectRef={severityRef}
+      />
 
       <label className="block text-xs">
         <span className="mb-1 block text-muted">사고제목</span>

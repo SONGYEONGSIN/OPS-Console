@@ -28,6 +28,7 @@ import {
   deleteIncident,
 } from "@/features/incidents/actions";
 import { listServices } from "@/features/services/queries";
+import { getSeverityCriteria } from "@/features/incidents/severity-criteria-queries";
 import { currentAcademicYear } from "@/lib/datetime";
 
 const PAGE_SIZE = 30;
@@ -113,10 +114,12 @@ export default async function IncidentsPage({
     total = result.total;
   }
 
-  // 경위서 상태 배지 — N+1 회피용 batch 조회 후 행에 주입
-  const reportStatusMap = await reportStatusByIncidentIds(
-    dbRows.map((r) => r.id),
-  );
+  // 경위서 상태 배지 — N+1 회피용 batch 조회 후 행에 주입.
+  // 사고 등급 기준은 서로 독립이라 함께 읽는다(못 읽으면 null — 툴팁이 안내한다).
+  const [reportStatusMap, severityCriteria] = await Promise.all([
+    reportStatusByIncidentIds(dbRows.map((r) => r.id)),
+    getSeverityCriteria(),
+  ]);
   const rows: ListRow[] = dbRows.map((r) =>
     incidentToListRow(r, reportStatusMap[r.id]),
   );
@@ -220,6 +223,7 @@ export default async function IncidentsPage({
       incidentUniversityNameSuggestions={incidentUniversityNameSuggestions}
       incidentServiceOptions={incidentServiceOptions}
       incidentCategorySuggestions={CATEGORY_SUGGESTIONS}
+      incidentSeverityCriteria={severityCriteria}
       inlineFilters={
         <div key="incidents-scope" className="inline-flex items-center">
           <ScopeChips total={total} mineLabel="내 사고" />

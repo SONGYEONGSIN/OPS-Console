@@ -39,7 +39,11 @@ export function ModalShell({
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      // Esc 를 이 모달이 썼다고 표시한다 — 인스펙터처럼 모달을 품은 바깥 층(window 리스너)이
+      // 같은 Esc 로 함께 닫히지 않게. document 가 window 보다 먼저 돌고 플래그는 동기라 남는다.
+      e.preventDefault();
+      onClose();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);

@@ -6,6 +6,9 @@ import {
   APP_TYPE_VALUES,
   DEPARTMENT_VALUES,
   STATUS_VALUES,
+  SEVERITY_VALUES,
+  SEVERITY_REQUIRED,
+  severityCriteriaSchema,
 } from "../schemas";
 
 const baseCreate = {
@@ -22,6 +25,7 @@ const baseCreate = {
   prevention: "alert threshold 조정",
   department: "운영부-운영1팀" as const,
   status: "처리중" as const,
+  severity: "보통" as const,
 };
 
 describe("enum values", () => {
@@ -38,6 +42,9 @@ describe("enum values", () => {
   });
   it("STATUS 4값", () => {
     expect(STATUS_VALUES).toEqual(["미처리", "처리중", "처리완료", "보류"]);
+  });
+  it("SEVERITY 4값 — 심각부터 낮음 순서", () => {
+    expect(SEVERITY_VALUES).toEqual(["심각", "높음", "보통", "낮음"]);
   });
 });
 
@@ -115,6 +122,21 @@ describe("incidentCreateSchema", () => {
     expect(r.success).toBe(true);
   });
 
+  it("severity 누락 → 사고 등급 안내 문구로 거부 (신규 필수)", () => {
+    const { severity: _omit, ...withoutSeverity } = baseCreate;
+    void _omit;
+    const r = incidentCreateSchema.safeParse(withoutSeverity);
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.error.issues[0].message).toBe(SEVERITY_REQUIRED);
+  });
+
+  it("severity 4값 밖은 거부", () => {
+    expect(
+      incidentCreateSchema.safeParse({ ...baseCreate, severity: "긴급" })
+        .success,
+    ).toBe(false);
+  });
+
   it("본문 4섹션 모두 null 허용", () => {
     const r = incidentCreateSchema.safeParse({
       ...baseCreate,
@@ -154,6 +176,46 @@ describe("incidentRowSchema", () => {
     const r = incidentRowSchema.safeParse(row);
     expect(r.success).toBe(true);
   });
+
+  describe("severity — 기존 행은 NULL, 마이그 전 행은 키 없음", () => {
+    const row = {
+      id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      year: 2027,
+      university_name: "건국대학교(서울)",
+      app_type: "공통원서",
+      category: "결제",
+      title: "결제 오류",
+      department: "운영부-운영1팀",
+      assignee_email: null,
+      assignee_name: null,
+      reporter_email: "alcure23@jinhakapply.com",
+      reporter_name: "허승철",
+      created_at: "2026-05-16T00:00:00Z",
+      updated_at: "2026-05-16T00:00:00Z",
+    };
+
+    it("null 통과", () => {
+      const r = incidentRowSchema.safeParse({ ...row, severity: null });
+      expect(r.success).toBe(true);
+      if (r.success) expect(r.data.severity).toBeNull();
+    });
+
+    it("키 없음 통과", () => {
+      expect(incidentRowSchema.safeParse(row).success).toBe(true);
+    });
+
+    it("등급 값은 그대로 실린다", () => {
+      const r = incidentRowSchema.safeParse({ ...row, severity: "높음" });
+      expect(r.success).toBe(true);
+      if (r.success) expect(r.data.severity).toBe("높음");
+    });
+
+    it("4값 밖('긴급')은 거부", () => {
+      expect(
+        incidentRowSchema.safeParse({ ...row, severity: "긴급" }).success,
+      ).toBe(false);
+    });
+  });
 });
 
 describe("incidentUpdateSchema", () => {
@@ -170,5 +232,84 @@ describe("incidentUpdateSchema", () => {
   it("enum 외 값은 partial이라도 거부", () => {
     const r = incidentUpdateSchema.safeParse({ status: "완료됨" });
     expect(r.success).toBe(false);
+  });
+
+  it("severity 지정 통과 + 값이 실린다", () => {
+    const r = incidentUpdateSchema.safeParse({ severity: "낮음" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.severity).toBe("낮음");
+  });
+
+  it("severity null 은 거부 — 설정한 등급을 다시 비우지 못한다", () => {
+    expect(incidentUpdateSchema.safeParse({ severity: null }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("severityCriteriaSchema", () => {
+  const full = {
+    심각: "다수 지원자 영향",
+    높음: "여러 지원자 영향",
+    보통: "일부 지원자 영향",
+    낮음: "지원자 영향 없음",
+  };
+
+  it("4등급 모두 있으면 통과", () => {
+    expect(severityCriteriaSchema.safeParse(full).success).toBe(true);
+  });
+
+  it("등급 키 하나라도 빠지면 거부", () => {
+    const { 보통: _omit, ...withoutOne } = full;
+    void _omit;
+    expect(severityCriteriaSchema.safeParse(withoutOne).success).toBe(false);
+  });
+
+  it("4값 밖 키는 거부", () => {
+    expect(
+      severityCriteriaSchema.safeParse({ ...full, 긴급: "x" }).success,
+    ).toBe(false);
+  });
+
+  it("빈 문구 거부 — 입력 안내", () => {
+    const r = severityCriteriaSchema.safeParse({ ...full, 낮음: "" });
+    expect(r.success).toBe(false);
+    if (!r.success)
+      expect(r.error.issues[0].message).toBe("기준 문구를 입력하세요.");
+  });
+
+  it("공백뿐인 문구도 빈 문구로 거부", () => {
+    const r = severityCriteriaSchema.safeParse({ ...full, 낮음: "   " });
+    expect(r.success).toBe(false);
+    if (!r.success)
+      expect(r.error.issues[0].message).toBe("기준 문구를 입력하세요.");
+  });
+
+  it("501자 거부 — 길이 안내", () => {
+    const r = severityCriteriaSchema.safeParse({
+      ...full,
+      심각: "가".repeat(501),
+    });
+    expect(r.success).toBe(false);
+    if (!r.success)
+      expect(r.error.issues[0].message).toBe(
+        "기준 문구는 500자 이내로 입력하세요.",
+      );
+  });
+
+  it("500자는 통과", () => {
+    expect(
+      severityCriteriaSchema.safeParse({ ...full, 심각: "가".repeat(500) })
+        .success,
+    ).toBe(true);
+  });
+
+  it("앞뒤 공백은 trim 된다", () => {
+    const r = severityCriteriaSchema.safeParse({
+      ...full,
+      높음: "  재안내 필요  ",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.높음).toBe("재안내 필요");
   });
 });

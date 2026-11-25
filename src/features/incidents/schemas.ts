@@ -14,9 +14,14 @@ export const DEPARTMENT_VALUES = ["운영부-운영1팀", "운영부-운영2팀"
 /** PR-6: 현재상황 — 4단계 */
 export const STATUS_VALUES = ["미처리", "처리중", "처리완료", "보류"] as const;
 
+/** 사고 등급 — 무거운 것부터. DB CHECK(incidents·incident_severity_criteria)와 같은 목록. */
+export const SEVERITY_VALUES = ["심각", "높음", "보통", "낮음"] as const;
+export const SEVERITY_REQUIRED = "사고 등급을 선택하세요.";
+
 export const appTypeSchema = z.enum(APP_TYPE_VALUES);
 export const departmentSchema = z.enum(DEPARTMENT_VALUES);
 export const statusSchema = z.enum(STATUS_VALUES);
+export const severitySchema = z.enum(SEVERITY_VALUES);
 
 /** 처리 행 — 시간/내용 2열. 경위서(incident_reports.handling_rows)와 동일 형상. */
 export const incidentHandlingRowSchema = z.object({
@@ -28,6 +33,7 @@ export type IncidentHandlingRow = z.infer<typeof incidentHandlingRowSchema>;
 export type IncidentAppType = z.infer<typeof appTypeSchema>;
 export type IncidentDepartment = z.infer<typeof departmentSchema>;
 export type IncidentStatus = z.infer<typeof statusSchema>;
+export type IncidentSeverity = z.infer<typeof severitySchema>;
 
 /**
  * DB row 형상. RLS authenticated 모두 read.
@@ -53,6 +59,8 @@ export const incidentRowSchema = z.object({
   reporter_email: z.string().email(),
   reporter_name: z.string().min(1),
   status: statusSchema.default("미처리"),
+  /** 신규 보고부터 앱에서 필수. 기존 행은 NULL, 마이그 전에는 키가 없다. */
+  severity: severitySchema.nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -78,9 +86,25 @@ export const incidentCreateSchema = z.object({
   prevention: z.string().max(5000).nullable().optional(),
   department: departmentSchema,
   status: statusSchema.default("미처리"),
+  /** 신규 필수의 서버 강제점. update(partial)는 undefined 만 통과 — null 은 거부. */
+  severity: z.enum(SEVERITY_VALUES, { error: SEVERITY_REQUIRED }),
 });
 
 export type IncidentCreate = z.infer<typeof incidentCreateSchema>;
 
 export const incidentUpdateSchema = incidentCreateSchema.partial();
 export type IncidentUpdate = z.infer<typeof incidentUpdateSchema>;
+
+/**
+ * 등급별 판단 기준(incident_severity_criteria) 저장 입력.
+ * enum 키 record 는 4등급을 모두 요구한다 — 하나라도 빠지면 거부.
+ */
+export const severityCriteriaSchema = z.record(
+  severitySchema,
+  z
+    .string()
+    .trim()
+    .min(1, "기준 문구를 입력하세요.")
+    .max(500, "기준 문구는 500자 이내로 입력하세요."),
+);
+export type SeverityCriteria = Record<IncidentSeverity, string>;

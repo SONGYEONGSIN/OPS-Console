@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { InspectorPanel } from "../InspectorPanel";
+import { ModalShell } from "@/components/common/ModalShell";
 
 describe("InspectorPanel", () => {
   it("open=true — 패널 visible (translate-x-0)", () => {
@@ -108,5 +109,51 @@ describe("InspectorPanel — 모바일 딤 배경", () => {
       </InspectorPanel>,
     );
     expect(screen.getByTestId("inspector-dim").className).toContain("pointer-events-none");
+  });
+});
+
+/**
+ * 인스펙터 안에서 연 모달(ModalShell)의 Esc 가 인스펙터까지 닫으면 신규 사고 작성 중이던
+ * 내용이 사라진다. 'Esc 를 소비한 층이 표시한다' — 표시(defaultPrevented)된 Esc 는 무시한다.
+ */
+describe("InspectorPanel — 이미 소비된 Esc", () => {
+  it("defaultPrevented 인 Escape 는 onClose 를 부르지 않는다", () => {
+    const onClose = vi.fn();
+    const consume = (e: KeyboardEvent) => e.preventDefault();
+    document.addEventListener("keydown", consume);
+    render(
+      <InspectorPanel open={true} onClose={onClose}>
+        <p>내용</p>
+      </InspectorPanel>,
+    );
+    fireEvent.keyDown(document, { key: "Escape" });
+    document.removeEventListener("keydown", consume);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("일반 Escape 는 그대로 onClose 를 부른다", () => {
+    const onClose = vi.fn();
+    render(
+      <InspectorPanel open={true} onClose={onClose}>
+        <p>내용</p>
+      </InspectorPanel>,
+    );
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("안에서 연 ModalShell 의 Esc 는 모달만 닫고 인스펙터는 그대로 둔다", () => {
+    const onInspectorClose = vi.fn();
+    const onModalClose = vi.fn();
+    render(
+      <InspectorPanel open={true} onClose={onInspectorClose}>
+        <ModalShell title="모달" onClose={onModalClose}>
+          <p>모달 본문</p>
+        </ModalShell>
+      </InspectorPanel>,
+    );
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onModalClose).toHaveBeenCalledTimes(1);
+    expect(onInspectorClose).not.toHaveBeenCalled();
   });
 });

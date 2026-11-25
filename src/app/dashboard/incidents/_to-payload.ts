@@ -13,6 +13,8 @@ export function toIncidentPayload(row: ListRow, fallbackYear: number) {
     category: row.incidentCategory ?? "",
     occurred_date: row.incidentOccurredDate ?? null,
     resolved_date: row.incidentResolvedDate ?? null,
+    // null 이 아니라 undefined — 기존 NULL 행 수정이 update 스키마(null 거부)에 걸리지 않게
+    severity: row.incidentSeverity ?? undefined,
     title: row.incidentTitle ?? row.name ?? "",
     cause_summary: row.incidentCauseSummary ?? null,
     root_cause: row.incidentRootCause ?? null,
