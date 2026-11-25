@@ -22,8 +22,15 @@ describe("inspectorLayoutFor", () => {
     expect(inspectorLayoutFor("incidents", true)).toBe(INSPECTOR_LAYOUT.wide);
   });
 
-  it("incidents 보기 모드 → 표준", () => {
-    expect(inspectorLayoutFor("incidents", false)).toBe(
+  it("incidents 보기 모드도 넓은 폭 (viewWide)", () => {
+    expect(inspectorLayoutFor("incidents", false)).toBe(INSPECTOR_LAYOUT.wide);
+  });
+
+  it("viewWide 가 없는 variant 는 보기 모드에서 표준", () => {
+    expect(inspectorLayoutFor("default", false)).toBe(
+      INSPECTOR_LAYOUT.standard,
+    );
+    expect(inspectorLayoutFor("incident-reports", false)).toBe(
       INSPECTOR_LAYOUT.standard,
     );
   });

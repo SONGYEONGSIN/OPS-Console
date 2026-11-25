@@ -16,15 +16,16 @@ export type InspectorLayout =
 
 /**
  * variant 가 편집 중에 넓은 폭을 원하면(`editWide`) wide, 아니면 standard.
- * 보기 모드는 항상 standard — 넓히는 건 긴 글을 쓰는 순간뿐이다.
+ * 보기 모드는 `viewWide` 인 variant 만 wide — 사고보고처럼 긴 글을 쓴 것은
+ * 읽을 때도 쓸 때와 같은 폭으로 본다. 나머지는 standard.
  */
 export function inspectorLayoutFor(
   variant: Variant,
   editing: boolean,
 ): InspectorLayout {
-  if (!editing) return INSPECTOR_LAYOUT.standard;
   const entry = variantRegistry[variant];
-  return "editWide" in entry && entry.editWide
-    ? INSPECTOR_LAYOUT.wide
-    : INSPECTOR_LAYOUT.standard;
+  const wide = editing
+    ? "editWide" in entry && entry.editWide
+    : "viewWide" in entry && entry.viewWide;
+  return wide ? INSPECTOR_LAYOUT.wide : INSPECTOR_LAYOUT.standard;
 }

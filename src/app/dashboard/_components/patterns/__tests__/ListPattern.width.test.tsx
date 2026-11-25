@@ -8,7 +8,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 /**
- * 사고보고를 작성·편집할 때만 인스펙터가 넓어지고 목록이 같이 비켜난다.
+ * 사고보고는 보기·작성·편집 모두 인스펙터가 넓어지고 목록이 같이 비켜난다.
  * 텍스트가 아니라 폭 클래스까지 단언한다 — 둘이 따로 놀면 넓어진 패널이 목록을 덮는다.
  */
 
@@ -35,7 +35,7 @@ function gutterEls(container: HTMLElement): HTMLElement[] {
 }
 
 describe("ListPattern 인스펙터 폭 — incidents", () => {
-  it("행 선택(보기 모드) → 패널 320 / 목록 여백 340", () => {
+  it("행 선택(보기 모드) → 패널 560 / 목록 여백 580", () => {
     const { container } = render(
       <ListPattern
         title="사고보고"
@@ -45,11 +45,13 @@ describe("ListPattern 인스펙터 폭 — incidents", () => {
     );
     fireEvent.click(screen.getByText("결제 오류"));
     const panel = screen.getByRole("complementary");
-    expect(panel.className).toContain("md:w-[320px]");
-    expect(panel.className).not.toContain("md:w-[560px]");
-    for (const el of gutterEls(container)) {
-      expect(el.className).toContain("md:pr-[340px]");
-      expect(el.className).not.toContain("md:pr-[580px]");
+    expect(panel.className).toContain("md:w-[560px]");
+    expect(panel.className).not.toContain("md:w-[320px]");
+    const els = gutterEls(container);
+    expect(els.length).toBeGreaterThan(0);
+    for (const el of els) {
+      expect(el.className).toContain("md:pr-[580px]");
+      expect(el.className).not.toContain("md:pr-[340px]");
     }
   });
 
@@ -93,7 +95,7 @@ describe("ListPattern 인스펙터 폭 — incidents", () => {
     }
   });
 
-  it("편집 취소 → 다시 320 / 340", () => {
+  it("편집 취소(보기 모드로 복귀) → 560 / 580 그대로", () => {
     const { container } = render(
       <ListPattern
         title="사고보고"
@@ -105,14 +107,14 @@ describe("ListPattern 인스펙터 폭 — incidents", () => {
     fireEvent.click(screen.getByRole("button", { name: /편집/ }));
     fireEvent.click(screen.getByRole("button", { name: "취소" }));
     expect(screen.getByRole("complementary").className).toContain(
-      "md:w-[320px]",
+      "md:w-[560px]",
     );
     for (const el of gutterEls(container)) {
-      expect(el.className).toContain("md:pr-[340px]");
+      expect(el.className).toContain("md:pr-[580px]");
     }
   });
 
-  it("readOnly 면 편집 버튼이 없어 320 / 340 그대로", () => {
+  it("readOnly(보기만) 여도 560 / 580", () => {
     const { container } = render(
       <ListPattern
         title="사고보고"
@@ -123,10 +125,10 @@ describe("ListPattern 인스펙터 폭 — incidents", () => {
     );
     fireEvent.click(screen.getByText("결제 오류"));
     expect(screen.getByRole("complementary").className).toContain(
-      "md:w-[320px]",
+      "md:w-[560px]",
     );
     for (const el of gutterEls(container)) {
-      expect(el.className).toContain("md:pr-[340px]");
+      expect(el.className).toContain("md:pr-[580px]");
     }
   });
 
@@ -145,6 +147,19 @@ describe("ListPattern 인스펙터 폭 — incidents", () => {
 });
 
 describe("ListPattern 인스펙터 폭 — 다른 variant 는 편집해도 그대로", () => {
+  it("default variant 보기 모드 → 320 / 340", () => {
+    const { container } = render(
+      <ListPattern title="민원 목록" data={{ rows: plainRows }} />,
+    );
+    fireEvent.click(screen.getByText("민원 접수 #1"));
+    expect(screen.getByRole("complementary").className).toContain(
+      "md:w-[320px]",
+    );
+    for (const el of gutterEls(container)) {
+      expect(el.className).toContain("md:pr-[340px]");
+    }
+  });
+
   it("default variant 편집 → 320 / 340", () => {
     const { container } = render(
       <ListPattern title="민원 목록" data={{ rows: plainRows }} />,

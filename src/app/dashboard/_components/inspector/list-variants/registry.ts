@@ -153,8 +153,10 @@ type RegistryEntry = {
   Filters?: ReadonlyArray<FilterOption>;
   /** ListPattern '+ 새 항목' 신규 행 factory — 미지정 시 default blank 사용 */
   blank?: (opts?: { currentUserName?: string }) => ListRow;
-  /** true 면 작성·편집 중에만 인스펙터를 넓힌다 (보기 모드는 표준 폭) — inspector-layout.ts */
+  /** true 면 작성·편집 중에 인스펙터를 넓힌다 (보기 모드 폭은 `viewWide`) — inspector-layout.ts */
   editWide?: boolean;
+  /** true 면 보기 모드에서도 인스펙터를 넓힌다 — inspector-layout.ts */
+  viewWide?: boolean;
 };
 
 /**
@@ -298,6 +300,7 @@ export const variantRegistry = {
     Filters: INCIDENT_FILTERS,
     blank: blankIncidentRow,
     editWide: true,
+    viewWide: true,
   },
   "incident-reports": {
     View: IncidentReportView,
