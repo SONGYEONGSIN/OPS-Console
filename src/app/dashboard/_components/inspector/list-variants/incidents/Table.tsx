@@ -25,6 +25,7 @@ export function IncidentTable({ rows, selectedId, onSelect }: Props) {
         <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
           <th className="px-3 py-2">학년도</th>
           <th className="px-3 py-2">상태</th>
+          <th className="px-3 py-2">등급</th>
           <th className="px-3 py-2">경위서</th>
           <th className="px-3 py-2">구분</th>
           <th className="px-3 py-2">카테고리</th>
@@ -37,7 +38,7 @@ export function IncidentTable({ rows, selectedId, onSelect }: Props) {
       <tbody>
         {rows.length === 0 ? (
           <tr>
-            <td colSpan={9} className="px-3 py-6 text-center text-muted">
+            <td colSpan={10} className="px-3 py-6 text-center text-muted">
               데이터 없음
             </td>
           </tr>
@@ -62,6 +63,9 @@ export function IncidentTable({ rows, selectedId, onSelect }: Props) {
                   >
                     {status}
                   </span>
+                </td>
+                <td className="whitespace-nowrap px-3 py-2 text-xs text-ink-soft">
+                  {row.incidentSeverity ?? "—"}
                 </td>
                 <td className="px-3 py-2">
                   {reportStatus ? (
