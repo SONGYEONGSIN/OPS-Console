@@ -39,16 +39,19 @@ export async function createIncidentReport(
 
   const supabase = await createClient();
   let prefill = { ...parsed.data };
+  // 결재라인 기준 인물 = 사고 담당자(없으면 작성자) — 편집 화면·PDF·발송과 같은 규칙.
+  let dutyEmail = me.email;
 
   if (parsed.data.incident_id) {
     const { data: inc } = await supabase
       .from("incidents")
       .select(
-        "university_name,title,cause_summary,root_cause,resolution,prevention",
+        "university_name,title,cause_summary,root_cause,resolution,prevention,assignee_email",
       )
       .eq("id", parsed.data.incident_id)
       .maybeSingle();
     if (inc) {
+      dutyEmail = inc.assignee_email ?? me.email;
       prefill = {
         ...prefill,
         recipient_university:
@@ -68,7 +71,7 @@ export async function createIncidentReport(
     return { ok: false, error: "연결된 사고 정보를 불러올 수 없습니다." };
   }
 
-  const chain = await resolveApprovalChain(me.email);
+  const chain = await resolveApprovalChain(dutyEmail);
 
   const { data, error } = await supabase
     .from("incident_reports")
@@ -171,12 +174,19 @@ export async function submitForApproval(
   const supabase = await createClient();
   const { data: rep } = await supabase
     .from("incident_reports")
-    .select("author_email")
+    .select("author_email,approver_email")
     .eq("id", id)
     .maybeSingle();
   if (!rep) return { ok: false, error: "경위서를 찾을 수 없습니다." };
   if (rep.author_email !== me.email && me.permission !== "admin") {
     return { ok: false, error: "제출 권한이 없습니다." };
+  }
+  // 승인자가 없으면 아무도 승인할 수 없어 영구 대기가 된다 — 제출 단계에서 막는다.
+  if (!rep.approver_email) {
+    return {
+      ok: false,
+      error: "결재선의 팀장을 찾지 못했습니다. 관리자에게 문의해 주세요.",
+    };
   }
 
   const r = await transition(

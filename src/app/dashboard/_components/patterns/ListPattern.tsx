@@ -386,6 +386,8 @@ export type ListRow = {
   incidentReportApproverName?: string | null;
   incidentReportApproverEmail?: string | null;
   incidentReportDirectorName?: string | null;
+  /** incident-reports — 본부장 칸(저장 칼럼 ceo_name) */
+  incidentReportCeoName?: string | null;
   /** incident-reports — 반려 사유 (status=rejected일 때) */
   incidentReportRejectReason?: string | null;
   /** incident-reports — 연결된 사고 id (nullable) */

@@ -3,6 +3,7 @@ import {
   deriveFormModel,
   jeonkyeolDate,
   bodyLines,
+  APPROVAL_LABELS,
   type FormSource,
 } from "../form-content";
 import { defaultApology } from "../apology";
@@ -100,13 +101,14 @@ describe("deriveFormModel", () => {
     expect(m.sections[0]).toEqual({ no: 1, label: "경위", body: "경위 내용" });
     expect(m.sections[3].label).toBe("향후 대책");
   });
-  it("결재라인 4칸을 채운다(빈 값은 빈 문자열, 직책 폴백)", () => {
+  it("결재라인 4칸 — 담당자·팀장·부장·본부장 고정 라벨(빈 값은 빈 문자열)", () => {
     expect(deriveFormModel(base).approvalLine).toEqual([
       { role: "담당자", name: "이해영" },
       { role: "팀장", name: "송영신" },
+      { role: "부장", name: "" },
       { role: "본부장", name: "" },
-      { role: "사장", name: "" },
     ]);
+    expect(APPROVAL_LABELS).toEqual(["담당자", "팀장", "부장", "본부장"]);
   });
   it("작성자가 팀장(기안자=결재팀장)이면 담당자 칸을 생략한다", () => {
     const m = deriveFormModel({
@@ -117,25 +119,26 @@ describe("deriveFormModel", () => {
     });
     expect(m.approvalLine.map((a) => a.role)).toEqual([
       "팀장",
+      "부장",
       "본부장",
-      "사장",
     ]);
     expect(m.approvalLine.some((a) => a.role === "담당자")).toBe(false);
   });
-  it("저장된 실제 직책이 있으면 그 직책으로 결재라인 라벨을 표시한다", () => {
+  it("저장된 직책이 무엇이든 라벨은 고정 — 운영1팀 겸임이 '부장/부장' 으로 찍히지 않는다", () => {
     const m = deriveFormModel({
       ...base,
-      approverRole: "팀장",
-      directorName: "이정일",
+      approverName: "허승철",
+      approverRole: "부장",
+      directorName: "허승철",
       directorRole: "부장",
-      ceoName: "주정현",
-      ceoRole: "부사장",
+      ceoName: "이이화",
+      ceoRole: "이사",
     });
     expect(m.approvalLine).toEqual([
       { role: "담당자", name: "이해영" },
-      { role: "팀장", name: "송영신" },
-      { role: "부장", name: "이정일" },
-      { role: "부사장", name: "주정현" },
+      { role: "팀장", name: "허승철" },
+      { role: "부장", name: "허승철" },
+      { role: "본부장", name: "이이화" },
     ]);
   });
   it("붙임 라인에 제목을 넣는다", () => {

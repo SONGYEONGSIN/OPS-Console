@@ -118,8 +118,20 @@ describe("IncidentReportView onChanged", () => {
   });
 });
 
+describe("IncidentReportView 제출 막힘 안내", () => {
+  it("승인자가 없어 제출이 막히면 그 문구를 버튼 위에 보여 준다", async () => {
+    const msg = "결재선의 팀장을 찾지 못했습니다. 관리자에게 문의해 주세요.";
+    mockSubmit.mockResolvedValue({ ok: false, error: msg });
+    render(<IncidentReportView row={baseRow} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /승인 요청/ }));
+
+    expect(await screen.findByText(msg)).toBeInTheDocument();
+  });
+});
+
 describe("IncidentReportView 결재라인", () => {
-  it("담당자·팀장·본부장만 보이고 사장(대표) 칸은 없다 — 실제 조직처럼 본부장 칸=부장, 대표=이사", () => {
+  it("담당자·팀장·부장·본부장 4칸 — 부장=director, 본부장=ceo(이사 이이화), 사장 칸 없음", () => {
     const row = incidentReportToListRow({
       id: baseRow.id,
       incident_id: null,
@@ -150,11 +162,18 @@ describe("IncidentReportView 결재라인", () => {
       updated_at: "2026-06-02T00:00:00Z",
     });
     render(<IncidentReportView row={row} />);
-    expect(screen.getByText("담당자")).toBeInTheDocument();
-    expect(screen.getByText("본부장")).toBeInTheDocument();
-    expect(screen.getByText("허승철")).toBeInTheDocument();
+    const section = screen.getByText("결재라인").closest("section");
+    expect(section).not.toBeNull();
+    const terms = Array.from(section!.querySelectorAll("dt")).map(
+      (el) => el.textContent,
+    );
+    const descs = Array.from(section!.querySelectorAll("dd")).map(
+      (el) => el.textContent,
+    );
+    expect(terms).toEqual(["담당자", "팀장", "부장", "본부장"]);
+    expect(descs).toEqual(["이해영", "송영신", "허승철", "이이화"]);
     expect(screen.queryByText("사장")).toBeNull();
+    // 라벨은 고정 — 저장 직책(이사)을 라벨로 쓰지 않는다
     expect(screen.queryByText("이사")).toBeNull();
-    expect(screen.queryByText("이이화")).toBeNull();
   });
 });

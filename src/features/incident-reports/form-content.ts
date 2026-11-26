@@ -40,6 +40,12 @@ export const CLOSING =
 
 const SECTION_LABELS = ["경위", "원인", "처리", "향후 대책"] as const;
 
+/**
+ * 경위서 결재라인 칸 이름 — 인스펙터·편집 미리보기·공문(PDF) 공용.
+ * 저장 칼럼: 팀장=approver_*, 부장=director_*, 본부장=ceo_*.
+ */
+export const APPROVAL_LABELS = ["담당자", "팀장", "부장", "본부장"] as const;
+
 /** 공문 본문 2번 항목용 — 사과 텍스트에서 선두 인사말과 말미 "감사합니다"를 제거. */
 function apologyBodyOnly(text: string): string {
   return text
@@ -162,15 +168,15 @@ export function deriveFormModel(s: FormSource): FormModel {
     companyLine: COMPANY_LINE,
     jeonkyeolDate: jeonkyeolDate(issuanceSource),
     receiptDate: formatYmd(issuanceSource),
-    // 담당자(기안자)는 고정 라벨, 나머지는 실제 직책(없으면 기본 라벨 폴백).
+    // 라벨은 칸 이름 고정 — 저장 직책을 쓰면 운영1팀 겸임이 '부장/부장' 으로 찍힌다.
     // 작성자가 곧 팀장이면(기안자=결재 팀장) 담당자 칸은 생략한다.
     approvalLine: [
       ...(s.approverName && s.authorName === s.approverName
         ? []
-        : [{ role: "담당자", name: s.authorName }]),
-      { role: s.approverRole || "팀장", name: s.approverName ?? "" },
-      { role: s.directorRole || "본부장", name: s.directorName ?? "" },
-      { role: s.ceoRole || "사장", name: s.ceoName ?? "" },
+        : [{ role: APPROVAL_LABELS[0], name: s.authorName }]),
+      { role: APPROVAL_LABELS[1], name: s.approverName ?? "" },
+      { role: APPROVAL_LABELS[2], name: s.directorName ?? "" },
+      { role: APPROVAL_LABELS[3], name: s.ceoName ?? "" },
     ],
     docNumber: s.docNumber,
     contactLines: [

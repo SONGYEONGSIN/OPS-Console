@@ -10,28 +10,48 @@ export type OperatorLite = {
   role: string;
   leader: string | null;
   phone?: string | null;
+  /** 사번 — 같은 자격의 후보가 여럿일 때 고정 정렬 키(DB 반환 순서에 기대지 않는다). */
+  emp_no?: string | null;
 };
+/**
+ * 경위서 결재라인 — 담당자 → 팀장 → 부장 → 본부장 4칸.
+ * 저장 칼럼 이름이 칸 이름과 다르다(마이그레이션 없이 재사용):
+ * `approver_*` = 팀장(승인자), `director_*` = **부장**, `ceo_*` = **본부장**.
+ */
 export type ApprovalChain = {
   author: { name: string; email: string; phone: string | null };
+  /** 팀장 — 승인자. 운영1팀처럼 팀장이 없으면 같은 팀 부장이 겸임한다. */
   approver: { name: string; email: string; role: string } | null;
+  /** 부장 (저장 칼럼 director_*) */
   director: { name: string; role: string } | null;
+  /** 본부장 (저장 칼럼 ceo_*) — 영업팀 밖 role 이사. */
   ceo: { name: string; role: string } | null;
 };
 
-export function pickApprovalChain(author: OperatorLite, everyone: OperatorLite[]): ApprovalChain {
+function byEmpNo(a: OperatorLite, b: OperatorLite): number {
+  return (
+    (a.emp_no ?? "").localeCompare(b.emp_no ?? "") ||
+    a.email.localeCompare(b.email)
+  );
+}
+
+/**
+ * 기준 인물(사고 담당자) 기준 결재라인.
+ * - 팀장: leader 이름 → 같은 팀 팀장 → 같은 팀 부장(겸임)
+ * - 부장: 같은 팀 부장 → 부장
+ * - 본부장: 이사 (사고보고 메일 이사님 참조 `incidents/cc.ts` 와 같은 조건)
+ */
+export function pickApprovalChain(duty: OperatorLite, everyone: OperatorLite[]): ApprovalChain {
   // 영업팀은 사고보고 메일 참조용으로만 등재돼 결재선에 들지 않는다.
-  const all = everyone.filter((o) => !isSalesTeam(o.team));
-  const byLeaderName = author.leader ? (all.find((o) => o.name === author.leader) ?? null) : null;
-  const teamLead =
-    byLeaderName ?? all.find((o) => o.team === author.team && o.role === "팀장") ?? null;
-  // 본부장 우선, 없으면 부장 (조직별 상위 직책 차이 흡수)
-  const director =
-    all.find((o) => o.role === "본부장") ?? all.find((o) => o.role === "부장") ?? null;
-  // 사장 우선, 없으면 이사 (최상위 임원)
-  const ceo =
-    all.find((o) => o.role === "사장") ?? all.find((o) => o.role === "이사") ?? null;
+  const all = everyone.filter((o) => !isSalesTeam(o.team)).sort(byEmpNo);
+  const sameTeam = (role: string) =>
+    all.find((o) => o.team === duty.team && o.role === role);
+  const byLeaderName = duty.leader ? all.find((o) => o.name === duty.leader) : undefined;
+  const teamLead = byLeaderName ?? sameTeam("팀장") ?? sameTeam("부장") ?? null;
+  const director = sameTeam("부장") ?? all.find((o) => o.role === "부장") ?? null;
+  const ceo = all.find((o) => o.role === "이사") ?? null;
   return {
-    author: { name: author.name, email: author.email, phone: author.phone ?? null },
+    author: { name: duty.name, email: duty.email, phone: duty.phone ?? null },
     approver: teamLead
       ? { name: teamLead.name, email: teamLead.email, role: teamLead.role }
       : null,
@@ -40,16 +60,16 @@ export function pickApprovalChain(author: OperatorLite, everyone: OperatorLite[]
   };
 }
 
-export async function resolveApprovalChain(authorEmail: string): Promise<ApprovalChain | null> {
+export async function resolveApprovalChain(dutyEmail: string): Promise<ApprovalChain | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("operators")
-    .select("email,name,team,role,leader,phone")
+    .select("email,name,team,role,leader,phone,emp_no")
     .in("status", ["active", "inactive"]);
   if (!data) return null;
-  const author = data.find((o) => o.email === authorEmail);
-  if (!author) return null;
-  return pickApprovalChain(author as OperatorLite, data as OperatorLite[]);
+  const duty = data.find((o) => o.email === dutyEmail);
+  if (!duty) return null;
+  return pickApprovalChain(duty as OperatorLite, data as OperatorLite[]);
 }
 
 export async function listRecipientCandidates(university: string) {
