@@ -7,6 +7,7 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import { logActivity } from "@/features/worklog/log";
 import { resolveApprovalChain, type ApprovalChain } from "./queries";
 import { defaultApology } from "./apology";
+import { canCreateReport, canEditReport } from "./permissions";
 import {
   assignDocNumber,
   releaseDocNumber,
@@ -29,6 +30,8 @@ const NO_APPROVER_ERROR =
   "결재선의 팀장을 찾지 못했습니다. 관리자에게 문의해 주세요.";
 const CHAIN_LOAD_ERROR =
   "결재선을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";
+const EDITABLE_STATUSES = ["draft", "rejected"];
+const NOT_EDITABLE_ERROR = "작성 중이거나 반려된 경위서만 고칠 수 있습니다.";
 
 /** 결재선 → 저장 칼럼(approver_*=팀장, director_*=부장, ceo_*=본부장). 생성·제출 공용. */
 function chainColumns(chain: ApprovalChain | null) {
@@ -55,6 +58,16 @@ export async function createIncidentReport(
   }
 
   const supabase = await createClient();
+  // 생성은 admin client 라 RLS 가 없다 — 사고 등록과 같은 기준(활성 + admin·member)을 여기서 본다.
+  const { data: op } = await supabase
+    .from("operators")
+    .select("permission,status")
+    .eq("email", me.email)
+    .maybeSingle();
+  if (!canCreateReport(op)) {
+    return { ok: false, error: "경위서 작성 권한이 없습니다." };
+  }
+
   let prefill = { ...parsed.data };
   // 결재라인 기준 인물 = 사고 담당자(없으면 작성자) — 편집 화면·PDF·발송과 같은 규칙.
   let dutyEmail = me.email;
@@ -93,7 +106,9 @@ export async function createIncidentReport(
     () => null,
   );
 
-  const { data, error } = await supabase
+  // 생성은 서버만 — authenticated 에게 insert 권한이 없다(20261126_incident_reports_write_lock.sql).
+  // 작성자·상태·결재선은 위에서 서버가 정한 값이다.
+  const { data, error } = await createAdminClient()
     .from("incident_reports")
     .insert({
       incident_id: parsed.data.incident_id ?? null,
@@ -139,20 +154,45 @@ export async function updateIncidentReport(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "invalid" };
   }
 
+  // 본문 저장만 사용자 client 로 한다 — DB 도 같은 기준(칼럼 grant + 작성자/admin·작성 중/반려 RLS)으로
+  // 막아 두 겹이다. 여기서 먼저 걸러야 사용자에게 한국어 문구가 간다.
   const supabase = await createClient();
+  const { data: cur } = await supabase
+    .from("incident_reports")
+    .select("author_email,status")
+    .eq("id", id)
+    .maybeSingle();
+  if (!cur) return { ok: false, error: "경위서를 찾을 수 없습니다." };
+  if (!canEditReport(cur, me)) {
+    return { ok: false, error: "수정 권한이 없습니다." };
+  }
+  if (!EDITABLE_STATUSES.includes(cur.status)) {
+    return { ok: false, error: NOT_EDITABLE_ERROR };
+  }
+
+  // 읽은 뒤 제출·승인됐으면 0행(PGRST116) — 승인된 본문을 덮어쓰지 않는다.
   const { data, error } = await supabase
     .from("incident_reports")
     .update({ ...parsed.data, updated_at: new Date().toISOString() })
     .eq("id", id)
+    .in("status", EDITABLE_STATUSES)
     .select()
     .single();
 
+  if (error?.code === "PGRST116") {
+    return { ok: false, error: NOT_EDITABLE_ERROR };
+  }
   if (error) return { ok: false, error: error.message };
 
   revalidatePath(PATH);
   return { ok: true, row: data as IncidentReportRow };
 }
 
+/**
+ * 상태 전이 — 결재 칸은 DB 에서 서버(service_role)만 쓴다(20261126_incident_reports_write_lock.sql).
+ * admin client 는 RLS 를 안 타므로 권한은 호출자의 검사가 전부다. update 에 상태 조건을 같이 걸어
+ * 읽은 뒤 상태가 바뀌었으면 0행(PGRST116)으로 막는다.
+ */
 async function transition(
   id: string,
   from: string[],
@@ -168,13 +208,15 @@ async function transition(
   if (!cur) return { ok: false, error: "경위서를 찾을 수 없습니다." };
   if (!from.includes(cur.status)) return { ok: false, error: errMsg };
 
-  const { data, error } = await supabase
+  const { data, error } = await createAdminClient()
     .from("incident_reports")
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", id)
+    .in("status", from)
     .select()
     .single();
 
+  if (error?.code === "PGRST116") return { ok: false, error: errMsg };
   if (error) return { ok: false, error: error.message };
   return { ok: true, row: data as IncidentReportRow };
 }

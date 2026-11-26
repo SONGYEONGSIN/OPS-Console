@@ -140,11 +140,15 @@ export async function updateIncident(
 }
 
 const PERMISSION_ERROR = "삭제 권한이 없습니다.";
+const REPORTED_DELETE_ERROR =
+  "승인·발송된 경위서가 있는 사고는 관리자만 삭제할 수 있습니다.";
 
 /**
  * 사고보고 삭제 — admin 또는 본인(assignee_email = me.email) 작성건만.
  * RLS 정책 incidents_delete_admin_or_assignee가 권한 가드. data=null이면 0 row 반환 → 권한 부족.
  * incident_mail_sends는 FK on delete cascade로 함께 삭제됨.
+ * 승인·발송된 경위서가 있는 사고는 admin 만 — 경위서와 발송 이력이 cascade 로 같이 지워지기 때문이다.
+ * 이 검사가 정본이고 RLS(20261126c)는 두 번째 겹이다(마이그레이션 적용 전에도 같은 동작).
  */
 export async function deleteIncident(
   id: string,
@@ -153,6 +157,17 @@ export async function deleteIncident(
   if (!me) return { ok: false, error: AUTH_ERROR };
 
   const supabase = await createClient();
+  if (me.permission !== "admin") {
+    const { data: reported, error: repErr } = await supabase
+      .from("incident_reports")
+      .select("id")
+      .eq("incident_id", id)
+      .in("status", ["approved", "sent"])
+      .limit(1);
+    if (repErr) return { ok: false, error: repErr.message };
+    if (reported?.length) return { ok: false, error: REPORTED_DELETE_ERROR };
+  }
+
   const { data, error } = await supabase
     .from("incidents")
     .delete()

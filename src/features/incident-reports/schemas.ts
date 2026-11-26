@@ -91,7 +91,10 @@ export const incidentReportCreateSchema = z.object({
 });
 export type IncidentReportCreate = z.infer<typeof incidentReportCreateSchema>;
 
-export const incidentReportUpdateSchema = incidentReportCreateSchema.partial();
+// incident_id 는 뺀다 — 생성 뒤 바꾸지 않는 칸이고 DB grant 에도 없다(20261126_incident_reports_write_lock.sql).
+export const incidentReportUpdateSchema = incidentReportCreateSchema
+  .omit({ incident_id: true })
+  .partial();
 export type IncidentReportUpdate = z.infer<typeof incidentReportUpdateSchema>;
 
 export const incidentReportSendSchema = z.object({

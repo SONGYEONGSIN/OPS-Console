@@ -60,7 +60,7 @@ beforeEach(() => vi.clearAllMocks());
 
 describe("ReportEditorWorkspace", () => {
   it("경위 편집이 메인 뷰어(2페이지)에 즉시 반영된다", () => {
-    render(<ReportEditorWorkspace report={report} />);
+    render(<ReportEditorWorkspace report={report} canEdit />);
     fireEvent.change(screen.getByLabelText("경위"), {
       target: { value: "수정된 경위" },
     });
@@ -72,7 +72,9 @@ describe("ReportEditorWorkspace", () => {
   });
 
   it("수신대학은 편집 불가(읽기전용), 서비스명은 props로 표시", () => {
-    render(<ReportEditorWorkspace report={report} serviceName="수시모집" />);
+    render(
+      <ReportEditorWorkspace report={report} serviceName="수시모집" canEdit />,
+    );
     // 수신대학 편집 input 없음
     expect(screen.queryByLabelText("수신대학")).not.toBeInTheDocument();
     // 서비스명 읽기전용 표시
@@ -81,7 +83,7 @@ describe("ReportEditorWorkspace", () => {
   });
 
   it("페이지 넘기기: 기본 1페이지(공문), 다음 누르면 2페이지(경위서)", () => {
-    render(<ReportEditorWorkspace report={report} />);
+    render(<ReportEditorWorkspace report={report} canEdit />);
     expect(screen.getByText(/수신자/)).toBeInTheDocument();
     expect(screen.getByText("1 / 2")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "다음 →" }));
@@ -91,7 +93,7 @@ describe("ReportEditorWorkspace", () => {
 
   it("사고 미연결 저장 시 공유 필드를 updateIncidentReport로 저장한다", async () => {
     mockUpdate.mockResolvedValue({ ok: true });
-    render(<ReportEditorWorkspace report={report} />);
+    render(<ReportEditorWorkspace report={report} canEdit />);
     fireEvent.change(screen.getByLabelText("원인"), {
       target: { value: "새 원인" },
     });
@@ -112,7 +114,7 @@ describe("ReportEditorWorkspace", () => {
       ...report,
       incident_id: "22222222-2222-4222-8222-222222222222",
     };
-    render(<ReportEditorWorkspace report={linked} />);
+    render(<ReportEditorWorkspace report={linked} canEdit />);
     fireEvent.change(screen.getByLabelText("원인"), {
       target: { value: "새 원인" },
     });
@@ -147,7 +149,7 @@ describe("ReportEditorWorkspace", () => {
       ...report,
       incident_id: "22222222-2222-4222-8222-222222222222",
     };
-    render(<ReportEditorWorkspace report={linked} />);
+    render(<ReportEditorWorkspace report={linked} canEdit />);
     fireEvent.change(screen.getByLabelText("인사말"), {
       target: { value: "맞춤 인사말입니다." },
     });
@@ -164,7 +166,7 @@ describe("ReportEditorWorkspace", () => {
   });
 
   it("제목은 편집 불가(읽기전용) — 사고에서 동기화", () => {
-    render(<ReportEditorWorkspace report={report} />);
+    render(<ReportEditorWorkspace report={report} canEdit />);
     expect(screen.queryByLabelText("제목")).not.toBeInTheDocument();
     expect(
       screen.getByText("(사고에서 동기화 · 수정 불가)"),
@@ -173,14 +175,20 @@ describe("ReportEditorWorkspace", () => {
 
   it("approved 상태면 편집 패널을 숨긴다", () => {
     render(
-      <ReportEditorWorkspace report={{ ...report, status: "approved" }} />,
+      <ReportEditorWorkspace
+        report={{ ...report, status: "approved" }}
+        canEdit
+      />,
     );
     expect(screen.queryByLabelText("경위")).not.toBeInTheDocument();
   });
 
   it("편집 불가 상태(approved)에서는 액션 버튼 없이 안내만 (승인/발송 취소는 인스펙터로 이동)", () => {
     render(
-      <ReportEditorWorkspace report={{ ...report, status: "approved" }} />,
+      <ReportEditorWorkspace
+        report={{ ...report, status: "approved" }}
+        canEdit
+      />,
     );
     expect(
       screen.queryByRole("button", { name: /승인 취소|발송 취소/ }),
@@ -190,7 +198,7 @@ describe("ReportEditorWorkspace", () => {
 
   it("처리 행을 추가·입력하면 2페이지 표에 반영되고 저장에 포함된다", async () => {
     mockUpdate.mockResolvedValue({ ok: true });
-    render(<ReportEditorWorkspace report={report} />);
+    render(<ReportEditorWorkspace report={report} canEdit />);
     fireEvent.click(screen.getByRole("button", { name: "+ 행 추가" }));
     fireEvent.change(screen.getByLabelText("처리 시간 1"), {
       target: { value: "2026-09-27T14:27" },
@@ -219,23 +227,66 @@ describe("ReportEditorWorkspace", () => {
   });
 });
 
+describe("ReportEditorWorkspace — 편집 권한(canEdit)", () => {
+  it("canEdit=false 면 draft 여도 편집칸·저장이 잠긴다 — 작성자·관리자만 고친다", () => {
+    render(<ReportEditorWorkspace report={report} canEdit={false} />);
+    expect(screen.queryByLabelText("경위")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("사과 본문 (공문 2번)"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /저장/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/작성자·관리자만 고칠 수 있습니다/),
+    ).toBeInTheDocument();
+  });
+
+  it("canEdit=false + rejected 도 잠긴다", () => {
+    render(
+      <ReportEditorWorkspace
+        report={{ ...report, status: "rejected" }}
+        canEdit={false}
+      />,
+    );
+    expect(screen.queryByLabelText("경위")).not.toBeInTheDocument();
+  });
+
+  it("canEdit=true 여도 approved 는 잠긴다 — 상태 문구 그대로", () => {
+    render(
+      <ReportEditorWorkspace
+        report={{ ...report, status: "approved" }}
+        canEdit
+      />,
+    );
+    expect(screen.queryByLabelText("경위")).not.toBeInTheDocument();
+    expect(screen.getByText(/편집할 수 없는 상태/)).toBeInTheDocument();
+  });
+});
+
 describe("ReportEditorWorkspace — 상태 배지 톤", () => {
   it("반려는 주의 톤이다 — 목록과 같은 색이어야 한다", () => {
     render(
-      <ReportEditorWorkspace report={{ ...report, status: "rejected" }} />,
+      <ReportEditorWorkspace
+        report={{ ...report, status: "rejected" }}
+        canEdit
+      />,
     );
     expect(screen.getByText("반려").className).toContain(BADGE_TONE.attention);
   });
 
   it("승인완료는 완료 톤이다", () => {
     render(
-      <ReportEditorWorkspace report={{ ...report, status: "approved" }} />,
+      <ReportEditorWorkspace
+        report={{ ...report, status: "approved" }}
+        canEdit
+      />,
     );
     expect(screen.getByText("승인완료").className).toContain(BADGE_TONE.done);
   });
 
   it("작성 중은 진행 톤이다", () => {
-    render(<ReportEditorWorkspace report={report} />);
+    render(<ReportEditorWorkspace report={report} canEdit />);
     expect(screen.getByText("작성 중").className).toContain(
       BADGE_TONE.progress,
     );
@@ -244,7 +295,7 @@ describe("ReportEditorWorkspace — 상태 배지 톤", () => {
 
 describe("ReportEditorWorkspace — 편집 칸 입력창 표준", () => {
   it("입력창은 border-line-soft bg-field-bg + focus:border-ink focus:bg-white", () => {
-    render(<ReportEditorWorkspace report={report} />);
+    render(<ReportEditorWorkspace report={report} canEdit />);
     for (const label of ["경위", "인사말", "사과 본문 (공문 2번)"]) {
       const cls = screen.getByLabelText(label).classList;
       expect(cls.contains("border-line-soft")).toBe(true);
@@ -261,7 +312,9 @@ describe("ReportEditorWorkspace — 편집 칸 입력창 표준", () => {
 
 describe("ReportEditorWorkspace — 편집 패널 폭", () => {
   it("편집 패널(aside)은 560px", () => {
-    const { container } = render(<ReportEditorWorkspace report={report} />);
+    const { container } = render(
+      <ReportEditorWorkspace report={report} canEdit />,
+    );
     const aside = container.querySelector("aside");
     expect(aside?.classList.contains("w-[560px]")).toBe(true);
     expect(aside?.classList.contains("w-[360px]")).toBe(false);
@@ -270,7 +323,7 @@ describe("ReportEditorWorkspace — 편집 패널 폭", () => {
 
 describe("ReportEditorWorkspace — 페이지 넘기기", () => {
   it("공통 PaginationNav 를 쓴다 (손으로 만든 버튼·font-mono 카운터 없음)", () => {
-    render(<ReportEditorWorkspace report={report} />);
+    render(<ReportEditorWorkspace report={report} canEdit />);
     const nav = screen.getByRole("navigation", { name: "페이지 이동" });
     const prev = within(nav).getByRole("button", { name: "← 이전" });
     const next = within(nav).getByRole("button", { name: "다음 →" });

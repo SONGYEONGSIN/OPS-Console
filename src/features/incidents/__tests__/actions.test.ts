@@ -5,21 +5,25 @@ const {
   mockInsertResult,
   mockUpdateResult,
   mockDeleteResult,
+  mockReportsResult,
   mockSendIncidentMail,
   mockLogActivity,
   insertPayloads,
   updatePatches,
   deleteEqIds,
+  reportFilters,
 } = vi.hoisted(() => ({
   mockGetCurrentOperator: vi.fn(),
   mockInsertResult: vi.fn(),
   mockUpdateResult: vi.fn(),
   mockDeleteResult: vi.fn(),
+  mockReportsResult: vi.fn(),
   mockSendIncidentMail: vi.fn(),
   mockLogActivity: vi.fn(),
   insertPayloads: [] as unknown[],
   updatePatches: [] as unknown[],
   deleteEqIds: [] as string[],
+  reportFilters: [] as unknown[][],
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -53,6 +57,17 @@ vi.mock("@/lib/supabase/server", () => ({
           }),
         };
       },
+      // 삭제 전 확인 — 연결 경위서 중 승인·발송된 것(incident_reports)
+      select: (cols: string) => ({
+        eq: (col: string, val: unknown) => ({
+          in: (inCol: string, vals: unknown) => ({
+            limit: (n: number) => {
+              reportFilters.push([cols, col, val, inCol, vals, n]);
+              return Promise.resolve(mockReportsResult());
+            },
+          }),
+        }),
+      }),
       delete: () => ({
         eq: (_col: string, id: string) => {
           deleteEqIds.push(id);
@@ -110,6 +125,9 @@ beforeEach(() => {
   mockInsertResult.mockReset();
   mockUpdateResult.mockReset();
   mockDeleteResult.mockReset();
+  mockReportsResult.mockReset();
+  mockReportsResult.mockReturnValue({ data: [], error: null });
+  reportFilters.length = 0;
   mockSendIncidentMail.mockReset();
   mockSendIncidentMail.mockResolvedValue({ ok: true, status: "sent" });
   mockLogActivity.mockReset();
@@ -346,5 +364,65 @@ describe("deleteIncident", () => {
     const r = await deleteIncident(baseRow.id);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toContain("db down");
+  });
+});
+
+describe("deleteIncident — 승인·발송된 경위서가 있는 사고는 관리자만", () => {
+  const REPORTED_ERROR =
+    "승인·발송된 경위서가 있는 사고는 관리자만 삭제할 수 있습니다.";
+
+  for (const status of ["approved", "sent"]) {
+    it(`member + 본인 사고 + ${status} 경위서 → 거절, 지우지 않는다`, async () => {
+      mockGetCurrentOperator.mockResolvedValue(meOperator);
+      mockReportsResult.mockReturnValue({
+        data: [{ id: "r1", status }],
+        error: null,
+      });
+      mockDeleteResult.mockReturnValue({ data: baseRow, error: null });
+
+      const r = await deleteIncident(baseRow.id);
+      expect(r).toEqual({ ok: false, error: REPORTED_ERROR });
+      expect(deleteEqIds).toHaveLength(0);
+    });
+  }
+
+  it("확인은 이 사고의 approved·sent 경위서만 본다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockDeleteResult.mockReturnValue({ data: baseRow, error: null });
+
+    const r = await deleteIncident(baseRow.id);
+    expect(r.ok).toBe(true);
+    expect(reportFilters).toEqual([
+      ["id", "incident_id", baseRow.id, "status", ["approved", "sent"], 1],
+    ]);
+  });
+
+  it("admin 은 승인·발송된 경위서가 있어도 지운다", async () => {
+    mockGetCurrentOperator.mockResolvedValue({
+      ...meOperator,
+      permission: "admin",
+    });
+    mockReportsResult.mockReturnValue({
+      data: [{ id: "r1", status: "sent" }],
+      error: null,
+    });
+    mockDeleteResult.mockReturnValue({ data: baseRow, error: null });
+
+    const r = await deleteIncident(baseRow.id);
+    expect(r.ok).toBe(true);
+    expect(deleteEqIds).toEqual([baseRow.id]);
+  });
+
+  it("경위서 확인이 실패하면 지우지 않는다 — 조용한 0건으로 통과시키지 않는다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockReportsResult.mockReturnValue({
+      data: null,
+      error: { message: "timeout" },
+    });
+    mockDeleteResult.mockReturnValue({ data: baseRow, error: null });
+
+    const r = await deleteIncident(baseRow.id);
+    expect(r.ok).toBe(false);
+    expect(deleteEqIds).toHaveLength(0);
   });
 });
