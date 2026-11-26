@@ -102,7 +102,8 @@ export function BulkPasteContacts() {
               onChange={(e) => setText(e.target.value)}
               rows={8}
               placeholder={"대학명\t고객명\t이메일\t전화\n..."}
-              className="w-full border border-line-soft bg-field-bg px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
+              // 수백 줄 붙여넣기 — 상한을 둬야 아래 미리보기가 모달 밖으로 밀리지 않는다.
+              className="max-h-80 w-full border border-line-soft bg-field-bg px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
             />
 
             {parsed.headerError ? (

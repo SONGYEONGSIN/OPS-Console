@@ -221,6 +221,19 @@
     margin: 0;
     padding: 0;
   }
+
+  /*
+   * 여러 줄 입력창은 내용만큼 늘어난다 — 칸마다 붙이면 잊는 날 끝나서 전역으로 둔다(2026-11-26).
+   * field-sizing: content 는 rows 를 무시하고 빈 칸을 한 줄로 접으므로 rows 줄 수를 최소 높이로
+   * 준다(10px = py-1 + 테두리 1px×2). base 레이어라 칸의 min-h-*·max-h-* 유틸이 이긴다.
+   * 미지원 브라우저(Firefox·Safari)는 지금처럼 rows 고정 높이 — JS 대체는 두지 않는다.
+   */
+  @supports (field-sizing: content) {
+    textarea {
+      field-sizing: content;
+      min-height: calc(attr(rows type(<number>), 2) * 1lh + 10px);
+    }
+  }
 }
 
 body {

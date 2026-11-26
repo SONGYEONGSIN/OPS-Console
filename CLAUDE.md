@@ -60,6 +60,7 @@ OPS-Console/
 - **버튼 호버**: `hover:bg-ink hover:text-cream` (보더 있으면 `hover:border-ink` 함께). 약한 톤(`hover:bg-washi`)은 버튼에 금지 — 카드·행은 별개
 - **헤더 액션 버튼**: 목록 제목 오른쪽 액션은 `components/common/HeaderActionButton` — vermilion 배경 하나뿐이고 변형 없음. 클래스만 필요하면 `HEADER_ACTION_CLASS`
 - **숫자 표기**: 금액·건수·순번은 **기본 폰트 + `tabular-nums`**(KpiCard가 기준). `font-mono`는 식별자·기계값 전용 — 등기번호·경로·호출 명령어·해시
+- **여러 줄 입력창**: `<textarea>` 는 손대지 않아도 내용만큼 늘어난다(globals.css base 레이어 전역 규칙). 높이는 `rows`(빈 칸 최소 줄 수)와 `max-h-*`(상한)로만 정한다. 고정 높이는 `textarea-autogrow-standard` 테스트가 막는다. 대량 붙여넣기 칸과 바닥 고정 채팅 입력은 `max-h-*` 필수
 - **검증**: `hooks/design-lint.sh`가 Write/Edit 시 자동 감지, `/design-audit`로 전체 스캔
 
 ## list-variants 아키텍처 (open/closed)

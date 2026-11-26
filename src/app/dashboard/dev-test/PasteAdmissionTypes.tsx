@@ -71,7 +71,8 @@ export function PasteAdmissionTypes({ serviceId }: { serviceId: number }) {
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={6}
-              className="w-full rounded border border-line-soft bg-field-bg px-3 py-2 font-mono text-xs focus:border-ink focus:bg-white"
+              // 수백 줄 붙여넣기 — 상한을 둬야 아래 미리보기가 모달 밖으로 밀리지 않는다.
+              className="max-h-80 w-full rounded border border-line-soft bg-field-bg px-3 py-2 font-mono text-xs focus:border-ink focus:bg-white"
             />
 
             {error ? (

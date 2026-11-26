@@ -326,7 +326,8 @@ export function AssistantClient({ userName = "운영자" }: Props) {
           rows={2}
           disabled={pending}
           maxLength={500}
-          className="resize-none border border-line-soft bg-field-bg px-2.5 py-2 text-sm text-ink outline-none transition-colors focus:border-ink focus:bg-white"
+          // 바닥 고정 입력 — 늘어나도 6줄쯤에서 멈추고 스크롤한다(대화 영역을 밀어내지 않게).
+          className="max-h-36 resize-none border border-line-soft bg-field-bg px-2.5 py-2 text-sm text-ink outline-none transition-colors focus:border-ink focus:bg-white"
         />
 
         <div className="flex items-center justify-between gap-2">

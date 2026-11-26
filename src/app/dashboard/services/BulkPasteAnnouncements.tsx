@@ -95,7 +95,8 @@ export function BulkPasteAnnouncements() {
               placeholder={
                 "UnivId\tUnivName\tUnivServiceId\tServiceName\t발표제목\t발표시작일시(실제)\n..."
               }
-              className="w-full border border-line-soft bg-field-bg px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
+              // 수백 줄 붙여넣기 — 상한을 둬야 아래 미리보기가 모달 밖으로 밀리지 않는다.
+              className="max-h-80 w-full border border-line-soft bg-field-bg px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
             />
 
             {parsed.headerError ? (
