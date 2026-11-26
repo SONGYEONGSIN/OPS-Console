@@ -45,7 +45,7 @@ export async function getIncidentReportBundle(
 
   const [recipients, approvalChain] = await Promise.all([
     listRecipientCandidates(report.recipient_university),
-    resolveApprovalChain(report.author_email),
+    resolveApprovalChain(report.author_email).catch(() => null),
   ]);
 
   const isApprover = report.approver_email === me.email;

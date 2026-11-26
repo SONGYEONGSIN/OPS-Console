@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { logActivity } from "@/features/worklog/log";
-import { resolveApprovalChain } from "./queries";
+import { resolveApprovalChain, type ApprovalChain } from "./queries";
 import { defaultApology } from "./apology";
 import {
   assignDocNumber,
@@ -25,6 +25,23 @@ export type ReportActionResult =
 
 const AUTH_ERROR = "로그인이 필요합니다.";
 const PATH = "/dashboard/incident-reports";
+const NO_APPROVER_ERROR =
+  "결재선의 팀장을 찾지 못했습니다. 관리자에게 문의해 주세요.";
+const CHAIN_LOAD_ERROR =
+  "결재선을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";
+
+/** 결재선 → 저장 칼럼(approver_*=팀장, director_*=부장, ceo_*=본부장). 생성·제출 공용. */
+function chainColumns(chain: ApprovalChain | null) {
+  return {
+    approver_name: chain?.approver?.name ?? null,
+    approver_email: chain?.approver?.email ?? null,
+    approver_role: chain?.approver?.role ?? null,
+    director_name: chain?.director?.name ?? null,
+    director_role: chain?.director?.role ?? null,
+    ceo_name: chain?.ceo?.name ?? null,
+    ceo_role: chain?.ceo?.role ?? null,
+  };
+}
 
 export async function createIncidentReport(
   input: unknown,
@@ -71,7 +88,10 @@ export async function createIncidentReport(
     return { ok: false, error: "연결된 사고 정보를 불러올 수 없습니다." };
   }
 
-  const chain = await resolveApprovalChain(dutyEmail);
+  // 운영자 조회가 실패하면 승인자 없이 만든다 — 제출 때 같은 기준으로 다시 계산한다.
+  const chain = await resolveApprovalChain(dutyEmail, me.email).catch(
+    () => null,
+  );
 
   const { data, error } = await supabase
     .from("incident_reports")
@@ -86,13 +106,7 @@ export async function createIncidentReport(
       apology: prefill.apology ?? defaultApology(prefill.recipient_university),
       author_name: me.displayName ?? me.email,
       author_email: me.email,
-      approver_name: chain?.approver?.name ?? null,
-      approver_email: chain?.approver?.email ?? null,
-      approver_role: chain?.approver?.role ?? null,
-      director_name: chain?.director?.name ?? null,
-      director_role: chain?.director?.role ?? null,
-      ceo_name: chain?.ceo?.name ?? null,
-      ceo_role: chain?.ceo?.role ?? null,
+      ...chainColumns(chain),
       status: "draft",
     })
     .select()
@@ -165,6 +179,36 @@ async function transition(
   return { ok: true, row: data as IncidentReportRow };
 }
 
+/**
+ * 승인자가 비어 있는 경위서의 결재선을 생성 때와 같은 기준(사고 담당자 → 작성자)으로
+ * 다시 계산한다. 조회 실패는 '못 찾음' 과 다른 문구로 돌려준다(아무것도 저장하지 않는다).
+ */
+async function recomputeChainColumns(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rep: { author_email: string; incident_id: string | null },
+): Promise<
+  { ok: true; cols: ReturnType<typeof chainColumns> } | { ok: false; error: string }
+> {
+  let dutyEmail = rep.author_email;
+  if (rep.incident_id) {
+    const { data: inc, error } = await supabase
+      .from("incidents")
+      .select("assignee_email")
+      .eq("id", rep.incident_id)
+      .maybeSingle();
+    if (error) return { ok: false, error: CHAIN_LOAD_ERROR };
+    dutyEmail = inc?.assignee_email ?? rep.author_email;
+  }
+  let chain: ApprovalChain | null;
+  try {
+    chain = await resolveApprovalChain(dutyEmail, rep.author_email);
+  } catch {
+    return { ok: false, error: CHAIN_LOAD_ERROR };
+  }
+  if (!chain?.approver) return { ok: false, error: NO_APPROVER_ERROR };
+  return { ok: true, cols: chainColumns(chain) };
+}
+
 export async function submitForApproval(
   id: string,
 ): Promise<ReportActionResult> {
@@ -174,25 +218,26 @@ export async function submitForApproval(
   const supabase = await createClient();
   const { data: rep } = await supabase
     .from("incident_reports")
-    .select("author_email,approver_email")
+    .select("author_email,approver_email,incident_id")
     .eq("id", id)
     .maybeSingle();
   if (!rep) return { ok: false, error: "경위서를 찾을 수 없습니다." };
   if (rep.author_email !== me.email && me.permission !== "admin") {
     return { ok: false, error: "제출 권한이 없습니다." };
   }
-  // 승인자가 없으면 아무도 승인할 수 없어 영구 대기가 된다 — 제출 단계에서 막는다.
+  // 승인자가 없으면 아무도 승인할 수 없어 영구 대기가 된다 — 다시 계산하고,
+  // 그래도 없으면 제출 단계에서 막는다. 찾으면 상태 전이와 같은 update 로 저장한다.
+  let chainPatch = {};
   if (!rep.approver_email) {
-    return {
-      ok: false,
-      error: "결재선의 팀장을 찾지 못했습니다. 관리자에게 문의해 주세요.",
-    };
+    const re = await recomputeChainColumns(supabase, rep);
+    if (!re.ok) return { ok: false, error: re.error };
+    chainPatch = re.cols;
   }
 
   const r = await transition(
     id,
     ["draft", "rejected"],
-    { status: "pending_approval", reject_reason: null },
+    { status: "pending_approval", reject_reason: null, ...chainPatch },
     "제출할 수 없는 상태입니다.",
   );
   if (r.ok) {

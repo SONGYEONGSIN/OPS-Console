@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { pickApprovalChain, type OperatorLite } from "../queries";
+import {
+  chainFromOperators,
+  pickApprovalChain,
+  type OperatorLite,
+} from "../queries";
 
 /**
  * 실제 조직 모양(2026-11-26 조회) — 운영1팀은 팀장이 없고 부장 허승철이 겸임,
@@ -245,5 +249,24 @@ describe("pickApprovalChain — 담당자·팀장·부장·본부장", () => {
     expect(chain.director).toBeNull();
     expect(chain.ceo).toBeNull();
     expect(chain.author.name).toBe("혼자");
+  });
+});
+
+describe("chainFromOperators — 기준 인물(담당자 → 작성자)", () => {
+  it("담당자가 운영자 목록에 있으면 담당자 기준", () => {
+    const chain = chainFromOperators(org, "w@x.com", "k@x.com");
+    expect(chain?.author.name).toBe("윤지혜");
+    expect(chain?.approver?.name).toBe("송영신");
+  });
+
+  it("담당자 메일이 운영자 목록에 없으면(퇴사·정지) 작성자 기준", () => {
+    const chain = chainFromOperators(org, "gone@x.com", "k@x.com");
+    expect(chain?.author.name).toBe("기자의");
+    expect(chain?.approver?.name).toBe("허승철");
+  });
+
+  it("둘 다 없으면 null", () => {
+    expect(chainFromOperators(org, "gone@x.com", "nope@x.com")).toBeNull();
+    expect(chainFromOperators(org, "gone@x.com")).toBeNull();
   });
 });

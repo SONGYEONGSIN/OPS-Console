@@ -382,6 +382,8 @@ export type ListRow = {
   incidentReportApology?: string | null;
   /** incident-reports — 결재라인 */
   incidentReportAuthorName?: string;
+  /** incident-reports — 결재라인 담당자 칸(사고 담당자 ?? 작성자). 없으면 작성자 */
+  incidentReportDutyName?: string;
   incidentReportAuthorEmail?: string;
   incidentReportApproverName?: string | null;
   incidentReportApproverEmail?: string | null;

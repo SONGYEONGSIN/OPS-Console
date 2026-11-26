@@ -189,6 +189,57 @@ describe("IncidentView 탭", () => {
   });
 });
 
+describe("IncidentView 경위서 결재라인 담당자 칸", () => {
+  const reportBundle = {
+    report: {
+      id: "r1",
+      incident_id: INCIDENT_ID,
+      recipient_university: "건국대학교",
+      title: "연결된 경위서",
+      draft_date: "2026-06-02",
+      gyeongwi: null,
+      cause: null,
+      handling: null,
+      prevention: null,
+      apology: null,
+      author_name: "홍길동",
+      author_email: "me@x.com",
+      approver_name: "송영신",
+      approver_email: "y@x.com",
+      director_name: "허승철",
+      ceo_name: "이이화",
+      status: "draft",
+      reject_reason: null,
+    },
+    recipients: [],
+    approvalChain: null,
+    isApprover: false,
+    canSend: false,
+  };
+
+  async function dutyCell(row: ListRow): Promise<string | null> {
+    mockGetBundle.mockResolvedValue(reportBundle);
+    render(<IncidentView row={row} />);
+    fireEvent.click(screen.getByRole("button", { name: "경위서" }));
+    const heading = await screen.findByText("결재라인");
+    const section = heading.closest("section");
+    if (!section) throw new Error("결재라인 섹션이 없다");
+    const terms = Array.from(section.querySelectorAll("dt"));
+    const i = terms.findIndex((el) => el.textContent === "담당자");
+    return section.querySelectorAll("dd")[i]?.textContent ?? null;
+  }
+
+  it("작성자와 사고 담당자가 다르면 사고 담당자 이름 — 팀장·부장이 그 사람 기준이다", async () => {
+    expect(await dutyCell({ ...baseRow, incidentAssigneeName: "김지나" })).toBe(
+      "김지나",
+    );
+  });
+
+  it("사고 담당자가 없으면 작성자 이름", async () => {
+    expect(await dutyCell(baseRow)).toBe("홍길동");
+  });
+});
+
 describe("IncidentView 사고 등급", () => {
   function severitySection(): HTMLElement {
     const heading = screen.getByRole("heading", { name: "사고 등급" });

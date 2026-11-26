@@ -219,7 +219,10 @@ export function IncidentReportView({
           items={[
             {
               term: APPROVAL_LABELS[0],
-              desc: row.incidentReportAuthorName ?? "—",
+              desc:
+                row.incidentReportDutyName ??
+                row.incidentReportAuthorName ??
+                "—",
             },
             {
               term: APPROVAL_LABELS[1],

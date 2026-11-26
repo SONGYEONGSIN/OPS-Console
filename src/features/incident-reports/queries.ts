@@ -39,7 +39,8 @@ function byEmpNo(a: OperatorLite, b: OperatorLite): number {
  * 기준 인물(사고 담당자) 기준 결재라인.
  * - 팀장: leader 이름 → 같은 팀 팀장 → 같은 팀 부장(겸임)
  * - 부장: 같은 팀 부장 → 부장
- * - 본부장: 이사 (사고보고 메일 이사님 참조 `incidents/cc.ts` 와 같은 조건)
+ * - 본부장: 영업팀 밖 role 이사 (사고보고 메일 이사님 참조 `incidents/cc.ts` 와 같은 role 조건 —
+ *   다만 cc.ts 는 active 만, 결재선은 inactive 도 후보로 본다)
  */
 export function pickApprovalChain(duty: OperatorLite, everyone: OperatorLite[]): ApprovalChain {
   // 영업팀은 사고보고 메일 참조용으로만 등재돼 결재선에 들지 않는다.
@@ -60,16 +61,43 @@ export function pickApprovalChain(duty: OperatorLite, everyone: OperatorLite[]):
   };
 }
 
-export async function resolveApprovalChain(dutyEmail: string): Promise<ApprovalChain | null> {
+/**
+ * 기준 인물 = 사고 담당자가 운영자 목록에 있으면 담당자, 없으면(퇴사·정지 등) 작성자.
+ * 둘 다 없으면 null.
+ */
+export function chainFromOperators(
+  operators: OperatorLite[],
+  dutyEmail: string,
+  fallbackEmail?: string,
+): ApprovalChain | null {
+  const duty =
+    operators.find((o) => o.email === dutyEmail) ??
+    (fallbackEmail
+      ? operators.find((o) => o.email === fallbackEmail)
+      : undefined);
+  return duty ? pickApprovalChain(duty, operators) : null;
+}
+
+/**
+ * 결재선 계산. 운영자 조회가 실패하면 **던진다** — '못 찾음(null)' 과 갈라야
+ * 호출처가 '잠시 후 다시' 와 '팀장 없음' 을 다르게 안내할 수 있다.
+ * 조회 범위는 active·inactive(사고보고 이사님 참조 `incidents/cc.ts` 는 active 만).
+ */
+export async function resolveApprovalChain(
+  dutyEmail: string,
+  fallbackEmail?: string,
+): Promise<ApprovalChain | null> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("operators")
     .select("email,name,team,role,leader,phone,emp_no")
     .in("status", ["active", "inactive"]);
-  if (!data) return null;
-  const duty = data.find((o) => o.email === dutyEmail);
-  if (!duty) return null;
-  return pickApprovalChain(duty as OperatorLite, data as OperatorLite[]);
+  if (error) throw new Error(`결재선 조회 실패: ${error.message}`);
+  return chainFromOperators(
+    (data ?? []) as OperatorLite[],
+    dutyEmail,
+    fallbackEmail,
+  );
 }
 
 export async function listRecipientCandidates(university: string) {

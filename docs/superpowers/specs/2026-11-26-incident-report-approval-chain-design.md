@@ -32,7 +32,11 @@
 - **고정 라벨 `APPROVAL_LABELS`**(담당자·팀장·부장·본부장)를 `form-content.ts` 에서 export 한다(서버·클라이언트 공용 파일). `deriveFormModel` 의 결재 줄과 인스펙터 View 가 같은 상수를 쓴다. 편집 미리보기(FormPage)·PDF 는 `deriveFormModel` 을 거치므로 따라온다. 공문의 '작성자=승인자면 담당자 칸 생략' 은 그대로 둔다.
 - **인스펙터 본부장 칸 복원** — #1319 가 지운 `incidentReportCeoName` 을 `_row-mapper`·`ListRow`(삽입만)·`filters.ts` blank 에 되돌리고 View 를 4칸(담당자·팀장·부장=`director`·본부장=`ceo`)으로.
 - **생성 때 기준 인물** — `createIncidentReport` 는 화면·PDF 와 같은 규칙(`사고.assignee_email ?? 작성자`)으로 기준 이메일을 정해 `resolveApprovalChain` 에 넘긴다. 사고는 이미 prefill 용으로 한 번 읽고 있어서, `getIncidentById` 를 한 번 더 부르지 않고 그 select 에 `assignee_email` 을 더한다. 담당자가 없을 때 작성자로 넘기는 것도 화면·PDF 와 같다 — 생성만 null 로 두면 화면은 작성자 기준 팀장을 보여 주는데 제출은 '팀장을 찾지 못했다' 로 막혀 둘이 어긋난다. 담당자 표기 칸(`author_*`)은 제출·발송 권한 판정에 쓰이므로 그대로 작성자다.
-- **제출 가드** — `submitForApproval` 이 행의 `approver_email` 을 함께 읽어, 비어 있으면 상태 전이 전에 막는다. 인스펙터 View 는 이미 action 의 `error` 를 `text-vermilion` 문구로 그린다.
+- **제출 가드 → 제출 때 재계산** — `submitForApproval` 이 행의 `approver_email` 을 함께 읽어, 비어 있으면 **생성과 같은 기준(사고 담당자 → 작성자)으로 다시 계산**한다. 찾으면 `approver_*`·`director_*`·`ceo_*` 를 상태 전이와 **같은 update** 로 저장하고 제출한다. 그래도 팀장이 없으면 지금 문구(결정 6)로 막는다. 화면(`[id]/page.tsx`·`pdf/route.ts`)은 저장값이 null 이면 라이브 계산으로 팀장을 그려서, 막기만 하면 '팀장 허승철' 이 보이는데 '팀장을 찾지 못했습니다' 로 막히는 모순이 났다. 인스펙터 View 는 이미 action 의 `error` 를 `text-vermilion` 문구로 그린다.
+- **조회 실패 ≠ 못 찾음** — `resolveApprovalChain` 은 operators 조회 에러면 **던지고**(supabase-js 는 안 던지므로 `error` 를 보고 판정), 못 찾으면 null 이다. 제출 때 조회 실패(운영자·연결 사고 둘 다)는 `결재선을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.` 로 돌려주고 아무것도 저장하지 않는다. **생성 때 조회 실패는 승인자 없이 만든다** — 제출 때 재계산이 생겼으니 null 이 굳지 않고, 일시 장애로 경위서 작성 자체를 막을 이유가 없다. 화면·PDF·발송·번들은 원래대로 `.catch(() => null)` 로 저장값/빈 칸을 쓴다.
+- **기준 인물 폴백** — `chainFromOperators(operators, 담당자, 작성자)` 가 정한다: 사고 담당자가 조회 범위(active·inactive) 안에 있으면 담당자, 없거나 조회되지 않으면(퇴사·정지) 작성자. 결정 4·'담당자 없으면 작성자' 를 넓힌 것이다 — 담당자를 못 찾아 null 이 되면 예전엔 작성자 기준으로 제출되던 사고가 새로 막혔다. 생성·제출이 `resolveApprovalChain(담당자 ?? 작성자, 작성자)` 한 함수를 쓴다(두 벌 금지). 화면·PDF·발송은 두 번째 인자를 안 넘겨 담당자를 못 찾으면 저장값을 쓴다.
+- **인스펙터 담당자 칸 = 사고 담당자 ?? 작성자** — 팀장·부장이 사고 담당자 기준이고 편집 화면·PDF 의 담당자도 사고 assignee 라, 작성자를 찍으면(실데이터 3건 중 2건이 작성자≠담당자) '담당자 A / 팀장 = B 의 팀장' 으로 짝이 틀린다. 사고 인스펙터 `ReportTab` 이 `row.incidentAssigneeName` 을 넘기고 `bundleToReportRow` 가 `incidentReportDutyName` 에 채운다. 메일 본문 등 결재라인이 아닌 '작성자' 표시는 그대로 `author_name`.
+- **조회 범위 메모** — 결재선은 operators `active·inactive` 를 본다(이사님 참조 `incidents/cc.ts` 는 active 만 — role 조건만 같다). 영업팀 밖에서 role 로 고르므로, **운영부 밖에 부장·이사가 생기면 부장/본부장 칸 후보가 된다**(2026-11-26 실측: 영업팀 밖 부장=허승철, 이사=이이화뿐).
 
 ## 4. 영향 파일
 
@@ -47,9 +51,11 @@
 5. `deriveFormModel` 4칸 고정 라벨 — 저장 role 이 무엇이든 담당자/팀장/부장/본부장
 6. 인스펙터 View 4칸, 본부장=이이화 · mapper·ListRow·filters
 7. 생성 때 사고 담당자 기준
-8. 제출 때 승인자 없으면 막힘 + 화면 문구
+8. 제출 때 승인자 없으면 재계산 → 저장·제출 / 그래도 없으면 막힘 + 화면 문구 / 조회 실패는 다른 문구·저장 안 함
 9. FormPage·PDF 테스트 픽스처 갱신
 10. CLAUDE.md 한 줄
+11. 담당자가 운영자 목록에 없으면 작성자 기준 체인(`chainFromOperators`)
+12. 인스펙터 결재라인 담당자 칸 = 사고 담당자 ?? 작성자
 
 ## 6. 배포 뒤 — 기존 3건 갱신(이 PR 밖)
 
