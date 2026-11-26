@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -86,5 +86,45 @@ describe("20261126c_incidents_delete_reported_admin_only.sql", () => {
 
   it("스키마 캐시를 다시 읽힌다", () => {
     expect(statements()).toContain("notify pgrst, 'reload schema'");
+  });
+});
+
+/**
+ * 삭제 정책의 `not exists (select … from incident_reports …)` 는 호출자 권한으로 돈다.
+ * 경위서 select 정책이 좁아지면 숨은 approved·sent 행을 못 봐 '없음' 이 되고, 담당자 본인이
+ * 발송된 사고를 지울 수 있게 된다(실측 확인). 그래서 그 정책의 최종 상태를 여기서 고정한다.
+ */
+describe("20261126c 가 기대는 경위서 select 정책", () => {
+  const DIR = join(process.cwd(), "supabase", "migrations");
+
+  /** 모든 마이그레이션을 파일명 순으로 — incident_reports_read 를 만들거나·바꾸거나·지우는 문장만. */
+  function readPolicyEvents(): { file: string; stmt: string }[] {
+    return readdirSync(DIR)
+      .filter((f) => f.endsWith(".sql"))
+      .sort()
+      .flatMap((file) =>
+        stripSqlComments(readFileSync(join(DIR, file), "utf8"))
+          .replace(/\s+/g, " ")
+          .toLowerCase()
+          .split(";")
+          .map((stmt) => stmt.trim())
+          .filter((stmt) =>
+            /^(create|alter|drop) policy (if exists )?"?incident_reports_read"? /.test(
+              stmt,
+            ),
+          )
+          .map((stmt) => ({ file, stmt })),
+      );
+  }
+
+  it("incident_reports_read 의 마지막 정의는 for select to authenticated using (true)", () => {
+    const events = readPolicyEvents();
+    const last = events.at(-1);
+    expect(
+      last?.stmt,
+      `20261126c 삭제 정책이 이 정책에 기대고 있다 — 승인·발송 경위서가 안 보이면 담당자가 그 사고를 지울 수 있다. 좁히려면 삭제 정책부터 바꿀 것 (마지막 정의: ${last?.file ?? "없음"})`,
+    ).toBe(
+      "create policy incident_reports_read on public.incident_reports for select to authenticated using (true)",
+    );
   });
 });

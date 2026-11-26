@@ -4,6 +4,7 @@
 -- 담당자 본인이라도 발송까지 끝난 공문 기록을 혼자 지우지 못하게 한다(사용자 결정 2026-11-26 '관리자만 삭제').
 -- 앱 deleteIncident 가 같은 조건을 먼저 보고 이유를 알려 준다 — 이 정책은 두 번째 겹이다.
 -- 이전 정의: 20260527c_incidents_delete_self_or_admin.sql (admin OR assignee). 롤백은 설계 §6-3.
+-- 의존: not exists 는 호출자 권한으로 돌아 경위서 select 정책 incident_reports_read(using (true))에 기댄다 — 그 정책을 좁히면 숨은 승인·발송 행이 '없음' 이 되어 담당자가 그 사고를 지울 수 있다(delete-policy-migration.test.ts 가 고정).
 
 begin;
 
