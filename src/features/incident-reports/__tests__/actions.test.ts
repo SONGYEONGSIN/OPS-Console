@@ -3,25 +3,25 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const {
   mockGetCurrentOperator,
   mockResolveApprovalChain,
-  mockInsertResult,
-  mockUpdateResult,
   mockSelectMaybeSingle,
+  mockOperatorRow,
   mockAssignDocNumber,
   mockAdminMaybeSingle,
+  mockAdminUpdateResult,
+  mockAdminInsertResult,
   adminUpdatePatches,
-  insertPayloads,
-  updatePatches,
+  adminInsertPayloads,
 } = vi.hoisted(() => ({
   mockGetCurrentOperator: vi.fn(),
   mockResolveApprovalChain: vi.fn(),
-  mockInsertResult: vi.fn(),
-  mockUpdateResult: vi.fn(),
   mockSelectMaybeSingle: vi.fn(),
+  mockOperatorRow: vi.fn(),
   mockAssignDocNumber: vi.fn(),
   mockAdminMaybeSingle: vi.fn(),
+  mockAdminUpdateResult: vi.fn(),
+  mockAdminInsertResult: vi.fn(),
   adminUpdatePatches: [] as unknown[],
-  insertPayloads: [] as unknown[],
-  updatePatches: [] as unknown[],
+  adminInsertPayloads: [] as unknown[],
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -34,31 +34,23 @@ vi.mock("../queries", () => ({
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
-    from: () => ({
-      insert: (payload: unknown) => {
-        insertPayloads.push(payload);
-        return {
-          select: () => ({
-            single: () => Promise.resolve(mockInsertResult()),
-          }),
-        };
-      },
-      update: (patch: unknown) => {
-        updatePatches.push(patch);
-        return {
-          eq: () => ({
+    // operators 는 생성 권한 판정(canCreateReport) 몫 — 나머지 읽기 순서와 섞이지 않게 따로 둔다.
+    from: (table: string) =>
+      table === "operators"
+        ? {
             select: () => ({
-              single: () => Promise.resolve(mockUpdateResult()),
+              eq: () => ({
+                maybeSingle: () => Promise.resolve(mockOperatorRow()),
+              }),
             }),
-          }),
-        };
-      },
-      select: () => ({
-        eq: () => ({
-          maybeSingle: () => Promise.resolve(mockSelectMaybeSingle()),
-        }),
-      }),
-    }),
+          }
+        : {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: () => Promise.resolve(mockSelectMaybeSingle()),
+              }),
+            }),
+          },
   })),
 }));
 vi.mock("@/lib/supabase/admin", () => ({
@@ -69,9 +61,29 @@ vi.mock("@/lib/supabase/admin", () => ({
           maybeSingle: () => Promise.resolve(mockAdminMaybeSingle()),
         }),
       }),
+      insert: (payload: unknown) => {
+        adminInsertPayloads.push(payload);
+        return {
+          select: () => ({
+            single: () => Promise.resolve(mockAdminInsertResult()),
+          }),
+        };
+      },
+      // update().eq() 는 그대로 await 되거나(발번), .in().select().single() 로 이어진다(상태 전이).
       update: (patch: unknown) => {
         adminUpdatePatches.push(patch);
-        return { eq: () => Promise.resolve({ data: null, error: null }) };
+        return {
+          eq: () =>
+            Object.assign(Promise.resolve({ data: null, error: null }), {
+              in: () => {
+                return {
+                  select: () => ({
+                    single: () => Promise.resolve(mockAdminUpdateResult()),
+                  }),
+                };
+              },
+            }),
+        };
       },
     }),
   })),
@@ -114,9 +126,12 @@ const baseRow = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  insertPayloads.length = 0;
-  updatePatches.length = 0;
+  mockOperatorRow.mockReturnValue({
+    data: { permission: "member", status: "active" },
+    error: null,
+  });
   adminUpdatePatches.length = 0;
+  adminInsertPayloads.length = 0;
 });
 
 describe("createIncidentReport", () => {
@@ -137,7 +152,7 @@ describe("createIncidentReport", () => {
     mockResolveApprovalChain.mockResolvedValue(approverChain);
     // incident_id prefill 조회 (incidents maybeSingle) — 연결 사고 미발견으로 입력값 그대로 사용
     mockSelectMaybeSingle.mockReturnValue({ data: null, error: null });
-    mockInsertResult.mockReturnValue({ data: baseRow, error: null });
+    mockAdminInsertResult.mockReturnValue({ data: baseRow, error: null });
 
     const r = await createIncidentReport({
       incident_id: SAMPLE_INCIDENT_ID,
@@ -145,7 +160,7 @@ describe("createIncidentReport", () => {
       title: "결제 오류 경위서",
     });
     expect(r.ok).toBe(true);
-    const payload = insertPayloads[0] as Record<string, unknown>;
+    const payload = adminInsertPayloads[0] as Record<string, unknown>;
     expect(payload).toMatchObject({
       author_email: meOperator.email,
       author_name: meOperator.displayName,
@@ -172,11 +187,11 @@ describe("createIncidentReport", () => {
       },
       error: null,
     });
-    mockInsertResult.mockReturnValue({ data: baseRow, error: null });
+    mockAdminInsertResult.mockReturnValue({ data: baseRow, error: null });
 
     const r = await createIncidentReport({ incident_id: SAMPLE_INCIDENT_ID });
     expect(r.ok).toBe(true);
-    const payload = insertPayloads[0] as Record<string, unknown>;
+    const payload = adminInsertPayloads[0] as Record<string, unknown>;
     expect(payload.recipient_university).toBe("조선대학교");
     expect(payload.title).toBe("원서 작성페이지 오류");
     expect(payload.gyeongwi).toBe("경위 내용");
@@ -198,7 +213,7 @@ describe("createIncidentReport", () => {
       },
       error: null,
     });
-    mockInsertResult.mockReturnValue({ data: baseRow, error: null });
+    mockAdminInsertResult.mockReturnValue({ data: baseRow, error: null });
 
     const r = await createIncidentReport({ incident_id: SAMPLE_INCIDENT_ID });
     expect(r.ok).toBe(true);
@@ -208,7 +223,7 @@ describe("createIncidentReport", () => {
       meOperator.email,
     );
     // 작성자 칸은 그대로 작성자 — 제출·발송 권한 판정에 쓰인다
-    const payload = insertPayloads[0] as Record<string, unknown>;
+    const payload = adminInsertPayloads[0] as Record<string, unknown>;
     expect(payload.author_email).toBe(meOperator.email);
   });
 
@@ -227,7 +242,7 @@ describe("createIncidentReport", () => {
       },
       error: null,
     });
-    mockInsertResult.mockReturnValue({ data: baseRow, error: null });
+    mockAdminInsertResult.mockReturnValue({ data: baseRow, error: null });
 
     await createIncidentReport({ incident_id: SAMPLE_INCIDENT_ID });
     expect(mockResolveApprovalChain).toHaveBeenCalledWith(
@@ -240,7 +255,7 @@ describe("createIncidentReport", () => {
     mockGetCurrentOperator.mockResolvedValue(meOperator);
     mockResolveApprovalChain.mockRejectedValue(new Error("결재선 조회 실패"));
     mockSelectMaybeSingle.mockReturnValue({ data: null, error: null });
-    mockInsertResult.mockReturnValue({ data: baseRow, error: null });
+    mockAdminInsertResult.mockReturnValue({ data: baseRow, error: null });
 
     const r = await createIncidentReport({
       incident_id: SAMPLE_INCIDENT_ID,
@@ -248,7 +263,7 @@ describe("createIncidentReport", () => {
       title: "결제 오류 경위서",
     });
     expect(r.ok).toBe(true);
-    const payload = insertPayloads[0] as Record<string, unknown>;
+    const payload = adminInsertPayloads[0] as Record<string, unknown>;
     expect(payload.approver_email).toBeNull();
     expect(payload.director_name).toBeNull();
     expect(payload.ceo_name).toBeNull();
@@ -292,13 +307,13 @@ describe("submitForApproval", () => {
         data: { status: "draft" },
         error: null,
       });
-    mockUpdateResult.mockReturnValue({
+    mockAdminUpdateResult.mockReturnValue({
       data: { ...baseRow, status: "pending_approval" },
       error: null,
     });
     const r = await submitForApproval(baseRow.id);
     expect(r.ok).toBe(true);
-    const patch = updatePatches[0] as Record<string, unknown>;
+    const patch = adminUpdatePatches[0] as Record<string, unknown>;
     expect(patch.status).toBe("pending_approval");
     expect(patch.reject_reason).toBeNull();
   });
@@ -325,7 +340,7 @@ describe("submitForApproval", () => {
       director: { name: "허승철", role: "부장" },
       ceo: { name: "이이화", role: "이사" },
     });
-    mockUpdateResult.mockReturnValue({
+    mockAdminUpdateResult.mockReturnValue({
       data: { ...baseRow, status: "pending_approval" },
       error: null,
     });
@@ -336,8 +351,8 @@ describe("submitForApproval", () => {
       "duty@jinhakapply.com",
       meOperator.email,
     );
-    expect(updatePatches).toHaveLength(1);
-    expect(updatePatches[0]).toMatchObject({
+    expect(adminUpdatePatches).toHaveLength(1);
+    expect(adminUpdatePatches[0]).toMatchObject({
       status: "pending_approval",
       approver_name: "허승철",
       approver_email: "h@jinhakapply.com",
@@ -367,7 +382,7 @@ describe("submitForApproval", () => {
       director: null,
       ceo: null,
     });
-    mockUpdateResult.mockReturnValue({
+    mockAdminUpdateResult.mockReturnValue({
       data: { ...baseRow, status: "pending_approval" },
       error: null,
     });
@@ -397,7 +412,7 @@ describe("submitForApproval", () => {
       ok: false,
       error: "결재선을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
     });
-    expect(updatePatches).toHaveLength(0);
+    expect(adminUpdatePatches).toHaveLength(0);
   });
 
   it("연결 사고 조회가 실패해도 '불러오지 못했다' — 엉뚱한 기준으로 굳히지 않는다", async () => {
@@ -419,7 +434,7 @@ describe("submitForApproval", () => {
       error: "결재선을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
     });
     expect(mockResolveApprovalChain).not.toHaveBeenCalled();
-    expect(updatePatches).toHaveLength(0);
+    expect(adminUpdatePatches).toHaveLength(0);
   });
 
   it("다시 계산해도 승인자(팀장)가 없으면 제출을 막는다 — 아무도 승인 못 하는 영구 대기 방지", async () => {
@@ -443,7 +458,7 @@ describe("submitForApproval", () => {
       ok: false,
       error: "결재선의 팀장을 찾지 못했습니다. 관리자에게 문의해 주세요.",
     });
-    expect(updatePatches).toHaveLength(0);
+    expect(adminUpdatePatches).toHaveLength(0);
   });
 
   it("작성자/admin 아님 → 제출 권한 없음", async () => {
@@ -511,13 +526,13 @@ describe("approveIncidentReport", () => {
         data: { status: "pending_approval" },
         error: null,
       });
-    mockUpdateResult.mockReturnValue({
+    mockAdminUpdateResult.mockReturnValue({
       data: { ...baseRow, status: "approved" },
       error: null,
     });
     const r = await approveIncidentReport(baseRow.id);
     expect(r.ok).toBe(true);
-    const patch = updatePatches[0] as Record<string, unknown>;
+    const patch = adminUpdatePatches[0] as Record<string, unknown>;
     expect(patch.status).toBe("approved");
     expect(patch.approved_at).toBeDefined();
   });
@@ -554,13 +569,13 @@ describe("approveIncidentReport", () => {
         data: { status: "pending_approval" },
         error: null,
       });
-    mockUpdateResult.mockReturnValue({
+    mockAdminUpdateResult.mockReturnValue({
       data: { ...baseRow, status: "approved" },
       error: null,
     });
     const r = await approveIncidentReport(baseRow.id);
     expect(r.ok).toBe(true);
-    const patch = updatePatches[0] as Record<string, unknown>;
+    const patch = adminUpdatePatches[0] as Record<string, unknown>;
     expect(patch.status).toBe("approved");
     expect(patch.recipient_university).toBe("조선대학교");
     expect(patch.service_name).toBe("수시모집");
@@ -584,13 +599,13 @@ describe("rejectIncidentReport", () => {
         data: { status: "pending_approval" },
         error: null,
       });
-    mockUpdateResult.mockReturnValue({
+    mockAdminUpdateResult.mockReturnValue({
       data: { ...baseRow, status: "rejected" },
       error: null,
     });
     const r = await rejectIncidentReport(baseRow.id, "내용 보완 필요");
     expect(r.ok).toBe(true);
-    const patch = updatePatches[0] as Record<string, unknown>;
+    const patch = adminUpdatePatches[0] as Record<string, unknown>;
     expect(patch.status).toBe("rejected");
     expect(patch.reject_reason).toBe("내용 보완 필요");
   });
@@ -625,13 +640,13 @@ describe("revokeApproval", () => {
         error: null,
       })
       .mockReturnValueOnce({ data: { status: "approved" }, error: null });
-    mockUpdateResult.mockReturnValue({
+    mockAdminUpdateResult.mockReturnValue({
       data: { ...baseRow, status: "draft" },
       error: null,
     });
     const r = await revokeApproval(baseRow.id);
     expect(r.ok).toBe(true);
-    const patch = updatePatches[0] as Record<string, unknown>;
+    const patch = adminUpdatePatches[0] as Record<string, unknown>;
     expect(patch.status).toBe("draft");
     expect(patch.approved_at).toBeNull();
   });
@@ -651,13 +666,13 @@ describe("revokeSend", () => {
     mockSelectMaybeSingle
       .mockReturnValueOnce({ data: { title: "t" }, error: null })
       .mockReturnValueOnce({ data: { status: "sent" }, error: null });
-    mockUpdateResult.mockReturnValue({
+    mockAdminUpdateResult.mockReturnValue({
       data: { ...baseRow, status: "approved" },
       error: null,
     });
     const r = await revokeSend(baseRow.id);
     expect(r.ok).toBe(true);
-    const patch = updatePatches[0] as Record<string, unknown>;
+    const patch = adminUpdatePatches[0] as Record<string, unknown>;
     expect(patch.status).toBe("approved");
   });
 

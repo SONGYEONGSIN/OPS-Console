@@ -58,6 +58,7 @@ export function ReportEditorWorkspace({
   dutyEmail,
   dutyPhone,
   serviceName,
+  canEdit,
 }: {
   report: IncidentReportRow;
   /** 발송 전 예상 시행번호(공문관리대장 조회, 확정 아님) */
@@ -72,6 +73,8 @@ export function ReportEditorWorkspace({
   dutyPhone?: string | null;
   /** 서비스명 — 연결 사고에서 동기화(읽기전용 표시). */
   serviceName?: string | null;
+  /** 본문을 고칠 수 있는 사람인가 — 작성자·관리자(updateIncidentReport·DB 잠금과 같은 기준). */
+  canEdit: boolean;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<TextDraft>({
@@ -93,7 +96,10 @@ export function ReportEditorWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const editable = report.status === "draft" || report.status === "rejected";
+  const editableStatus =
+    report.status === "draft" || report.status === "rejected";
+  // 권한 없는 사람이 저장하면 공유 칸은 사고에 먼저 저장되고 경위서 칸만 거절되는 반쪽 저장이 된다 — 칸을 잠근다.
+  const editable = canEdit && editableStatus;
 
   const source: FormSource = {
     recipientUniversity: draft.recipient_university,
@@ -348,7 +354,9 @@ export function ReportEditorWorkspace({
         ) : (
           <div className="space-y-3">
             <p className="text-xs text-muted">
-              편집할 수 없는 상태입니다. (미리보기·PDF만)
+              {editableStatus
+                ? "작성자·관리자만 고칠 수 있습니다. (미리보기·PDF만)"
+                : "편집할 수 없는 상태입니다. (미리보기·PDF만)"}
             </p>
           </div>
         )}

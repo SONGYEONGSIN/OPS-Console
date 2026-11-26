@@ -13,6 +13,7 @@ import {
   isReportLiveMirrored,
   type IncidentReportRow,
 } from "@/features/incident-reports/schemas";
+import { canEditReport } from "@/features/incident-reports/permissions";
 import { ReportEditorWorkspace } from "./_components/ReportEditorWorkspace";
 import { EDITOR_PANEL_WIDTH_CLASS } from "./_components/editor-panel-width";
 
@@ -21,7 +22,7 @@ export default async function IncidentReportEditorPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireMenu("incidents");
+  const me = await requireMenu("incidents");
   const meta = findSidebarMeta("incidents");
   if (!meta) return null;
   const { id } = await params;
@@ -62,6 +63,9 @@ export default async function IncidentReportEditorPage({
     ? (incident?.service_name ?? report.service_name ?? null)
     : (report.service_name ?? null);
 
+  // 본문 편집은 작성자·관리자만 — updateIncidentReport·DB 잠금(20261126)과 같은 기준.
+  const canEdit = canEditReport(report, me);
+
   // 결재라인 — 저장 스냅샷에 빠진 칸은 현재 조직 기준으로 라이브 보강(비파괴).
   const liveChain = await resolveApprovalChain(chainEmail).catch(() => null);
   const approval = {
@@ -98,6 +102,7 @@ export default async function IncidentReportEditorPage({
           dutyEmail={chainEmail}
           dutyPhone={liveChain?.author?.phone ?? null}
           serviceName={serviceName}
+          canEdit={canEdit}
         />
       </section>
     </div>

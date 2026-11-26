@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   incidentReportCreateSchema,
+  incidentReportUpdateSchema,
   reportStatusSchema,
   incidentReportSendSchema,
 } from "../schemas";
@@ -32,6 +33,20 @@ describe("incidentReportCreateSchema", () => {
       expect(reportStatusSchema.safeParse(s).success).toBe(true);
     }
     expect(reportStatusSchema.safeParse("xxx").success).toBe(false);
+  });
+});
+
+describe("incidentReportUpdateSchema", () => {
+  it("incident_id 는 버린다 — 경위서가 가리키는 사고는 생성 뒤 바꾸지 않는다(grant 에도 없다)", () => {
+    const r = incidentReportUpdateSchema.safeParse({
+      incident_id: SAMPLE_UUID,
+      apology: "사과문",
+    });
+    expect(r.success).toBe(true);
+    expect(r.success && r.data).toEqual({ apology: "사과문" });
+    expect(Object.keys(incidentReportUpdateSchema.shape)).not.toContain(
+      "incident_id",
+    );
   });
 });
 
