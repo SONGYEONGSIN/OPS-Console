@@ -26,6 +26,7 @@ export function blankIncidentReportRow(opts?: {
     incidentReportAuthorName: opts?.currentUserName ?? "",
     incidentReportApproverName: null,
     incidentReportDirectorName: null,
+    incidentReportCeoName: null,
     incidentReportRejectReason: null,
     incidentReportIncidentId: null,
   };

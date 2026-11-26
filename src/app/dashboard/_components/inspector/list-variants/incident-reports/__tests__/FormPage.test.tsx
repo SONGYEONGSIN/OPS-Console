@@ -15,10 +15,10 @@ const source: FormSource = {
   authorPhone: null,
   approverName: "송영신",
   approverRole: "팀장",
-  directorName: "이이화",
-  directorRole: "본부장",
-  ceoName: "주정현",
-  ceoRole: "사장",
+  directorName: "허승철",
+  directorRole: "부장",
+  ceoName: "이이화",
+  ceoRole: "이사",
   docNumber: null,
   apology: null,
   gyeongwi: "경위 내용입니다",
@@ -30,14 +30,18 @@ const source: FormSource = {
 const model = deriveFormModel(source);
 
 describe("FormPage page 1 (공문)", () => {
-  it("수신대학·제목·결재자 한 줄(담당자/팀장/본부장/사장)을 렌더한다", () => {
+  it("수신대학·제목·결재자 한 줄(담당자/팀장/부장/본부장)을 렌더한다", () => {
     render(<FormPage model={model} page={1} />);
     expect(screen.getByText(/수신자/)).toBeInTheDocument();
     expect(screen.getAllByText(/전산파일 오류 건/).length).toBeGreaterThan(0);
     expect(screen.getByText(/담당자/)).toBeInTheDocument();
     expect(screen.getByText(/팀장/)).toBeInTheDocument();
+    expect(screen.getByText(/^부장/)).toBeInTheDocument();
     expect(screen.getByText(/본부장/)).toBeInTheDocument();
-    expect(screen.getByText(/사장/)).toBeInTheDocument();
+    expect(screen.getByText(/이이화/)).toBeInTheDocument();
+    // 사장 칸은 없다 + 저장 직책(이사)을 라벨로 쓰지 않는다
+    expect(screen.queryByText(/사장/)).toBeNull();
+    expect(screen.queryByText(/^이사/)).toBeNull();
   });
   it("회사명과 직인 이미지를 렌더한다", () => {
     render(<FormPage model={model} page={1} />);

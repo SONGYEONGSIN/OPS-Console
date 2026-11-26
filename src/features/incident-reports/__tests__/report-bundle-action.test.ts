@@ -90,6 +90,16 @@ describe("getIncidentReportBundle", () => {
     expect(mockResolveApprovalChain).toHaveBeenCalledWith("me@x.com");
   });
 
+  it("결재선 조회가 실패해도(던짐) 번들은 경위서를 돌려준다 — chain 만 null", async () => {
+    mockGetCurrentOperator.mockResolvedValue({ email: "me@x.com" });
+    mockGetByIncidentId.mockResolvedValue(sampleReport);
+    mockListRecipientCandidates.mockResolvedValue([]);
+    mockResolveApprovalChain.mockRejectedValue(new Error("결재선 조회 실패"));
+    const r = await getIncidentReportBundle(INCIDENT_ID);
+    expect(r.report).toEqual(sampleReport);
+    expect(r.approvalChain).toBeNull();
+  });
+
   it("isApprover: approver_email === me.email 일 때 true", async () => {
     mockGetCurrentOperator.mockResolvedValue({ email: "l@x.com" });
     mockGetByIncidentId.mockResolvedValue(sampleReport);

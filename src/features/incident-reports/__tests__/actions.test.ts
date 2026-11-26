@@ -183,6 +183,77 @@ describe("createIncidentReport", () => {
     expect(payload.prevention).toBe("대책 내용");
   });
 
+  it("결재라인은 작성자가 아니라 연결 사고의 담당자 기준으로 계산한다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockResolveApprovalChain.mockResolvedValue(approverChain);
+    mockSelectMaybeSingle.mockReturnValue({
+      data: {
+        university_name: "조선대학교",
+        title: "원서 작성페이지 오류",
+        cause_summary: null,
+        root_cause: null,
+        resolution: null,
+        prevention: null,
+        assignee_email: "duty@jinhakapply.com",
+      },
+      error: null,
+    });
+    mockInsertResult.mockReturnValue({ data: baseRow, error: null });
+
+    const r = await createIncidentReport({ incident_id: SAMPLE_INCIDENT_ID });
+    expect(r.ok).toBe(true);
+    // 담당자가 운영자 목록에 없으면 작성자 기준 — 두 번째 인자
+    expect(mockResolveApprovalChain).toHaveBeenCalledWith(
+      "duty@jinhakapply.com",
+      meOperator.email,
+    );
+    // 작성자 칸은 그대로 작성자 — 제출·발송 권한 판정에 쓰인다
+    const payload = insertPayloads[0] as Record<string, unknown>;
+    expect(payload.author_email).toBe(meOperator.email);
+  });
+
+  it("사고에 담당자가 없으면 작성자 기준(화면·PDF 와 같은 폴백)", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockResolveApprovalChain.mockResolvedValue(approverChain);
+    mockSelectMaybeSingle.mockReturnValue({
+      data: {
+        university_name: "조선대학교",
+        title: "원서 작성페이지 오류",
+        cause_summary: null,
+        root_cause: null,
+        resolution: null,
+        prevention: null,
+        assignee_email: null,
+      },
+      error: null,
+    });
+    mockInsertResult.mockReturnValue({ data: baseRow, error: null });
+
+    await createIncidentReport({ incident_id: SAMPLE_INCIDENT_ID });
+    expect(mockResolveApprovalChain).toHaveBeenCalledWith(
+      meOperator.email,
+      meOperator.email,
+    );
+  });
+
+  it("운영자 조회가 실패해도 경위서는 만든다 — 승인자는 비워 두고 제출 때 다시 계산", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockResolveApprovalChain.mockRejectedValue(new Error("결재선 조회 실패"));
+    mockSelectMaybeSingle.mockReturnValue({ data: null, error: null });
+    mockInsertResult.mockReturnValue({ data: baseRow, error: null });
+
+    const r = await createIncidentReport({
+      incident_id: SAMPLE_INCIDENT_ID,
+      recipient_university: "건국대학교(서울)",
+      title: "결제 오류 경위서",
+    });
+    expect(r.ok).toBe(true);
+    const payload = insertPayloads[0] as Record<string, unknown>;
+    expect(payload.approver_email).toBeNull();
+    expect(payload.director_name).toBeNull();
+    expect(payload.ceo_name).toBeNull();
+  });
+
   it("사고 미발견 + 수신대학·제목 입력 없음 → ok:false (사고 정보 없음 가드)", async () => {
     mockGetCurrentOperator.mockResolvedValue(meOperator);
     mockSelectMaybeSingle.mockReturnValue({ data: null, error: null });
@@ -211,7 +282,10 @@ describe("submitForApproval", () => {
     mockGetCurrentOperator.mockResolvedValue(meOperator);
     mockSelectMaybeSingle
       .mockReturnValueOnce({
-        data: { author_email: meOperator.email },
+        data: {
+          author_email: meOperator.email,
+          approver_email: "lead@jinhakapply.com",
+        },
         error: null,
       })
       .mockReturnValueOnce({
@@ -229,6 +303,149 @@ describe("submitForApproval", () => {
     expect(patch.reject_reason).toBeNull();
   });
 
+  it("승인자가 비어 있으면 생성과 같은 기준(사고 담당자 → 작성자)으로 다시 계산해 저장하고 제출한다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockSelectMaybeSingle
+      .mockReturnValueOnce({
+        data: {
+          author_email: meOperator.email,
+          approver_email: null,
+          incident_id: "inc-1",
+        },
+        error: null,
+      })
+      .mockReturnValueOnce({
+        data: { assignee_email: "duty@jinhakapply.com" },
+        error: null,
+      })
+      .mockReturnValueOnce({ data: { status: "draft" }, error: null });
+    mockResolveApprovalChain.mockResolvedValue({
+      author: { name: "담당", email: "duty@jinhakapply.com", phone: null },
+      approver: { name: "허승철", email: "h@jinhakapply.com", role: "부장" },
+      director: { name: "허승철", role: "부장" },
+      ceo: { name: "이이화", role: "이사" },
+    });
+    mockUpdateResult.mockReturnValue({
+      data: { ...baseRow, status: "pending_approval" },
+      error: null,
+    });
+
+    const r = await submitForApproval(baseRow.id);
+    expect(r.ok).toBe(true);
+    expect(mockResolveApprovalChain).toHaveBeenCalledWith(
+      "duty@jinhakapply.com",
+      meOperator.email,
+    );
+    expect(updatePatches).toHaveLength(1);
+    expect(updatePatches[0]).toMatchObject({
+      status: "pending_approval",
+      approver_name: "허승철",
+      approver_email: "h@jinhakapply.com",
+      approver_role: "부장",
+      director_name: "허승철",
+      director_role: "부장",
+      ceo_name: "이이화",
+      ceo_role: "이사",
+    });
+  });
+
+  it("연결 사고가 없으면 작성자 기준으로 다시 계산한다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockSelectMaybeSingle
+      .mockReturnValueOnce({
+        data: {
+          author_email: meOperator.email,
+          approver_email: null,
+          incident_id: null,
+        },
+        error: null,
+      })
+      .mockReturnValueOnce({ data: { status: "draft" }, error: null });
+    mockResolveApprovalChain.mockResolvedValue({
+      author: { name: "나", email: meOperator.email, phone: null },
+      approver: { name: "송영신", email: "y@jinhakapply.com", role: "팀장" },
+      director: null,
+      ceo: null,
+    });
+    mockUpdateResult.mockReturnValue({
+      data: { ...baseRow, status: "pending_approval" },
+      error: null,
+    });
+
+    const r = await submitForApproval(baseRow.id);
+    expect(r.ok).toBe(true);
+    expect(mockResolveApprovalChain).toHaveBeenCalledWith(
+      meOperator.email,
+      meOperator.email,
+    );
+  });
+
+  it("운영자 조회가 실패하면 '불러오지 못했다' 로 돌려주고 아무것도 저장하지 않는다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockSelectMaybeSingle.mockReturnValueOnce({
+      data: {
+        author_email: meOperator.email,
+        approver_email: null,
+        incident_id: null,
+      },
+      error: null,
+    });
+    mockResolveApprovalChain.mockRejectedValue(new Error("결재선 조회 실패"));
+
+    const r = await submitForApproval(baseRow.id);
+    expect(r).toEqual({
+      ok: false,
+      error: "결재선을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    });
+    expect(updatePatches).toHaveLength(0);
+  });
+
+  it("연결 사고 조회가 실패해도 '불러오지 못했다' — 엉뚱한 기준으로 굳히지 않는다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockSelectMaybeSingle
+      .mockReturnValueOnce({
+        data: {
+          author_email: meOperator.email,
+          approver_email: null,
+          incident_id: "inc-1",
+        },
+        error: null,
+      })
+      .mockReturnValueOnce({ data: null, error: { message: "timeout" } });
+
+    const r = await submitForApproval(baseRow.id);
+    expect(r).toEqual({
+      ok: false,
+      error: "결재선을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    });
+    expect(mockResolveApprovalChain).not.toHaveBeenCalled();
+    expect(updatePatches).toHaveLength(0);
+  });
+
+  it("다시 계산해도 승인자(팀장)가 없으면 제출을 막는다 — 아무도 승인 못 하는 영구 대기 방지", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockSelectMaybeSingle.mockReturnValue({
+      data: {
+        author_email: meOperator.email,
+        approver_email: null,
+        incident_id: null,
+      },
+      error: null,
+    });
+    mockResolveApprovalChain.mockResolvedValue({
+      author: { name: "나", email: meOperator.email, phone: null },
+      approver: null,
+      director: null,
+      ceo: null,
+    });
+    const r = await submitForApproval(baseRow.id);
+    expect(r).toEqual({
+      ok: false,
+      error: "결재선의 팀장을 찾지 못했습니다. 관리자에게 문의해 주세요.",
+    });
+    expect(updatePatches).toHaveLength(0);
+  });
+
   it("작성자/admin 아님 → 제출 권한 없음", async () => {
     mockGetCurrentOperator.mockResolvedValue(meOperator);
     mockSelectMaybeSingle.mockReturnValue({
@@ -243,7 +460,10 @@ describe("submitForApproval", () => {
     mockGetCurrentOperator.mockResolvedValue(meOperator);
     mockSelectMaybeSingle
       .mockReturnValueOnce({
-        data: { author_email: meOperator.email },
+        data: {
+          author_email: meOperator.email,
+          approver_email: "lead@jinhakapply.com",
+        },
         error: null,
       })
       .mockReturnValueOnce({

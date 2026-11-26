@@ -165,6 +165,7 @@ function bundleToReportRow(
     rootCause?: string | null;
     handlingRows?: { time: string; content: string }[];
     prevention?: string | null;
+    assigneeName?: string;
   },
 ): ListRow {
   // 작성중(draft/rejected)이면 연결 사고의 현재값으로 라이브 미러, 승인 이후는 스냅샷.
@@ -179,6 +180,8 @@ function bundleToReportRow(
     // 제목은 인스펙터 표시상 항상 연결 사고의 현재 제목을 미러(승인/발송 후에도).
     // 발송된 공문 PDF/본문은 별도로 스냅샷 유지.
     incidentReportTitle: current.title ?? report.title,
+    // 결재라인 담당자 칸 = 사고 담당자(팀장·부장이 그 사람 기준) — 없으면 작성자.
+    incidentReportDutyName: current.assigneeName ?? report.author_name,
     incidentReportGyeongwi: liveMirror
       ? (current.causeSummary ?? report.gyeongwi)
       : report.gyeongwi,
@@ -217,6 +220,7 @@ function ReportTab({
     rootCause?: string | null;
     handlingRows?: { time: string; content: string }[];
     prevention?: string | null;
+    assigneeName?: string;
   };
 }) {
   const [bundle, setBundle] = useState<IncidentReportBundle | null>(null);
@@ -311,6 +315,7 @@ export function IncidentView({ row }: ViewProps) {
             rootCause: row.incidentRootCause,
             handlingRows: row.incidentHandlingRows,
             prevention: row.incidentPrevention,
+            assigneeName: row.incidentAssigneeName,
           }}
         />
       )}

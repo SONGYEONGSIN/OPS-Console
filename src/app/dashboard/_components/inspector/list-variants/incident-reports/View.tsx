@@ -18,6 +18,7 @@ import {
   incidentReportMailBody,
 } from "@/features/incident-reports/mail-template";
 import { STATUS_TONE } from "./status";
+import { APPROVAL_LABELS } from "@/features/incident-reports/form-content";
 
 type Recipient = { email: string; name: string; jobTitle: string | null };
 type CcRecipient = { email: string; name: string };
@@ -216,9 +217,25 @@ export function IncidentReportView({
       <Section title="결재라인">
         <DefList
           items={[
-            { term: "담당자", desc: row.incidentReportAuthorName ?? "—" },
-            { term: "팀장", desc: row.incidentReportApproverName ?? "—" },
-            { term: "본부장", desc: row.incidentReportDirectorName ?? "—" },
+            {
+              term: APPROVAL_LABELS[0],
+              desc:
+                row.incidentReportDutyName ??
+                row.incidentReportAuthorName ??
+                "—",
+            },
+            {
+              term: APPROVAL_LABELS[1],
+              desc: row.incidentReportApproverName ?? "—",
+            },
+            {
+              term: APPROVAL_LABELS[2],
+              desc: row.incidentReportDirectorName ?? "—",
+            },
+            {
+              term: APPROVAL_LABELS[3],
+              desc: row.incidentReportCeoName ?? "—",
+            },
           ]}
         />
       </Section>
