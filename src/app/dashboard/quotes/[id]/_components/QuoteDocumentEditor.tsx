@@ -432,7 +432,8 @@ function SectionTable({
                           onChange={(e) =>
                             setCell(rowIdx, col.key, e.target.value)
                           }
-                          className="w-full resize-none bg-transparent text-sm text-ink outline-none"
+                          // 일회성: 표 셀은 패딩·테두리가 없어 전역 최소 높이(+10px)가 남는다 → rows 2 원래 높이로.
+                          className="min-h-[2lh] w-full resize-none bg-transparent text-sm text-ink outline-none"
                           placeholder=""
                         />
                       </td>
